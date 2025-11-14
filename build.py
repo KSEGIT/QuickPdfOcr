@@ -49,13 +49,13 @@ def build_executable():
     # Run PyInstaller
     try:
         subprocess.run(cmd, check=True)
-        print("\n✓ Build successful!")
+        print("\nBuild successful!")
         print(f"Executable location: dist/QuickPdfOcr")
         print("\nNote: Users still need to install system dependencies:")
         print("  - Tesseract OCR")
         print("  - Poppler")
     except subprocess.CalledProcessError as e:
-        print(f"\n✗ Build failed: {e}")
+        print(f"\nBuild failed: {e}")
         sys.exit(1)
 
 
