@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -49,18 +52,17 @@ jobs:
       - name: Build executable
         run: python build.py
       
-      - name: Create DMG (optional)
+      - name: Create ZIP archive
         run: |
-          # If you want to create a DMG, add create-dmg tool
-          # brew install create-dmg
-          # create-dmg --volname "QuickPdfOcr" --window-pos 200 120 --window-size 800 400 QuickPdfOcr.dmg dist/QuickPdfOcr.app
-          echo "App bundle created"
+          cd dist
+          zip -r QuickPdfOcr-macOS.zip QuickPdfOcr.app
+          cd ..
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: QuickPdfOcr-macOS
-          path: dist/QuickPdfOcr.app
+          path: dist/QuickPdfOcr-macOS.zip
 
   build-linux:
     runs-on: ubuntu-latest
@@ -99,9 +101,7 @@ jobs:
         with:
           files: |
             QuickPdfOcr-Windows/QuickPdfOcr.exe
-            QuickPdfOcr-macOS/QuickPdfOcr.app
+            QuickPdfOcr-macOS/QuickPdfOcr-macOS.zip
             QuickPdfOcr-Linux/QuickPdfOcr
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
