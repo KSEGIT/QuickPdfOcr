@@ -241,3 +241,9 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# PyInstaller
+*.spec
+build/
+dist/
+*.pyc

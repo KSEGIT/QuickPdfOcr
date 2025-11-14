@@ -32,6 +32,22 @@ sudo apt-get install tesseract-ocr poppler-utils
 
 ## Installation
 
+### Option 1: Download Pre-built Binary (Recommended)
+
+1. Download the latest release for your platform from [Releases](https://github.com/KSEGIT/QuickPdfOcr/releases)
+   - **Windows**: `QuickPdfOcr.exe`
+   - **macOS**: `QuickPdfOcr.app`
+   - **Linux**: `QuickPdfOcr`
+
+2. Install system dependencies (required):
+   - **macOS**: `brew install tesseract poppler`
+   - **Linux**: `sudo apt-get install tesseract-ocr poppler-utils`
+   - **Windows**: Install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and [Poppler](https://github.com/oschwartz10612/poppler-windows/releases/)
+
+3. Run the application!
+
+### Option 2: Run from Source
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/KSEGIT/QuickPdfOcr.git
@@ -42,6 +58,19 @@ cd QuickPdfOcr
 ```bash
 pip install -r requirements.txt
 ```
+
+3. Install system dependencies (see above)
+
+### Option 3: Build Your Own Binary
+
+1. Clone and install dependencies (see Option 2)
+
+2. Build executable:
+```bash
+python build.py
+```
+
+3. Find your executable in the `dist/` folder
 
 ## Usage
 
@@ -114,16 +143,48 @@ QuickPdfOcr/
 
 ## Requirements
 
+### System Requirements
+- **Tesseract OCR** (must be installed on your system)
+- **Poppler** (for PDF processing)
+
+### Python Dependencies (for source installation)
 See `requirements.txt` for Python package versions:
 - pytesseract>=0.3.10
 - pdf2image>=1.16.0
 - Pillow>=10.0.0
 - PyPDF2>=3.0.0
 - PySide6>=6.6.0
+- pyinstaller>=6.0.0 (for building binaries)
 
 ## License
 
 This project is open source and available under the MIT License.
+
+## Building & Releases
+
+### Local Build
+
+Build for your current platform:
+```bash
+pip install -r requirements.txt
+python build.py
+```
+
+The executable will be in the `dist/` folder.
+
+### Automated Builds (GitHub Actions)
+
+The project includes GitHub Actions workflow that automatically builds executables for all platforms when you:
+1. Push a tag starting with `v` (e.g., `v1.0.0`)
+2. Manually trigger the workflow
+
+To create a release:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Artifacts will be available in the GitHub release.
 
 ## Contributing
 
