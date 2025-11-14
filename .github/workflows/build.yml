@@ -35,7 +35,7 @@ jobs:
           path: dist/QuickPdfOcr.exe
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-14  # macOS 14 on M1
     steps:
       - uses: actions/checkout@v4
       
@@ -55,14 +55,44 @@ jobs:
       - name: Create ZIP archive
         run: |
           cd dist
-          zip -r QuickPdfOcr-macOS.zip QuickPdfOcr.app
+          zip -r QuickPdfOcr-macOS-AppleSilicon.zip QuickPdfOcr.app
           cd ..
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QuickPdfOcr-macOS
-          path: dist/QuickPdfOcr-macOS.zip
+          name: QuickPdfOcr-macOS-AppleSilicon
+          path: dist/QuickPdfOcr-macOS-AppleSilicon.zip
+
+  build-macos-intel:
+    runs-on: macos-13  # macOS 13 on Intel
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Build executable
+        run: python build.py
+      
+      - name: Create ZIP archive
+        run: |
+          cd dist
+          zip -r QuickPdfOcr-macOS-Intel.zip QuickPdfOcr.app
+          cd ..
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickPdfOcr-macOS-Intel
+          path: dist/QuickPdfOcr-macOS-Intel.zip
 
   build-linux:
     runs-on: ubuntu-latest
@@ -89,7 +119,7 @@ jobs:
           path: dist/QuickPdfOcr
 
   create-release:
-    needs: [build-windows, build-macos, build-linux]
+    needs: [build-windows, build-macos, build-macos-intel, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -101,7 +131,8 @@ jobs:
         with:
           files: |
             QuickPdfOcr-Windows/QuickPdfOcr.exe
-            QuickPdfOcr-macOS/QuickPdfOcr-macOS.zip
+            QuickPdfOcr-macOS-AppleSilicon/QuickPdfOcr-macOS-AppleSilicon.zip
+            QuickPdfOcr-macOS-Intel/QuickPdfOcr-macOS-Intel.zip
             QuickPdfOcr-Linux/QuickPdfOcr
           draft: false
           prerelease: false

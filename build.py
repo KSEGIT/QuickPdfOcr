@@ -23,8 +23,20 @@ def build_executable():
         "--windowed",  # No console window
         "--onefile",   # Single executable
         "--noconfirm", # Overwrite without asking
-        "main.py"
     ]
+    
+    # Add target architecture for macOS (universal2 or specific arch)
+    if system == "Darwin":  # macOS
+        # Check current architecture
+        arch = platform.machine()
+        if arch == "arm64":
+            # Building on Apple Silicon - create universal binary
+            cmd.extend(["--target-arch=universal2"])
+        else:
+            # Building on Intel - create universal binary if possible
+            cmd.extend(["--target-arch=universal2"])
+    
+    cmd.append("main.py")
     
     # Add icon based on platform (if you add icons later)
     # if system == "Darwin":  # macOS
