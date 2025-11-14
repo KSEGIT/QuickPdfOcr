@@ -2,6 +2,12 @@
 """
 Build script for creating standalone executables
 Supports macOS, Linux, and Windows
+
+Note for macOS:
+- Builds architecture-specific binaries (arm64 or x86_64) rather than universal2
+- This is because some Python packages (like Pillow) may have thin single-arch 
+  binaries that cannot be merged into universal2 executables
+- In GitHub Actions, we build separate binaries for ARM64 and Intel Macs
 """
 
 import sys
@@ -25,16 +31,13 @@ def build_executable():
         "--noconfirm", # Overwrite without asking
     ]
     
-    # Add target architecture for macOS (universal2 or specific arch)
+    # Add target architecture for macOS
+    # Note: Building architecture-specific binaries instead of universal2
+    # because some dependencies (like Pillow's _webp module) may not be universal2
     if system == "Darwin":  # macOS
-        # Check current architecture
         arch = platform.machine()
-        if arch == "arm64":
-            # Building on Apple Silicon - create universal binary
-            cmd.extend(["--target-arch=universal2"])
-        else:
-            # Building on Intel - create universal binary if possible
-            cmd.extend(["--target-arch=universal2"])
+        # Build for the current architecture only
+        cmd.extend([f"--target-arch={arch}"])
     
     cmd.append("main.py")
     
