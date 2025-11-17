@@ -252,3 +252,7 @@ dist/
 poppler_binaries/
 poppler_temp/
 poppler.zip
+
+# Tesseract binaries (downloaded during CI build)
+tesseract_binaries/
+tesseract-installer.exe

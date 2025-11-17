@@ -29,7 +29,9 @@ Tesseract is an open-source OCR engine.
 - Website: https://github.com/tesseract-ocr/tesseract
 - License: https://github.com/tesseract-ocr/tesseract/blob/main/LICENSE
 
-Note: Tesseract is NOT bundled with this application. Users must install it separately on their system.
+When distributed in binary form with this application, Tesseract binaries and tessdata (language data files) are included. The Apache 2.0 license allows free redistribution.
+
+**Source Code:** https://github.com/tesseract-ocr/tesseract
 
 ---
 
