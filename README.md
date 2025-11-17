@@ -2,6 +2,18 @@
 
 A simple and intuitive PDF OCR application built with PySide6 (Qt6) and Tesseract OCR.
 
+## 🚀 Quick Start for End Users
+
+**Download and run - no Python installation required!**
+
+The pre-built executables are completely standalone and include:
+- ✅ Python interpreter
+- ✅ All Python packages
+- ✅ Poppler (PDF processing)
+- ⚠️ **Only Tesseract OCR needs to be installed separately**
+
+See [Installation](#installation) below for download links and Tesseract installation instructions.
+
 ## Features
 
 - 📄 **Drag & Drop Interface** - Simply drag PDF files into the window
@@ -11,13 +23,13 @@ A simple and intuitive PDF OCR application built with PySide6 (Qt6) and Tesserac
 - 📋 **Copy to Clipboard** - One-click copy functionality (macOS/Linux/Windows)
 - 🔄 **Error Recovery** - Retry or start over options on failure
 - 🎨 **Modern UI** - Clean, user-friendly interface with visual feedback
-- 📦 **Poppler Included** - Pre-built binaries include Poppler (no separate installation needed!)
+- 📦 **Standalone Binary** - No Python installation required for end users
 
 ## Prerequisites
 
 ### For Pre-built Binaries (Recommended)
 
-**Only Tesseract OCR is required** - Poppler is now bundled with the application!
+**No Python required!** The executable is completely standalone and includes everything except Tesseract OCR.
 
 **macOS:**
 ```bash
@@ -52,17 +64,25 @@ sudo apt-get install tesseract-ocr poppler-utils
 
 ### Option 1: Download Pre-built Binary (Recommended)
 
+**No Python installation required!** The executable bundles everything except Tesseract OCR.
+
 1. Download the latest release for your platform from [Releases](https://github.com/KSEGIT/QuickPdfOcr/releases)
    - **Windows**: `QuickPdfOcr.exe`
    - **macOS**: `QuickPdfOcr.app` (ARM64 or Intel)
    - **Linux**: `QuickPdfOcr`
 
-2. Install Tesseract OCR (Poppler is already included!):
+2. Install Tesseract OCR (only external dependency):
    - **macOS**: `brew install tesseract`
    - **Linux**: `sudo apt-get install tesseract-ocr`
    - **Windows**: Install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
 
 3. Run the application!
+
+**What's Included:**
+- ✅ Python interpreter (no Python installation needed)
+- ✅ All Python packages (PySide6, pytesseract, pdf2image, Pillow, PyPDF2)
+- ✅ Poppler binaries (for PDF processing)
+- ⚠️ Tesseract OCR must be installed separately (for text recognition)
 
 ### Option 2: Run from Source
 
