@@ -247,3 +247,8 @@ Temporary Items
 build/
 dist/
 *.pyc
+
+# Poppler binaries (downloaded during CI build)
+poppler_binaries/
+poppler_temp/
+poppler.zip
