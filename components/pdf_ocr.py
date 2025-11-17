@@ -8,6 +8,10 @@ import sys
 from pathlib import Path
 from typing import Optional, Callable
 
+# Setup bundled binaries (Poppler and Tesseract) if available
+from components.poppler_utils import setup_bundled_binaries
+setup_bundled_binaries()
+
 try:
     from pdf2image import convert_from_path
     from pdf2image.exceptions import PDFInfoNotInstalledError
