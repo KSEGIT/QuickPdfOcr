@@ -32,8 +32,20 @@ jobs:
           Write-Host "Extracting Poppler..."
           Expand-Archive -Path poppler.zip -DestinationPath poppler_temp
           
-          # Move to expected location
-          Move-Item -Path "poppler_temp/poppler-$POPPLER_VERSION" -Destination poppler_binaries
+          # List extracted contents to see actual structure
+          Write-Host "Contents of poppler_temp:"
+          Get-ChildItem -Path poppler_temp -Recurse -Depth 1
+          
+          # Find the actual poppler directory (it might be named differently)
+          $popplerDir = Get-ChildItem -Path poppler_temp -Directory | Select-Object -First 1
+          
+          if ($popplerDir) {
+            Write-Host "Moving $($popplerDir.FullName) to poppler_binaries..."
+            Move-Item -Path $popplerDir.FullName -Destination poppler_binaries
+          } else {
+            Write-Error "No directory found in poppler_temp"
+            exit 1
+          }
           
           # Verify files exist
           if (Test-Path "poppler_binaries/Library/bin/pdfinfo.exe") {
