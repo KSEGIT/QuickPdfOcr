@@ -100,16 +100,23 @@ def build_executable():
     # elif system == "Linux":
     #     cmd.extend(["--icon=resources/icon.png"])
     
-    # Add hidden imports for PySide6
+    # Add hidden imports for PySide6 and other dependencies
     cmd.extend([
         "--hidden-import=PySide6.QtCore",
         "--hidden-import=PySide6.QtGui",
         "--hidden-import=PySide6.QtWidgets",
+        "--hidden-import=pytesseract",
+        "--hidden-import=pdf2image",
+        "--hidden-import=PIL",
+        "--hidden-import=PIL.Image",
+        "--hidden-import=PyPDF2",
     ])
     
-    # Collect data files
+    # Collect all necessary packages to ensure complete bundling
     cmd.extend([
         "--collect-all=PySide6",
+        "--collect-all=pdf2image",
+        "--collect-all=pytesseract",
     ])
     
     # Bundle Poppler binaries if found
@@ -173,18 +180,30 @@ def build_executable():
     # Run PyInstaller
     try:
         subprocess.run(cmd, check=True)
-        print("\nBuild successful!")
-        print(f"Executable location: dist/QuickPdfOcr")
+        print("\n" + "="*60)
+        print("BUILD SUCCESSFUL!")
+        print("="*60)
+        print(f"\nExecutable location: dist/QuickPdfOcr")
+        
+        print("\n📦 BUNDLED COMPONENTS:")
+        print("  ✓ Python interpreter (users do NOT need Python installed)")
+        print("  ✓ All Python packages (PySide6, pytesseract, pdf2image, Pillow, PyPDF2)")
         
         if poppler_path:
-            print("\n✓ Poppler has been bundled with the executable")
-            print("  Users do NOT need to install Poppler separately")
+            print("  ✓ Poppler binaries (users do NOT need to install Poppler)")
         else:
-            print("\n⚠ Poppler was NOT bundled")
-            print("  Users will need to install Poppler separately")
+            print("  ⚠ Poppler NOT bundled (users must install Poppler separately)")
         
-        print("\nNote: Users still need to install:")
+        print("\n⚠️  EXTERNAL DEPENDENCIES (must be installed separately):")
         print("  - Tesseract OCR (required for text recognition)")
+        print("    - macOS: brew install tesseract")
+        print("    - Linux: sudo apt-get install tesseract-ocr")
+        print("    - Windows: https://github.com/UB-Mannheim/tesseract/wiki")
+        
+        print("\n" + "="*60)
+        print("The executable is completely standalone and does NOT require")
+        print("Python to be installed on the target system!")
+        print("="*60)
         
     except subprocess.CalledProcessError as e:
         print(f"\nBuild failed: {e}")
