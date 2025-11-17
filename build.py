@@ -64,14 +64,66 @@ def find_poppler_binaries():
     return None
 
 
+def find_tesseract_binaries():
+    """
+    Find Tesseract binaries to bundle with the executable
+    
+    Returns:
+        Path or None: Path to Tesseract installation directory, or None if not found
+    """
+    system = platform.system()
+    
+    # Check for pre-downloaded binaries in tesseract_binaries directory
+    tesseract_dir = Path("tesseract_binaries")
+    if tesseract_dir.exists():
+        print(f"Found Tesseract binaries in: {tesseract_dir}")
+        return tesseract_dir
+    
+    # Try to find system Tesseract installation
+    if system == "Darwin":  # macOS
+        # Check Homebrew installation paths
+        homebrew_paths = [
+            Path("/opt/homebrew"),  # ARM64 Homebrew
+            Path("/usr/local"),     # Intel Homebrew
+        ]
+        for path in homebrew_paths:
+            tesseract_bin = path / "bin" / "tesseract"
+            if tesseract_bin.exists():
+                print(f"Found system Tesseract in: {path}")
+                return path
+    
+    elif system == "Linux":
+        # Check common Linux installation paths
+        if Path("/usr/bin/tesseract").exists():
+            print("Found system Tesseract in: /usr")
+            return Path("/usr")
+    
+    elif system == "Windows":
+        # Check common Windows Tesseract installation paths
+        common_paths = [
+            Path("C:/Program Files/Tesseract-OCR"),
+            Path("C:/Program Files (x86)/Tesseract-OCR"),
+        ]
+        for path in common_paths:
+            if (path / "tesseract.exe").exists():
+                print(f"Found system Tesseract in: {path}")
+                return path
+    
+    print("Warning: Tesseract binaries not found. They will not be bundled.")
+    print("Users will need to install Tesseract separately.")
+    return None
+
+
+
 def build_executable():
     """Build standalone executable using PyInstaller"""
     
     system = platform.system()
     print(f"Building for {system}...")
     
-    # Find Poppler binaries
+    # Find Poppler and Tesseract binaries
     poppler_path = find_poppler_binaries()
+    tesseract_path = find_tesseract_binaries()
     
     # Base PyInstaller command
     cmd = [
@@ -168,6 +220,68 @@ def build_executable():
                     ])
                     print(f"  Added: {tool}")
     
+    # Bundle Tesseract binaries if found
+    if tesseract_path:
+        print(f"\nBundling Tesseract binaries from: {tesseract_path}")
+        
+        if system == "Windows":
+            # For Windows, bundle the entire Tesseract directory
+            # as it needs tessdata and other supporting files
+            if (tesseract_path / "tesseract.exe").exists():
+                cmd.extend([
+                    f"--add-binary={tesseract_path / 'tesseract.exe'}{os.pathsep}tesseract",
+                ])
+                print(f"  Added: tesseract.exe")
+                
+                # Add tessdata directory if it exists
+                tessdata_path = tesseract_path / "tessdata"
+                if tessdata_path.exists():
+                    cmd.extend([
+                        f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                    ])
+                    print(f"  Added: tessdata directory")
+                
+                # Add required DLLs if they exist
+                for dll in tesseract_path.glob("*.dll"):
+                    cmd.extend([
+                        f"--add-binary={dll}{os.pathsep}tesseract",
+                    ])
+                    print(f"  Added: {dll.name}")
+        
+        elif system == "Darwin":  # macOS
+            # Bundle Tesseract executable and data
+            tesseract_bin = tesseract_path / "bin" / "tesseract"
+            if tesseract_bin.exists():
+                cmd.extend([
+                    f"--add-binary={tesseract_bin}{os.pathsep}tesseract/bin",
+                ])
+                print(f"  Added: tesseract binary")
+            
+            # Add tessdata directory
+            tessdata_path = tesseract_path / "share" / "tessdata"
+            if tessdata_path.exists():
+                cmd.extend([
+                    f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                ])
+                print(f"  Added: tessdata directory")
+        
+        elif system == "Linux":
+            # Bundle Tesseract executable and data
+            tesseract_bin = tesseract_path / "bin" / "tesseract"
+            if tesseract_bin.exists():
+                cmd.extend([
+                    f"--add-binary={tesseract_bin}{os.pathsep}tesseract/bin",
+                ])
+                print(f"  Added: tesseract binary")
+            
+            # Add tessdata directory
+            tessdata_path = tesseract_path / "share" / "tessdata"
+            if tessdata_path.exists():
+                cmd.extend([
+                    f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                ])
+                print(f"  Added: tessdata directory")
+    
     # Add license files as data
     license_files = ["LICENSE", "THIRD_PARTY_LICENSES.md"]
     for license_file in license_files:
@@ -194,11 +308,30 @@ def build_executable():
         else:
             print("  ⚠ Poppler NOT bundled (users must install Poppler separately)")
         
-        print("\n⚠️  EXTERNAL DEPENDENCIES (must be installed separately):")
-        print("  - Tesseract OCR (required for text recognition)")
-        print("    - macOS: brew install tesseract")
-        print("    - Linux: sudo apt-get install tesseract-ocr")
-        print("    - Windows: https://github.com/UB-Mannheim/tesseract/wiki")
+        if tesseract_path:
+            print("  ✓ Tesseract OCR (users do NOT need to install Tesseract)")
+        else:
+            print("  ⚠ Tesseract NOT bundled (users must install Tesseract separately)")
+        
+        if not poppler_path or not tesseract_path:
+            print("\n⚠️  EXTERNAL DEPENDENCIES (must be installed separately):")
+            if not poppler_path:
+                print("  - Poppler (for PDF processing)")
+            if not tesseract_path:
+                print("  - Tesseract OCR (required for text recognition)")
+            print("\nInstallation instructions:")
+            print("    - macOS: brew install tesseract" if not tesseract_path else "")
+            if not poppler_path:
+                print("    - macOS: brew install poppler")
+            print("    - Linux: sudo apt-get install tesseract-ocr" if not tesseract_path else "")
+            if not poppler_path:
+                print("    - Linux: sudo apt-get install poppler-utils")
+            print("    - Windows: https://github.com/UB-Mannheim/tesseract/wiki" if not tesseract_path else "")
+            if not poppler_path:
+                print("    - Windows: https://github.com/oschwartz10612/poppler-windows/releases/")
+        else:
+            print("\n🎉 ALL DEPENDENCIES BUNDLED!")
+            print("   Users can run the executable without any additional installations!")
         
         print("\n" + "="*60)
         print("The executable is completely standalone and does NOT require")

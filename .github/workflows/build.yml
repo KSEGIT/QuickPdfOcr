@@ -44,6 +44,30 @@ jobs:
             exit 1
           }
       
+      - name: Download Tesseract for Windows
+        run: |
+          # Download pre-compiled Tesseract binaries
+          $TESSERACT_URL = "https://digi.bib.uni-mannheim.de/tesseract/tesseract-ocr-w64-setup-5.3.3.20231005.exe"
+          
+          Write-Host "Downloading Tesseract..."
+          Invoke-WebRequest -Uri $TESSERACT_URL -OutFile tesseract-installer.exe
+          
+          Write-Host "Installing Tesseract..."
+          Start-Process -FilePath "tesseract-installer.exe" -ArgumentList "/S", "/D=C:\Tesseract-OCR" -Wait
+          
+          Write-Host "Copying Tesseract to project directory..."
+          New-Item -ItemType Directory -Force -Path tesseract_binaries
+          Copy-Item -Path "C:\Tesseract-OCR\*" -Destination tesseract_binaries -Recurse
+          
+          # Verify files exist
+          if (Test-Path "tesseract_binaries/tesseract.exe") {
+            Write-Host "✓ Tesseract binaries copied successfully"
+            Get-ChildItem "tesseract_binaries" | Select-Object -First 5
+          } else {
+            Write-Error "Failed to copy Tesseract binaries"
+            exit 1
+          }
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -68,10 +92,10 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install Poppler
+      - name: Install Poppler and Tesseract
         run: |
-          # Install Poppler via Homebrew
-          brew install poppler
+          # Install Poppler and Tesseract via Homebrew
+          brew install poppler tesseract
           
           # Create directory for Poppler binaries
           mkdir -p poppler_binaries
@@ -79,9 +103,20 @@ jobs:
           # Copy Poppler binaries to project directory
           cp /opt/homebrew/bin/pdf* poppler_binaries/ || true
           
-          # Verify
+          # Verify Poppler
           ls -la poppler_binaries/
           echo "✓ Poppler installed and copied"
+          
+          # Create directory for Tesseract and copy installation
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share
+          cp /opt/homebrew/bin/tesseract tesseract_binaries/bin/
+          cp -r /opt/homebrew/share/tessdata tesseract_binaries/share/ || true
+          
+          # Verify Tesseract
+          ls -la tesseract_binaries/bin/
+          ls -la tesseract_binaries/share/tessdata/ | head -5
+          echo "✓ Tesseract installed and copied"
       
       - name: Install dependencies
         run: |
@@ -113,10 +148,10 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install Poppler
+      - name: Install Poppler and Tesseract
         run: |
-          # Install Poppler via Homebrew
-          brew install poppler
+          # Install Poppler and Tesseract via Homebrew
+          brew install poppler tesseract
           
           # Create directory for Poppler binaries
           mkdir -p poppler_binaries
@@ -124,9 +159,20 @@ jobs:
           # Copy Poppler binaries to project directory
           cp /usr/local/bin/pdf* poppler_binaries/ || true
           
-          # Verify
+          # Verify Poppler
           ls -la poppler_binaries/
           echo "✓ Poppler installed and copied"
+          
+          # Create directory for Tesseract and copy installation
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share
+          cp /usr/local/bin/tesseract tesseract_binaries/bin/
+          cp -r /usr/local/share/tessdata tesseract_binaries/share/ || true
+          
+          # Verify Tesseract
+          ls -la tesseract_binaries/bin/
+          ls -la tesseract_binaries/share/tessdata/ | head -5
+          echo "✓ Tesseract installed and copied"
       
       - name: Install dependencies
         run: |
@@ -158,11 +204,11 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install Poppler
+      - name: Install Poppler and Tesseract
         run: |
-          # Install Poppler via apt
+          # Install Poppler and Tesseract via apt
           sudo apt-get update
-          sudo apt-get install -y poppler-utils
+          sudo apt-get install -y poppler-utils tesseract-ocr
           
           # Create directory for Poppler binaries
           mkdir -p poppler_binaries
@@ -170,9 +216,21 @@ jobs:
           # Copy Poppler binaries to project directory
           cp /usr/bin/pdf* poppler_binaries/ || true
           
-          # Verify
+          # Verify Poppler
           ls -la poppler_binaries/
           echo "✓ Poppler installed and copied"
+          
+          # Create directory for Tesseract and copy installation
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share
+          cp /usr/bin/tesseract tesseract_binaries/bin/
+          cp -r /usr/share/tessdata tesseract_binaries/share/ || true
+          cp -r /usr/share/tesseract-ocr/*/tessdata/* tesseract_binaries/share/tessdata/ 2>/dev/null || true
+          
+          # Verify Tesseract
+          ls -la tesseract_binaries/bin/
+          ls -la tesseract_binaries/share/tessdata/ | head -5
+          echo "✓ Tesseract installed and copied"
       
       - name: Install dependencies
         run: |
