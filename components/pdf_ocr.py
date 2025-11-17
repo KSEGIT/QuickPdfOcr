@@ -8,6 +8,10 @@ import sys
 from pathlib import Path
 from typing import Optional, Callable
 
+# Setup bundled Poppler binaries if available
+from components.poppler_utils import setup_poppler_path
+setup_poppler_path()
+
 try:
     from pdf2image import convert_from_path
     from pdf2image.exceptions import PDFInfoNotInstalledError

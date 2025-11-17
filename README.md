@@ -11,10 +11,28 @@ A simple and intuitive PDF OCR application built with PySide6 (Qt6) and Tesserac
 - 📋 **Copy to Clipboard** - One-click copy functionality (macOS/Linux/Windows)
 - 🔄 **Error Recovery** - Retry or start over options on failure
 - 🎨 **Modern UI** - Clean, user-friendly interface with visual feedback
+- 📦 **Poppler Included** - Pre-built binaries include Poppler (no separate installation needed!)
 
 ## Prerequisites
 
-### System Dependencies
+### For Pre-built Binaries (Recommended)
+
+**Only Tesseract OCR is required** - Poppler is now bundled with the application!
+
+**macOS:**
+```bash
+brew install tesseract
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install tesseract-ocr
+```
+
+**Windows:**
+- Install [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki)
+
+### For Running from Source
 
 **macOS:**
 ```bash
@@ -36,13 +54,13 @@ sudo apt-get install tesseract-ocr poppler-utils
 
 1. Download the latest release for your platform from [Releases](https://github.com/KSEGIT/QuickPdfOcr/releases)
    - **Windows**: `QuickPdfOcr.exe`
-   - **macOS**: `QuickPdfOcr.app`
+   - **macOS**: `QuickPdfOcr.app` (ARM64 or Intel)
    - **Linux**: `QuickPdfOcr`
 
-2. Install system dependencies (required):
-   - **macOS**: `brew install tesseract poppler`
-   - **Linux**: `sudo apt-get install tesseract-ocr poppler-utils`
-   - **Windows**: Install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and [Poppler](https://github.com/oschwartz10612/poppler-windows/releases/)
+2. Install Tesseract OCR (Poppler is already included!):
+   - **macOS**: `brew install tesseract`
+   - **Linux**: `sudo apt-get install tesseract-ocr`
+   - **Windows**: Install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
 
 3. Run the application!
 
@@ -145,7 +163,7 @@ QuickPdfOcr/
 
 ### System Requirements
 - **Tesseract OCR** (must be installed on your system)
-- **Poppler** (for PDF processing)
+- **Poppler** (bundled with pre-built binaries, or install separately if running from source)
 
 ### Python Dependencies (for source installation)
 See `requirements.txt` for Python package versions:
@@ -160,6 +178,10 @@ See `requirements.txt` for Python package versions:
 
 This project is open source and available under the MIT License.
 
+See the [LICENSE](LICENSE) file for details.
+
+For third-party component licenses (including Poppler), see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
 ## Building & Releases
 
 ### Local Build
@@ -172,11 +194,19 @@ python build.py
 
 The executable will be in the `dist/` folder.
 
+**Note:** If you want to bundle Poppler with your local build, you need to:
+1. Install Poppler on your system (see Prerequisites above)
+2. The build script will automatically detect and bundle it
+
+Alternatively, you can manually create a `poppler_binaries` directory in the project root and place the Poppler binaries there before building.
+
 ### Automated Builds (GitHub Actions)
 
 The project includes GitHub Actions workflow that automatically builds executables for all platforms when you:
 1. Push a tag starting with `v` (e.g., `v1.0.0`)
 2. Manually trigger the workflow
+
+The workflow automatically downloads and bundles Poppler for each platform.
 
 To create a release:
 ```bash
@@ -198,9 +228,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Linux: `sudo apt-get install tesseract-ocr`
 
 **Issue: "Failed to convert PDF to images"**
-- Ensure Poppler is installed
-- macOS: `brew install poppler`
-- Linux: `sudo apt-get install poppler-utils`
+- If using pre-built binary: This should not occur as Poppler is bundled
+- If running from source: Ensure Poppler is installed
+  - macOS: `brew install poppler`
+  - Linux: `sudo apt-get install poppler-utils`
+  - Windows: Install from [here](https://github.com/oschwartz10612/poppler-windows/releases/)
 
 **Issue: Poor OCR quality**
 - Try increasing DPI (e.g., `--dpi 400`)

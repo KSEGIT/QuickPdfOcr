@@ -20,6 +20,30 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Download Poppler for Windows
+        run: |
+          # Download pre-compiled Poppler binaries from oschwartz10612
+          $POPPLER_VERSION = "24.08.0-0"
+          $POPPLER_URL = "https://github.com/oschwartz10612/poppler-windows/releases/download/v$POPPLER_VERSION/Release-$POPPLER_VERSION.zip"
+          
+          Write-Host "Downloading Poppler $POPPLER_VERSION..."
+          Invoke-WebRequest -Uri $POPPLER_URL -OutFile poppler.zip
+          
+          Write-Host "Extracting Poppler..."
+          Expand-Archive -Path poppler.zip -DestinationPath poppler_temp
+          
+          # Move to expected location
+          Move-Item -Path "poppler_temp/poppler-$POPPLER_VERSION" -Destination poppler_binaries
+          
+          # Verify files exist
+          if (Test-Path "poppler_binaries/Library/bin/pdfinfo.exe") {
+            Write-Host "✓ Poppler binaries downloaded successfully"
+            Get-ChildItem "poppler_binaries/Library/bin" | Select-Object -First 5
+          } else {
+            Write-Error "Failed to download Poppler binaries"
+            exit 1
+          }
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -43,6 +67,21 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+      
+      - name: Install Poppler
+        run: |
+          # Install Poppler via Homebrew
+          brew install poppler
+          
+          # Create directory for Poppler binaries
+          mkdir -p poppler_binaries
+          
+          # Copy Poppler binaries to project directory
+          cp /opt/homebrew/bin/pdf* poppler_binaries/ || true
+          
+          # Verify
+          ls -la poppler_binaries/
+          echo "✓ Poppler installed and copied"
       
       - name: Install dependencies
         run: |
@@ -74,6 +113,21 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Install Poppler
+        run: |
+          # Install Poppler via Homebrew
+          brew install poppler
+          
+          # Create directory for Poppler binaries
+          mkdir -p poppler_binaries
+          
+          # Copy Poppler binaries to project directory
+          cp /usr/local/bin/pdf* poppler_binaries/ || true
+          
+          # Verify
+          ls -la poppler_binaries/
+          echo "✓ Poppler installed and copied"
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -103,6 +157,22 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+      
+      - name: Install Poppler
+        run: |
+          # Install Poppler via apt
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+          
+          # Create directory for Poppler binaries
+          mkdir -p poppler_binaries
+          
+          # Copy Poppler binaries to project directory
+          cp /usr/bin/pdf* poppler_binaries/ || true
+          
+          # Verify
+          ls -la poppler_binaries/
+          echo "✓ Poppler installed and copied"
       
       - name: Install dependencies
         run: |
