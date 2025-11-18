@@ -65,11 +65,38 @@ jobs:
           Invoke-WebRequest -Uri $TESSERACT_URL -OutFile tesseract-installer.exe
           
           Write-Host "Installing Tesseract..."
-          Start-Process -FilePath "tesseract-installer.exe" -ArgumentList "/S", "/D=C:\Tesseract-OCR" -Wait
+          # For Inno Setup installers, /D must be the last parameter and path should not have quotes
+          Start-Process -FilePath "tesseract-installer.exe" -ArgumentList "/VERYSILENT", "/NORESTART", "/DIR=C:\Tesseract-OCR" -Wait
+          
+          # Verify installation
+          if (-not (Test-Path "C:\Tesseract-OCR\tesseract.exe")) {
+            Write-Error "Tesseract installation failed - tesseract.exe not found"
+            Write-Host "Checking if Tesseract installed elsewhere..."
+            # Check common locations
+            $possiblePaths = @(
+              "C:\Program Files\Tesseract-OCR",
+              "C:\Program Files (x86)\Tesseract-OCR",
+              "$env:LOCALAPPDATA\Tesseract-OCR"
+            )
+            foreach ($path in $possiblePaths) {
+              if (Test-Path "$path\tesseract.exe") {
+                Write-Host "Found Tesseract at: $path"
+                $tesseractPath = $path
+                break
+              }
+            }
+            if (-not $tesseractPath) {
+              Write-Error "Could not find Tesseract installation"
+              exit 1
+            }
+          } else {
+            $tesseractPath = "C:\Tesseract-OCR"
+            Write-Host "✓ Tesseract installed successfully at $tesseractPath"
+          }
           
           Write-Host "Copying Tesseract to project directory..."
           New-Item -ItemType Directory -Force -Path tesseract_binaries
-          Copy-Item -Path "C:\Tesseract-OCR\*" -Destination tesseract_binaries -Recurse
+          Copy-Item -Path "$tesseractPath\*" -Destination tesseract_binaries -Recurse
           
           # Verify files exist
           if (Test-Path "tesseract_binaries/tesseract.exe") {
