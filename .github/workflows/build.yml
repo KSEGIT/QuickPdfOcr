@@ -60,6 +60,9 @@ jobs:
         run: |
           Write-Host "Setting up WSL and installing necessary packages..."
           
+          # Configuration for WSL setup
+          $WSL_SETUP_WAIT_SECONDS = 15
+          
           # Note: This step installs packages in WSL for developer convenience and testing.
           # While not directly used by the Windows build process, it provides a consistent
           # Linux environment on Windows for cross-platform development and testing.
@@ -74,7 +77,7 @@ jobs:
             try {
               wsl --set-default-version 2
               wsl --install --distribution Ubuntu --no-launch
-              Start-Sleep -Seconds 15
+              Start-Sleep -Seconds $WSL_SETUP_WAIT_SECONDS
             } catch {
               Write-Host "Note: WSL setup skipped (may already be configured)"
             }
@@ -95,6 +98,10 @@ jobs:
         run: |
           Write-Host "Installing Tesseract using winget..."
           
+          # Configuration for installation verification
+          $MAX_RETRIES = 6
+          $RETRY_DELAY_SECONDS = 5
+          
           # Install Tesseract using winget with the UB-Mannheim package
           winget install --id UB-Mannheim.TesseractOCR --silent --accept-source-agreements --accept-package-agreements
           
@@ -109,10 +116,8 @@ jobs:
           
           # Retry loop to wait for installation to complete (max 30 seconds)
           $tesseractPath = $null
-          $maxRetries = 6
-          $retryDelay = 5
           
-          for ($i = 0; $i -lt $maxRetries; $i++) {
+          for ($i = 0; $i -lt $MAX_RETRIES; $i++) {
             foreach ($path in $possiblePaths) {
               if (Test-Path "$path\tesseract.exe") {
                 Write-Host "Found Tesseract at: $path"
@@ -125,14 +130,15 @@ jobs:
               break
             }
             
-            if ($i -lt ($maxRetries - 1)) {
-              Write-Host "Tesseract not found yet, waiting... (attempt $($i + 1)/$maxRetries)"
-              Start-Sleep -Seconds $retryDelay
+            if ($i -lt ($MAX_RETRIES - 1)) {
+              Write-Host "Tesseract not found yet, waiting... (attempt $($i + 1)/$MAX_RETRIES)"
+              Start-Sleep -Seconds $RETRY_DELAY_SECONDS
             }
           }
           
           if (-not $tesseractPath) {
-            Write-Error "Could not find Tesseract installation after winget install (waited $($maxRetries * $retryDelay) seconds)"
+            $totalWaitTime = $MAX_RETRIES * $RETRY_DELAY_SECONDS
+            Write-Error "Could not find Tesseract installation after winget install (waited $totalWaitTime seconds)"
             exit 1
           }
           
