@@ -60,18 +60,32 @@ jobs:
         run: |
           Write-Host "Setting up WSL and installing necessary packages..."
           
-          # Enable WSL if not already enabled (this is usually pre-configured in GitHub Actions)
-          # Install packages in WSL for potential cross-compilation or testing needs
-          wsl --install --no-launch
+          # Check if WSL is available on the runner
+          $wslAvailable = Get-Command wsl -ErrorAction SilentlyContinue
           
-          # Wait for WSL to be ready
-          Start-Sleep -Seconds 10
-          
-          # Update package lists and install tesseract and poppler in WSL
-          wsl sudo apt-get update
-          wsl sudo apt-get install -y tesseract-ocr poppler-utils
-          
-          Write-Host "✓ WSL packages installed successfully"
+          if ($wslAvailable) {
+            Write-Host "WSL detected, installing packages..."
+            
+            # Try to set up default WSL distribution if needed
+            try {
+              wsl --set-default-version 2
+              wsl --install --distribution Ubuntu --no-launch
+              Start-Sleep -Seconds 15
+            } catch {
+              Write-Host "Note: WSL setup skipped (may already be configured)"
+            }
+            
+            # Update package lists and install tesseract and poppler in WSL
+            try {
+              wsl sudo apt-get update
+              wsl sudo apt-get install -y tesseract-ocr poppler-utils
+              Write-Host "✓ WSL packages installed successfully"
+            } catch {
+              Write-Host "Warning: Could not install packages in WSL, continuing with native Windows installation"
+            }
+          } else {
+            Write-Host "WSL not available on this runner, skipping WSL package installation"
+          }
       
       - name: Install Tesseract via winget
         run: |
