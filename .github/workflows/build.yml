@@ -56,43 +56,57 @@ jobs:
             exit 1
           }
       
-      - name: Download Tesseract for Windows
+      - name: Setup WSL and install packages
         run: |
-          # Download pre-compiled Tesseract binaries
-          $TESSERACT_URL = "https://digi.bib.uni-mannheim.de/tesseract/tesseract-ocr-w64-setup-5.3.3.20231005.exe"
+          Write-Host "Setting up WSL and installing necessary packages..."
           
-          Write-Host "Downloading Tesseract..."
-          Invoke-WebRequest -Uri $TESSERACT_URL -OutFile tesseract-installer.exe
+          # Enable WSL if not already enabled (this is usually pre-configured in GitHub Actions)
+          # Install packages in WSL for potential cross-compilation or testing needs
+          wsl --install --no-launch
           
-          Write-Host "Installing Tesseract..."
-          # For Inno Setup installers, /D must be the last parameter and path should not have quotes
-          Start-Process -FilePath "tesseract-installer.exe" -ArgumentList "/VERYSILENT", "/NORESTART", "/DIR=C:\Tesseract-OCR" -Wait
+          # Wait for WSL to be ready
+          Start-Sleep -Seconds 10
           
-          # Verify installation
-          if (-not (Test-Path "C:\Tesseract-OCR\tesseract.exe")) {
-            Write-Error "Tesseract installation failed - tesseract.exe not found"
-            Write-Host "Checking if Tesseract installed elsewhere..."
-            # Check common locations
-            $possiblePaths = @(
-              "C:\Program Files\Tesseract-OCR",
-              "C:\Program Files (x86)\Tesseract-OCR",
-              "$env:LOCALAPPDATA\Tesseract-OCR"
-            )
-            foreach ($path in $possiblePaths) {
-              if (Test-Path "$path\tesseract.exe") {
-                Write-Host "Found Tesseract at: $path"
-                $tesseractPath = $path
-                break
-              }
+          # Update package lists and install tesseract and poppler in WSL
+          wsl sudo apt-get update
+          wsl sudo apt-get install -y tesseract-ocr poppler-utils
+          
+          Write-Host "✓ WSL packages installed successfully"
+      
+      - name: Install Tesseract via winget
+        run: |
+          Write-Host "Installing Tesseract using winget..."
+          
+          # Install Tesseract using winget with the UB-Mannheim package
+          winget install --id UB-Mannheim.TesseractOCR --silent --accept-source-agreements --accept-package-agreements
+          
+          # Wait a moment for installation to complete
+          Start-Sleep -Seconds 5
+          
+          Write-Host "Verifying Tesseract installation..."
+          
+          # Check common locations where winget might install Tesseract
+          $possiblePaths = @(
+            "C:\Program Files\Tesseract-OCR",
+            "C:\Program Files (x86)\Tesseract-OCR",
+            "$env:LOCALAPPDATA\Programs\Tesseract-OCR"
+          )
+          
+          $tesseractPath = $null
+          foreach ($path in $possiblePaths) {
+            if (Test-Path "$path\tesseract.exe") {
+              Write-Host "Found Tesseract at: $path"
+              $tesseractPath = $path
+              break
             }
-            if (-not $tesseractPath) {
-              Write-Error "Could not find Tesseract installation"
-              exit 1
-            }
-          } else {
-            $tesseractPath = "C:\Tesseract-OCR"
-            Write-Host "✓ Tesseract installed successfully at $tesseractPath"
           }
+          
+          if (-not $tesseractPath) {
+            Write-Error "Could not find Tesseract installation after winget install"
+            exit 1
+          }
+          
+          Write-Host "✓ Tesseract installed successfully at $tesseractPath"
           
           Write-Host "Copying Tesseract to project directory..."
           New-Item -ItemType Directory -Force -Path tesseract_binaries
