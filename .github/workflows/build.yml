@@ -103,7 +103,10 @@ jobs:
           $RETRY_DELAY_SECONDS = 5
           
           # Install Tesseract using winget with the UB-Mannheim package
-          winget install --id UB-Mannheim.TesseractOCR --silent --accept-source-agreements --accept-package-agreements
+          # --disable-interactivity: Disable all interactive prompts (including UAC)
+          # --force: Force installation even if package is already installed
+          # --silent: Silent installation (no UI)
+          winget install --id UB-Mannheim.TesseractOCR --disable-interactivity --force --silent --accept-source-agreements --accept-package-agreements
           
           Write-Host "Verifying Tesseract installation..."
           
