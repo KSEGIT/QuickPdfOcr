@@ -48,8 +48,11 @@ sudo apt-get install tesseract-ocr poppler-utils
 ```
 
 **Windows:**
-- Install [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki)
+- Install Tesseract OCR:
+  - **Recommended:** Using winget: `winget install --id UB-Mannheim.TesseractOCR`
+  - Or download from [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki)
 - Install [Poppler](https://github.com/oschwartz10612/poppler-windows/releases/)
+- *Optional:* For WSL users, you can also install via: `wsl sudo apt-get install tesseract-ocr poppler-utils`
 
 ## Installation
 
@@ -234,6 +237,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Make sure Tesseract is installed and in your system PATH
 - macOS: `brew install tesseract`
 - Linux: `sudo apt-get install tesseract-ocr`
+- Windows: `winget install --id UB-Mannheim.TesseractOCR` or download from [here](https://github.com/UB-Mannheim/tesseract/wiki)
 
 **Issue: "Failed to convert PDF to images"**
 - If using pre-built binary: This should not occur as Poppler is bundled
