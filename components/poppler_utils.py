@@ -127,8 +127,8 @@ def setup_tesseract_path():
                 if tessdata_path.exists() and tessdata_path.is_dir():
                     # TESSDATA_PREFIX must point to the directory that CONTAINS the tessdata folder
                     # For Tesseract to find tessdata/, TESSDATA_PREFIX should end with a path separator
-                    # or point to the parent directory. We use os.path.join to ensure proper separator.
-                    tessdata_prefix = os.path.join(os.path.abspath(str(tesseract_dir)), '')
+                    # We add os.sep explicitly to ensure the trailing separator is present
+                    tessdata_prefix = os.path.abspath(str(tesseract_dir)) + os.sep
                     os.environ['TESSDATA_PREFIX'] = tessdata_prefix
                     
                     # Also try setting alternative environment variables for compatibility
