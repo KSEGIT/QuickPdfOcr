@@ -217,9 +217,10 @@ class PdfOcrProcessor:
             if tessdata_path.exists():
                 # Use --tessdata-dir to explicitly tell Tesseract where to find language data
                 # This is more reliable than relying on TESSDATA_PREFIX alone
-                # Convert to POSIX path for cross-platform compatibility (Tesseract accepts forward slashes)
+                # Use native path format (backslashes on Windows, forward slashes on Unix)
                 # and properly escape for shell command-line
-                tessdata_quoted = shlex.quote(tessdata_path.as_posix())
+                tessdata_str = os.path.abspath(str(tessdata_path))
+                tessdata_quoted = shlex.quote(tessdata_str)
                 return f'--tessdata-dir {tessdata_quoted}'
         
         return None
