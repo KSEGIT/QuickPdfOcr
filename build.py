@@ -252,10 +252,14 @@ def build_executable():
                 if tessdata_path.exists():
                     # Count language files
                     traineddata_files = list(tessdata_path.glob("*.traineddata"))
+                    # Convert Path to string and normalize separators for the platform
+                    tessdata_str = str(tessdata_path)
                     cmd.extend([
-                        f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                        f"--add-data={tessdata_str}{os.pathsep}tesseract/tessdata",
                     ])
                     print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
+                    print(f"  Source: {tessdata_str}")
+                    print(f"  Destination in bundle: tesseract/tessdata")
         
         elif system == "Darwin":  # macOS
             # Bundle Tesseract executable and data
@@ -269,10 +273,16 @@ def build_executable():
             # Add tessdata directory
             tessdata_path = tesseract_path / "share" / "tessdata"
             if tessdata_path.exists():
+                # Count language files
+                traineddata_files = list(tessdata_path.glob("*.traineddata"))
+                # Convert Path to string for PyInstaller
+                tessdata_str = str(tessdata_path)
                 cmd.extend([
-                    f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                    f"--add-data={tessdata_str}{os.pathsep}tesseract/tessdata",
                 ])
-                print(f"  Added: tessdata directory")
+                print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
+                print(f"  Source: {tessdata_str}")
+                print(f"  Destination in bundle: tesseract/tessdata")
         
         elif system == "Linux":
             # Bundle Tesseract executable and data
@@ -286,10 +296,16 @@ def build_executable():
             # Add tessdata directory
             tessdata_path = tesseract_path / "share" / "tessdata"
             if tessdata_path.exists():
+                # Count language files
+                traineddata_files = list(tessdata_path.glob("*.traineddata"))
+                # Convert Path to string for PyInstaller
+                tessdata_str = str(tessdata_path)
                 cmd.extend([
-                    f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                    f"--add-data={tessdata_str}{os.pathsep}tesseract/tessdata",
                 ])
-                print(f"  Added: tessdata directory")
+                print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
+                print(f"  Source: {tessdata_str}")
+                print(f"  Destination in bundle: tesseract/tessdata")
     
     # Add license files as data
     license_files = ["LICENSE", "THIRD_PARTY_LICENSES.md"]
