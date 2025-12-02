@@ -43,4 +43,7 @@ class OCRWorker(QObject):
         except ValueError as e:
             self.error.emit(f"Invalid file: {str(e)}")
         except Exception as e:
-            self.error.emit(f"OCR failed: {str(e)}")
+            # Provide more detailed error information
+            import traceback
+            error_details = traceback.format_exc()
+            self.error.emit(f"OCR failed: {str(e)}\n\nDetails:\n{error_details}")

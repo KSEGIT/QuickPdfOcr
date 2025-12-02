@@ -15,6 +15,21 @@ setup_bundled_binaries()
 
 def main():
     """Main application entry point"""
+    # Print startup diagnostics
+    print("\n" + "="*60)
+    print("QuickPdfOcr - Starting Application")
+    print("="*60)
+    
+    # Check if running from bundle
+    import os
+    if getattr(sys, 'frozen', False):
+        print(f"Running from PyInstaller bundle")
+        print(f"Bundle directory: {sys._MEIPASS}")
+    else:
+        print(f"Running from Python interpreter")
+    
+    print("="*60 + "\n")
+    
     app = QApplication(sys.argv)
     app.setApplicationName("QuickPdfOcr")
     app.setOrganizationName("QuickPdfOcr")
