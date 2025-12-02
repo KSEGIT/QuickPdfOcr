@@ -8,6 +8,9 @@ import os
 import sys
 from pathlib import Path
 
+# Maximum number of items to display when listing directory contents for diagnostics
+MAX_DIAGNOSTIC_ITEMS = 20
+
 
 def get_bundled_poppler_path():
     """
@@ -150,7 +153,7 @@ def setup_tesseract_path():
                     else:
                         print(f"  ✗ Bundle tesseract directory not found!")
                         print(f"  Listing contents of bundle root:")
-                        for item in sorted(bundle_dir.iterdir())[:20]:
+                        for item in sorted(bundle_dir.iterdir())[:MAX_DIAGNOSTIC_ITEMS]:
                             item_type = "DIR" if item.is_dir() else "FILE"
                             print(f"    - [{item_type}] {item.name}")
             
