@@ -249,17 +249,25 @@ def build_executable():
                 
                 # Add tessdata directory if it exists
                 tessdata_path = tesseract_path / "tessdata"
-                if tessdata_path.exists():
+                if tessdata_path.exists() and tessdata_path.is_dir():
                     # Count language files
                     traineddata_files = list(tessdata_path.glob("*.traineddata"))
-                    # Convert Path to string and normalize separators for the platform
-                    tessdata_str = str(tessdata_path)
-                    cmd.extend([
-                        f"--add-data={tessdata_str}{os.pathsep}tesseract/tessdata",
-                    ])
-                    print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
-                    print(f"  Source: {tessdata_str}")
-                    print(f"  Destination in bundle: tesseract/tessdata")
+                    if len(traineddata_files) == 0:
+                        print(f"  Warning: tessdata directory found but contains no .traineddata files!")
+                        print(f"  Please ensure language files are installed in: {tessdata_path}")
+                    else:
+                        # Convert Path to string and normalize separators for the platform
+                        tessdata_str = str(tessdata_path)
+                        cmd.extend([
+                            f"--add-data={tessdata_str}{os.pathsep}tesseract/tessdata",
+                        ])
+                        print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
+                        print(f"  Source: {tessdata_str}")
+                        print(f"  Destination in bundle: tesseract/tessdata")
+                else:
+                    print(f"  Warning: tessdata directory not found at: {tesseract_path / 'tessdata'}")
+                    print(f"  OCR will not work in the bundled executable!")
+                    print(f"  Please install Tesseract language data files.")
         
         elif system == "Darwin":  # macOS
             # Bundle Tesseract executable and data
@@ -270,9 +278,19 @@ def build_executable():
                 ])
                 print(f"  Added: tesseract binary")
             
-            # Add tessdata directory
-            tessdata_path = tesseract_path / "share" / "tessdata"
-            if tessdata_path.exists():
+            # Add tessdata directory - try multiple possible locations
+            tessdata_locations = [
+                tesseract_path / "share" / "tessdata",  # Homebrew standard location
+                tesseract_path / "share" / "tesseract-ocr" / "tessdata",  # Alternative location
+            ]
+            
+            tessdata_path = None
+            for loc in tessdata_locations:
+                if loc.exists():
+                    tessdata_path = loc
+                    break
+            
+            if tessdata_path:
                 # Count language files
                 traineddata_files = list(tessdata_path.glob("*.traineddata"))
                 # Convert Path to string for PyInstaller
@@ -283,6 +301,8 @@ def build_executable():
                 print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
                 print(f"  Source: {tessdata_str}")
                 print(f"  Destination in bundle: tesseract/tessdata")
+            else:
+                print(f"  Warning: tessdata directory not found in any expected location")
         
         elif system == "Linux":
             # Bundle Tesseract executable and data
@@ -293,9 +313,21 @@ def build_executable():
                 ])
                 print(f"  Added: tesseract binary")
             
-            # Add tessdata directory
-            tessdata_path = tesseract_path / "share" / "tessdata"
-            if tessdata_path.exists():
+            # Add tessdata directory - try multiple possible locations
+            tessdata_locations = [
+                tesseract_path / "share" / "tessdata",  # Old location
+                tesseract_path / "share" / "tesseract-ocr" / "5" / "tessdata",  # Ubuntu 24.04+
+                tesseract_path / "share" / "tesseract-ocr" / "4" / "tessdata",  # Ubuntu 20.04
+                tesseract_path / "share" / "tesseract-ocr" / "tessdata",  # Generic
+            ]
+            
+            tessdata_path = None
+            for loc in tessdata_locations:
+                if loc.exists():
+                    tessdata_path = loc
+                    break
+            
+            if tessdata_path:
                 # Count language files
                 traineddata_files = list(tessdata_path.glob("*.traineddata"))
                 # Convert Path to string for PyInstaller
@@ -306,6 +338,8 @@ def build_executable():
                 print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
                 print(f"  Source: {tessdata_str}")
                 print(f"  Destination in bundle: tesseract/tessdata")
+            else:
+                print(f"  Warning: tessdata directory not found in any expected location")
     
     # Add license files as data
     license_files = ["LICENSE", "THIRD_PARTY_LICENSES.md"]
