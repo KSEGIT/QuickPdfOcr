@@ -9,7 +9,7 @@ QuickPdfOcr is a cross-platform desktop application for extracting text from PDF
 - **Tesseract OCR** - Text recognition engine
 - **Poppler** - PDF processing utilities
 - **PyInstaller** - Standalone executable bundling
-- **Python 3.12+** - Core language
+- **Python 3.12** - Core language (CI uses 3.12, likely works with 3.10+)
 - **pdf2image** - PDF to image conversion
 - **pytesseract** - Python wrapper for Tesseract
 - **Pillow (PIL)** - Image processing
@@ -50,7 +50,7 @@ python test_bundled_deps.py
 ```
 QuickPdfOcr/
 ├── main.py                    # Application entry point
-├── __main__.py                # Alternative entry point
+├── __main__.py                # Module entry point (currently empty placeholder)
 ├── build.py                   # PyInstaller build script
 ├── requirements.txt           # Python dependencies
 ├── test_bundled_deps.py      # Test script for bundled binaries
