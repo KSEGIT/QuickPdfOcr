@@ -179,18 +179,23 @@ def build_executable():
             # For Windows, bundle all DLLs and executables
             bin_path = poppler_path / "Library" / "bin"
             if bin_path.exists():
-                cmd.extend([
-                    f"--add-binary={bin_path}{os.pathsep}poppler/bin",
-                ])
-                print(f"  Added: {bin_path}")
+                # Bundle all files from Library/bin directory
+                for item in bin_path.glob("*"):
+                    if item.is_file():
+                        cmd.extend([
+                            f"--add-binary={item}{os.pathsep}poppler/bin",
+                        ])
+                print(f"  Added: {bin_path} (all files)")
             else:
                 # If not in Library/bin, try direct bin folder
                 bin_path = poppler_path / "bin"
                 if bin_path.exists():
-                    cmd.extend([
-                        f"--add-binary={bin_path}{os.pathsep}poppler/bin",
-                    ])
-                    print(f"  Added: {bin_path}")
+                    for item in bin_path.glob("*"):
+                        if item.is_file():
+                            cmd.extend([
+                                f"--add-binary={item}{os.pathsep}poppler/bin",
+                            ])
+                    print(f"  Added: {bin_path} (all files)")
         
         elif system == "Darwin":  # macOS
             # Bundle specific Poppler executables for macOS
@@ -225,28 +230,32 @@ def build_executable():
         print(f"\nBundling Tesseract binaries from: {tesseract_path}")
         
         if system == "Windows":
-            # For Windows, bundle the entire Tesseract directory
-            # as it needs tessdata and other supporting files
+            # For Windows, bundle tesseract.exe and all DLLs
             if (tesseract_path / "tesseract.exe").exists():
                 cmd.extend([
                     f"--add-binary={tesseract_path / 'tesseract.exe'}{os.pathsep}tesseract",
                 ])
                 print(f"  Added: tesseract.exe")
                 
-                # Add tessdata directory if it exists
-                tessdata_path = tesseract_path / "tessdata"
-                if tessdata_path.exists():
-                    cmd.extend([
-                        f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
-                    ])
-                    print(f"  Added: tessdata directory")
-                
-                # Add required DLLs if they exist
+                # Add all DLLs
+                dll_count = 0
                 for dll in tesseract_path.glob("*.dll"):
                     cmd.extend([
                         f"--add-binary={dll}{os.pathsep}tesseract",
                     ])
-                    print(f"  Added: {dll.name}")
+                    dll_count += 1
+                if dll_count > 0:
+                    print(f"  Added: {dll_count} DLL files")
+                
+                # Add tessdata directory if it exists
+                tessdata_path = tesseract_path / "tessdata"
+                if tessdata_path.exists():
+                    # Count language files
+                    traineddata_files = list(tessdata_path.glob("*.traineddata"))
+                    cmd.extend([
+                        f"--add-data={tessdata_path}{os.pathsep}tesseract/tessdata",
+                    ])
+                    print(f"  Added: tessdata directory ({len(traineddata_files)} language files)")
         
         elif system == "Darwin":  # macOS
             # Bundle Tesseract executable and data
@@ -293,7 +302,13 @@ def build_executable():
     
     # Run PyInstaller
     try:
+        print("\n" + "="*60)
+        print("STARTING PYINSTALLER BUILD")
+        print("="*60)
+        print("This may take several minutes...\n")
+        
         subprocess.run(cmd, check=True)
+        
         print("\n" + "="*60)
         print("BUILD SUCCESSFUL!")
         print("="*60)

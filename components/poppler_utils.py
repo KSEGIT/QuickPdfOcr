@@ -71,6 +71,18 @@ def setup_poppler_path():
         # Add bundled Poppler to PATH so pdf2image can find it
         os.environ['PATH'] = bundled_path + os.pathsep + os.environ.get('PATH', '')
         print(f"Using bundled Poppler from: {bundled_path}")
+        
+        # Verify critical executables exist
+        import platform
+        exe_ext = ".exe" if platform.system() == "Windows" else ""
+        critical_tools = ["pdftoppm", "pdfinfo"]
+        for tool in critical_tools:
+            tool_path = Path(bundled_path) / f"{tool}{exe_ext}"
+            if tool_path.exists():
+                print(f"  ✓ Found: {tool}{exe_ext}")
+            else:
+                print(f"  ✗ Missing: {tool}{exe_ext}")
+        
         return bundled_path
     else:
         print("Using system Poppler installation")
@@ -93,13 +105,30 @@ def setup_tesseract_path():
             import pytesseract
             pytesseract.pytesseract.tesseract_cmd = bundled_path
             
+            # Verify tesseract executable exists
+            if Path(bundled_path).exists():
+                print(f"✓ Found Tesseract executable: {bundled_path}")
+            else:
+                print(f"✗ Tesseract executable not found: {bundled_path}")
+            
             # Set TESSDATA_PREFIX for bundled tessdata
             if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
                 bundle_dir = Path(sys._MEIPASS)
                 tessdata_path = bundle_dir / "tesseract" / "tessdata"
                 if tessdata_path.exists():
                     os.environ['TESSDATA_PREFIX'] = str(bundle_dir / "tesseract")
-                    print(f"Using bundled tessdata from: {tessdata_path}")
+                    
+                    # Count language files
+                    traineddata_files = list(tessdata_path.glob("*.traineddata"))
+                    print(f"  ✓ Found tessdata directory with {len(traineddata_files)} language file(s)")
+                    
+                    # List language files
+                    for lang_file in traineddata_files[:5]:  # Show first 5
+                        print(f"    - {lang_file.name}")
+                    if len(traineddata_files) > 5:
+                        print(f"    ... and {len(traineddata_files) - 5} more")
+                else:
+                    print(f"  ✗ tessdata directory not found: {tessdata_path}")
             
             print(f"Using bundled Tesseract from: {bundled_path}")
             return bundled_path

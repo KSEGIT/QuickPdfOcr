@@ -145,7 +145,14 @@ class PdfOcrProcessor:
         try:
             images = convert_from_path(pdf_path, dpi=dpi)
         except Exception as e:
-            raise RuntimeError(f"Failed to convert PDF to images: {e}")
+            error_msg = str(e).lower()
+            if "poppler" in error_msg or "pdftoppm" in error_msg or "pdfinfo" in error_msg:
+                raise RuntimeError(
+                    f"Poppler utilities not found. Please ensure Poppler is installed.\n"
+                    f"Original error: {e}"
+                )
+            else:
+                raise RuntimeError(f"Failed to convert PDF to images: {e}")
         
         self._log(f"Found {len(images)} page(s)", progress_callback)
         
@@ -158,8 +165,17 @@ class PdfOcrProcessor:
                 text = pytesseract.image_to_string(image, lang=self.lang)
                 all_text.append(f"--- Page {i} ---\n{text}\n")
             except Exception as e:
-                print(f"Warning: Failed to process page {i}: {e}")
-                all_text.append(f"--- Page {i} ---\n[OCR Error]\n")
+                error_msg = str(e).lower()
+                if "tesseract" in error_msg or "not found" in error_msg:
+                    # Critical error - Tesseract not available
+                    raise RuntimeError(
+                        f"Tesseract OCR not found or not configured properly.\n"
+                        f"Original error: {e}"
+                    )
+                else:
+                    # Page-specific error - continue with other pages
+                    print(f"Warning: Failed to process page {i}: {e}")
+                    all_text.append(f"--- Page {i} ---\n[OCR Error: {e}]\n")
         
         # Combine all text
         final_text = "\n".join(all_text)
