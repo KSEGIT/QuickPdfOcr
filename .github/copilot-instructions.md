@@ -73,7 +73,7 @@ QuickPdfOcr/
 - **Follow PEP 8** conventions for Python code
 - Use **4 spaces** for indentation (not tabs)
 - Use **double quotes** for strings consistently
-- Maximum line length: 100 characters (flexible for readability)
+- Maximum line length: ~100 characters (flexible for readability, slightly relaxed from PEP 8's 79)
 - Use **type hints** for function parameters and return values where practical
 
 ### Docstrings
@@ -220,8 +220,9 @@ if getattr(sys, 'frozen', False):
     bundle_dir = Path(sys._MEIPASS)
     binary_path = bundle_dir / "poppler" / "bin"
 else:
-    # Running from source
-    binary_path = Path("/usr/local/bin")
+    # Running from source - use platform-specific paths
+    # See poppler_utils.py for actual cross-platform detection
+    binary_path = Path("/usr/local/bin")  # macOS/Linux example
 ```
 
 ## Boundaries and Restrictions
@@ -248,7 +249,7 @@ else:
 ### "Tesseract not found" Error
 - Bundled executables include Tesseract - check `setup_bundled_binaries()`
 - For source: Ensure Tesseract is installed and in PATH
-- Check `tesseract_binaries/` directory exists in bundle
+- Build artifacts bundle Tesseract in `tesseract_binaries/` directory
 
 ### "Poppler not found" Error
 - Ensure `poppler_utils.py` is correctly setting up paths
