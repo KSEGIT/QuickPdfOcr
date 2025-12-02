@@ -114,13 +114,26 @@ def setup_tesseract_path():
             # Set TESSDATA_PREFIX for bundled tessdata
             if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
                 bundle_dir = Path(sys._MEIPASS)
-                tessdata_path = bundle_dir / "tesseract" / "tessdata"
-                if tessdata_path.exists():
-                    os.environ['TESSDATA_PREFIX'] = str(bundle_dir / "tesseract")
+                tesseract_dir = bundle_dir / "tesseract"
+                tessdata_path = tesseract_dir / "tessdata"
+                
+                print(f"  Checking for tessdata at: {tessdata_path}")
+                
+                if tessdata_path.exists() and tessdata_path.is_dir():
+                    # Use os.path.normpath to ensure correct path separators for the platform
+                    # and convert to absolute path to avoid any relative path issues
+                    tessdata_prefix = os.path.normpath(os.path.abspath(str(tesseract_dir)))
+                    os.environ['TESSDATA_PREFIX'] = tessdata_prefix
+                    
+                    # Also try setting alternative environment variables for compatibility
+                    # Some Tesseract versions look for different variables
+                    os.environ['TESSDATA_DIR'] = os.path.normpath(os.path.abspath(str(tessdata_path)))
                     
                     # Count language files
                     traineddata_files = list(tessdata_path.glob("*.traineddata"))
                     print(f"  ✓ Found tessdata directory with {len(traineddata_files)} language file(s)")
+                    print(f"  ✓ TESSDATA_PREFIX set to: {tessdata_prefix}")
+                    print(f"  ✓ TESSDATA_DIR set to: {os.environ['TESSDATA_DIR']}")
                     
                     # List language files
                     for lang_file in traineddata_files[:5]:  # Show first 5
@@ -128,7 +141,18 @@ def setup_tesseract_path():
                     if len(traineddata_files) > 5:
                         print(f"    ... and {len(traineddata_files) - 5} more")
                 else:
-                    print(f"  ✗ tessdata directory not found: {tessdata_path}")
+                    print(f"  ✗ tessdata directory not found at: {tessdata_path}")
+                    print(f"  Listing contents of bundle tesseract directory:")
+                    if tesseract_dir.exists():
+                        for item in tesseract_dir.iterdir():
+                            item_type = "DIR" if item.is_dir() else "FILE"
+                            print(f"    - [{item_type}] {item.name}")
+                    else:
+                        print(f"  ✗ Bundle tesseract directory not found!")
+                        print(f"  Listing contents of bundle root:")
+                        for item in sorted(bundle_dir.iterdir())[:20]:
+                            item_type = "DIR" if item.is_dir() else "FILE"
+                            print(f"    - [{item_type}] {item.name}")
             
             print(f"Using bundled Tesseract from: {bundled_path}")
             return bundled_path

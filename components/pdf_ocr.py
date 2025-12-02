@@ -4,6 +4,7 @@ PDF OCR Component - Extract text from PDF files using OCR
 Uses pytesseract (Tesseract OCR) - the most popular open-source OCR engine
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Optional, Callable
@@ -158,18 +159,30 @@ class PdfOcrProcessor:
         
         # Extract text from each page
         all_text = []
+        
+        # Get tessdata configuration if running from bundle
+        tessdata_config = self._get_tessdata_config()
+        
         for i, image in enumerate(images, 1):
             self._log(f"Processing page {i}/{len(images)}...", progress_callback)
             try:
                 # Perform OCR on the image
-                text = pytesseract.image_to_string(image, lang=self.lang)
+                # Pass tessdata config if available to ensure Tesseract finds language files
+                if tessdata_config:
+                    text = pytesseract.image_to_string(image, lang=self.lang, config=tessdata_config)
+                else:
+                    text = pytesseract.image_to_string(image, lang=self.lang)
                 all_text.append(f"--- Page {i} ---\n{text}\n")
             except Exception as e:
                 error_msg = str(e).lower()
-                if "tesseract" in error_msg or "not found" in error_msg:
-                    # Critical error - Tesseract not available
+                if "tesseract" in error_msg or "not found" in error_msg or "traineddata" in error_msg:
+                    # Critical error - Tesseract not available or misconfigured
+                    tessdata_prefix = os.environ.get('TESSDATA_PREFIX', 'Not set')
+                    tessdata_dir = os.environ.get('TESSDATA_DIR', 'Not set')
                     raise RuntimeError(
                         f"Tesseract OCR not found or not configured properly.\n"
+                        f"TESSDATA_PREFIX: {tessdata_prefix}\n"
+                        f"TESSDATA_DIR: {tessdata_dir}\n"
                         f"Original error: {e}"
                     )
                 else:
@@ -187,6 +200,26 @@ class PdfOcrProcessor:
             self._log(f"Text extracted and saved to: {output_path}", progress_callback)
         
         return final_text
+    
+    def _get_tessdata_config(self) -> Optional[str]:
+        """
+        Get Tesseract configuration string for tessdata directory if running from bundle
+        
+        Returns:
+            str or None: Configuration string to pass to pytesseract, or None if not needed
+        """
+        # Only needed when running from PyInstaller bundle
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            bundle_dir = Path(sys._MEIPASS)
+            tessdata_path = bundle_dir / "tesseract" / "tessdata"
+            
+            if tessdata_path.exists():
+                # Use --tessdata-dir to explicitly tell Tesseract where to find language data
+                # This is more reliable than relying on TESSDATA_PREFIX alone
+                tessdata_str = str(tessdata_path).replace('\\', '/')  # Use forward slashes
+                return f"--tessdata-dir '{tessdata_str}'"
+        
+        return None
     
     def _log(self, message: str, callback: Optional[Callable[[str], None]] = None):
         """
