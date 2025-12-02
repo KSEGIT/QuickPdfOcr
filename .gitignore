@@ -256,3 +256,6 @@ poppler.zip
 # Tesseract binaries (downloaded during CI build)
 tesseract_binaries/
 tesseract-installer.exe
+
+# Icon generation temporary files
+*.iconset/
