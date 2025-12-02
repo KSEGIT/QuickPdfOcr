@@ -144,13 +144,13 @@ def build_executable():
     
     cmd.append("main.py")
     
-    # Add icon based on platform (if you add icons later)
-    # if system == "Darwin":  # macOS
-    #     cmd.extend(["--icon=resources/icon.icns"])
-    # elif system == "Windows":
-    #     cmd.extend(["--icon=resources/icon.ico"])
-    # elif system == "Linux":
-    #     cmd.extend(["--icon=resources/icon.png"])
+    # Add icon based on platform
+    if system == "Darwin":  # macOS
+        cmd.extend(["--icon=resources/icon.icns"])
+    elif system == "Windows":
+        cmd.extend(["--icon=resources/icon.ico"])
+    elif system == "Linux":
+        cmd.extend(["--icon=resources/icon.png"])
     
     # Add hidden imports for PySide6 and other dependencies
     cmd.extend([
@@ -315,6 +315,14 @@ def build_executable():
                 f"--add-data={license_file}{os.pathsep}.",
             ])
             print(f"Including license file: {license_file}")
+    
+    # Add resources directory (icons)
+    resources_dir = Path("resources")
+    if resources_dir.exists():
+        cmd.extend([
+            f"--add-data={resources_dir}{os.pathsep}resources",
+        ])
+        print(f"Including resources directory: {resources_dir}")
     
     # Run PyInstaller
     try:
