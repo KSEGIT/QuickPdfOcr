@@ -10,6 +10,8 @@ from pathlib import Path
 
 # Maximum number of items to display when listing directory contents for diagnostics
 MAX_DIAGNOSTIC_ITEMS = 20
+# Maximum number of language files to display individually
+MAX_LANGUAGE_FILES_TO_SHOW = 5
 
 
 def get_bundled_poppler_path():
@@ -138,16 +140,16 @@ def setup_tesseract_path():
                     print(f"  ✓ TESSDATA_PREFIX set to: {tessdata_prefix}")
                     print(f"  ✓ TESSDATA_DIR set to: {os.environ['TESSDATA_DIR']}")
                     
-                    # List language files
-                    for lang_file in traineddata_files[:5]:  # Show first 5
+                    # List language files (limited to avoid excessive output)
+                    for lang_file in traineddata_files[:MAX_LANGUAGE_FILES_TO_SHOW]:
                         print(f"    - {lang_file.name}")
-                    if len(traineddata_files) > 5:
-                        print(f"    ... and {len(traineddata_files) - 5} more")
+                    if len(traineddata_files) > MAX_LANGUAGE_FILES_TO_SHOW:
+                        print(f"    ... and {len(traineddata_files) - MAX_LANGUAGE_FILES_TO_SHOW} more")
                 else:
                     print(f"  ✗ tessdata directory not found at: {tessdata_path}")
                     print(f"  Listing contents of bundle tesseract directory:")
                     if tesseract_dir.exists():
-                        for item in tesseract_dir.iterdir():
+                        for item in sorted(tesseract_dir.iterdir())[:MAX_DIAGNOSTIC_ITEMS]:
                             item_type = "DIR" if item.is_dir() else "FILE"
                             print(f"    - [{item_type}] {item.name}")
                     else:
