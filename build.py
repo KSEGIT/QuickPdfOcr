@@ -299,22 +299,22 @@ def build_executable():
         print("="*60)
         print(f"\nExecutable location: dist/QuickPdfOcr")
         
-        print("\n📦 BUNDLED COMPONENTS:")
-        print("  ✓ Python interpreter (users do NOT need Python installed)")
-        print("  ✓ All Python packages (PySide6, pytesseract, pdf2image, Pillow, PyPDF2)")
+        print("\nBUNDLED COMPONENTS:")
+        print("  [OK] Python interpreter (users do NOT need Python installed)")
+        print("  [OK] All Python packages (PySide6, pytesseract, pdf2image, Pillow, PyPDF2)")
         
         if poppler_path:
-            print("  ✓ Poppler binaries (users do NOT need to install Poppler)")
+            print("  [OK] Poppler binaries (users do NOT need to install Poppler)")
         else:
-            print("  ⚠ Poppler NOT bundled (users must install Poppler separately)")
+            print("  [WARN] Poppler NOT bundled (users must install Poppler separately)")
         
         if tesseract_path:
-            print("  ✓ Tesseract OCR (users do NOT need to install Tesseract)")
+            print("  [OK] Tesseract OCR (users do NOT need to install Tesseract)")
         else:
-            print("  ⚠ Tesseract NOT bundled (users must install Tesseract separately)")
+            print("  [WARN] Tesseract NOT bundled (users must install Tesseract separately)")
         
         if not poppler_path or not tesseract_path:
-            print("\n⚠️  EXTERNAL DEPENDENCIES (must be installed separately):")
+            print("\n[WARNING] EXTERNAL DEPENDENCIES (must be installed separately):")
             if not poppler_path:
                 print("  - Poppler (for PDF processing)")
             if not tesseract_path:
@@ -330,7 +330,7 @@ def build_executable():
             if not poppler_path:
                 print("    - Windows: https://github.com/oschwartz10612/poppler-windows/releases/")
         else:
-            print("\n🎉 ALL DEPENDENCIES BUNDLED!")
+            print("\nALL DEPENDENCIES BUNDLED!")
             print("   Users can run the executable without any additional installations!")
         
         print("\n" + "="*60)
