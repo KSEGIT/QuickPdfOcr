@@ -300,6 +300,14 @@ def build_executable():
             ])
             print(f"Including license file: {license_file}")
     
+    # Add resources directory (icons)
+    resources_dir = Path("resources")
+    if resources_dir.exists():
+        cmd.extend([
+            f"--add-data={resources_dir}{os.pathsep}resources",
+        ])
+        print(f"Including resources directory: {resources_dir}")
+    
     # Run PyInstaller
     try:
         print("\n" + "="*60)
