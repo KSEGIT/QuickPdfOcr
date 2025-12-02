@@ -252,7 +252,7 @@ def build_executable():
                 if tessdata_path.exists() and tessdata_path.is_dir():
                     # Count language files
                     traineddata_files = list(tessdata_path.glob("*.traineddata"))
-                    if len(traineddata_files) == 0:
+                    if not traineddata_files:
                         print(f"  Warning: tessdata directory found but contains no .traineddata files!")
                         print(f"  Please ensure language files are installed in: {tessdata_path}")
                     else:
