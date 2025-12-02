@@ -125,14 +125,15 @@ def setup_tesseract_path():
                 print(f"  Checking for tessdata at: {tessdata_path}")
                 
                 if tessdata_path.exists() and tessdata_path.is_dir():
-                    # Use os.path.normpath to ensure correct path separators for the platform
-                    # and convert to absolute path to avoid any relative path issues
-                    tessdata_prefix = os.path.normpath(os.path.abspath(str(tesseract_dir)))
+                    # TESSDATA_PREFIX must point to the directory that CONTAINS the tessdata folder
+                    # For Tesseract to find tessdata/, TESSDATA_PREFIX should end with a path separator
+                    # or point to the parent directory. We use os.path.join to ensure proper separator.
+                    tessdata_prefix = os.path.join(os.path.abspath(str(tesseract_dir)), '')
                     os.environ['TESSDATA_PREFIX'] = tessdata_prefix
                     
                     # Also try setting alternative environment variables for compatibility
                     # Some Tesseract versions look for different variables
-                    os.environ['TESSDATA_DIR'] = os.path.normpath(os.path.abspath(str(tessdata_path)))
+                    os.environ['TESSDATA_DIR'] = os.path.abspath(str(tessdata_path))
                     
                     # Count language files
                     traineddata_files = list(tessdata_path.glob("*.traineddata"))
