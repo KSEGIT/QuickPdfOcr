@@ -1,0 +1,71 @@
+name: Build Linux
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install Poppler and Tesseract
+        run: |
+          # Install Poppler and Tesseract via apt
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr
+          
+          # Create directory for Poppler binaries
+          mkdir -p poppler_binaries
+          
+          # Copy Poppler binaries to project directory
+          cp /usr/bin/pdf* poppler_binaries/ || true
+          
+          # Verify Poppler
+          ls -la poppler_binaries/
+          echo "✓ Poppler installed and copied"
+          
+          # Create directory for Tesseract and copy installation
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share
+          cp /usr/bin/tesseract tesseract_binaries/bin/
+          cp -r /usr/share/tessdata tesseract_binaries/share/ || true
+          cp -r /usr/share/tesseract-ocr/*/tessdata/* tesseract_binaries/share/tessdata/ 2>/dev/null || true
+          
+          # Verify Tesseract
+          ls -la tesseract_binaries/bin/
+          ls -la tesseract_binaries/share/tessdata/ | head -5
+          echo "✓ Tesseract installed and copied"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Build executable
+        run: python build.py
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickPdfOcr-Linux
+          path: dist/QuickPdfOcr
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/QuickPdfOcr
+          draft: false
+          prerelease: false
