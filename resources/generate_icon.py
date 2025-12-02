@@ -83,16 +83,30 @@ def create_icon(size=256):
     )
     
     # Try to use a nice font, fall back to default if not available
-    try:
-        # Try to load a bold font for the badge text
-        font_size = int(badge_size * 0.4)
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
-    except:
+    font = None
+    font_size = int(badge_size * 0.4)
+    
+    # Try common font paths for different platforms
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
+        "/System/Library/Fonts/Helvetica.ttc",  # macOS
+        "C:/Windows/Fonts/arialbd.ttf",  # Windows
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux alt
+    ]
+    
+    for font_path in font_paths:
         try:
-            # Fallback to default font
+            font = ImageFont.truetype(font_path, font_size)
+            break
+        except:
+            continue
+    
+    if font is None:
+        try:
+            # Final fallback to default font
             font = ImageFont.load_default()
         except:
-            font = None
+            pass
     
     # Draw "PDF" text on badge
     badge_text = "PDF"
@@ -160,9 +174,11 @@ def main():
         ico_images.append(img)
     
     ico_path = os.path.join(script_dir, "icon.ico")
+    # Save with all images for proper multi-size ICO
     ico_images[0].save(
         ico_path,
         format='ICO',
+        append_images=ico_images[1:],
         sizes=[(s, s) for s in sizes]
     )
     print(f"Saved: {ico_path}")
