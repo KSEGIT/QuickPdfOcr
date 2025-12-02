@@ -7,7 +7,7 @@ Uses pytesseract (Tesseract OCR) - the most popular open-source OCR engine
 import os
 import shlex
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Optional, Callable
 
 # Setup bundled binaries (Poppler and Tesseract) if available
@@ -218,10 +218,8 @@ class PdfOcrProcessor:
                 # Use --tessdata-dir to explicitly tell Tesseract where to find language data
                 # This is more reliable than relying on TESSDATA_PREFIX alone
                 # Convert to POSIX path for cross-platform compatibility (Tesseract accepts forward slashes)
-                tessdata_posix = PurePosixPath(tessdata_path.as_posix())
-                
-                # Use shlex.quote for proper shell argument escaping
-                tessdata_quoted = shlex.quote(str(tessdata_posix))
+                # and properly escape for shell command-line
+                tessdata_quoted = shlex.quote(tessdata_path.as_posix())
                 return f'--tessdata-dir {tessdata_quoted}'
         
         return None
