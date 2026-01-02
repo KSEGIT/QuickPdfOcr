@@ -5,7 +5,6 @@ Unit test to verify tessdata path handling logic for Windows compatibility
 
 import platform
 import sys
-from unittest import mock
 
 
 def test_tessdata_path_formatting():
