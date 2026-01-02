@@ -17,10 +17,10 @@ def test_tessdata_path_formatting():
     # Test case 1: Windows path without spaces
     print("\nTest 1: Windows path without spaces")
     tessdata_str = "C:\\Users\\Test\\AppData\\Local\\Temp\\_MEI123\\tesseract\\tessdata"
-    if platform.system() == "Windows" or True:  # Simulate Windows
-        tessdata_str_converted = tessdata_str.replace('\\', '/')
-        if ' ' in tessdata_str_converted:
-            tessdata_str_converted = f'"{tessdata_str_converted}"'
+    # Simulate Windows behavior
+    tessdata_str_converted = tessdata_str.replace('\\', '/')
+    if ' ' in tessdata_str_converted:
+        tessdata_str_converted = f'"{tessdata_str_converted}"'
     
     expected = "C:/Users/Test/AppData/Local/Temp/_MEI123/tesseract/tessdata"
     result = f'--tessdata-dir {tessdata_str_converted}'

@@ -5,6 +5,7 @@ This module helps pdf2image and pytesseract find binaries when bundled with PyIn
 """
 
 import os
+import platform
 import sys
 from pathlib import Path
 
@@ -131,7 +132,6 @@ def setup_tesseract_path():
                     tessdata_dir_abs = os.path.abspath(str(tessdata_path))
                     
                     # On Windows, convert to forward slashes for better Tesseract compatibility
-                    import platform
                     if platform.system() == "Windows":
                         tessdata_prefix = tessdata_prefix.replace('\\', '/')
                         tessdata_dir_abs = tessdata_dir_abs.replace('\\', '/')
