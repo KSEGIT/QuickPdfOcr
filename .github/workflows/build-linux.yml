@@ -75,6 +75,12 @@ jobs:
               ls -la tesseract_binaries/share/tessdata
               exit 1
             fi
+            if [ "$traineddata_count" -eq 0 ]; then
+              echo "✗ ERROR: tessdata directory exists but no .traineddata language files were found"
+              echo "Contents of tessdata directory (for debugging):"
+              ls -la tesseract_binaries/share/tessdata
+              exit 1
+            fi
             echo "✓ tessdata directory exists with $traineddata_count language file(s)"
             echo "Language files:"
             ls tesseract_binaries/share/tessdata/*.traineddata 2>/dev/null | head -5
