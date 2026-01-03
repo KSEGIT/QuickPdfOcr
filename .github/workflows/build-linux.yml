@@ -45,16 +45,16 @@ jobs:
           # Try multiple possible locations in order of preference
           if [ -d "/usr/share/tesseract-ocr/5/tessdata" ]; then
             echo "Found tessdata in /usr/share/tesseract-ocr/5/tessdata (Ubuntu 24.04+)"
-            cp -r "/usr/share/tesseract-ocr/5/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
+            cp -r "/usr/share/tesseract-ocr/5/tessdata/"* tesseract_binaries/share/tessdata/
           elif [ -d "/usr/share/tesseract-ocr/4/tessdata" ]; then
             echo "Found tessdata in /usr/share/tesseract-ocr/4/tessdata (Ubuntu 20.04-22.04)"
-            cp -r "/usr/share/tesseract-ocr/4/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
+            cp -r "/usr/share/tesseract-ocr/4/tessdata/"* tesseract_binaries/share/tessdata/
           elif [ -d "/usr/share/tesseract-ocr/4.00/tessdata" ]; then
             echo "Found tessdata in /usr/share/tesseract-ocr/4.00/tessdata"
-            cp -r "/usr/share/tesseract-ocr/4.00/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
+            cp -r "/usr/share/tesseract-ocr/4.00/tessdata/"* tesseract_binaries/share/tessdata/
           elif [ -d "/usr/share/tessdata" ]; then
             echo "Found tessdata in /usr/share/tessdata"
-            cp -r "/usr/share/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
+            cp -r "/usr/share/tessdata/"* tesseract_binaries/share/tessdata/
           else
             echo "ERROR: Could not find tessdata directory!"
             echo "Searching for tessdata..."
@@ -69,6 +69,12 @@ jobs:
           echo "Verifying tessdata directory:"
           if [ -d "tesseract_binaries/share/tessdata" ]; then
             traineddata_count=$(find tesseract_binaries/share/tessdata -maxdepth 1 -name "*.traineddata" 2>/dev/null | wc -l)
+            if [ "$traineddata_count" -eq 0 ]; then
+              echo "✗ ERROR: tessdata directory exists but no .traineddata language files were found"
+              echo "Contents of tessdata directory (for debugging):"
+              ls -la tesseract_binaries/share/tessdata
+              exit 1
+            fi
             echo "✓ tessdata directory exists with $traineddata_count language file(s)"
             echo "Language files:"
             ls tesseract_binaries/share/tessdata/*.traineddata 2>/dev/null | head -5
