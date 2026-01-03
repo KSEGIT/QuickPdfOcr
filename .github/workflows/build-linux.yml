@@ -45,16 +45,16 @@ jobs:
           # Try multiple possible locations in order of preference
           if [ -d "/usr/share/tesseract-ocr/5/tessdata" ]; then
             echo "Found tessdata in /usr/share/tesseract-ocr/5/tessdata (Ubuntu 24.04+)"
-            cp -r "/usr/share/tesseract-ocr/5/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null || true
+            cp -r "/usr/share/tesseract-ocr/5/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
           elif [ -d "/usr/share/tesseract-ocr/4/tessdata" ]; then
             echo "Found tessdata in /usr/share/tesseract-ocr/4/tessdata (Ubuntu 20.04-22.04)"
-            cp -r "/usr/share/tesseract-ocr/4/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null || true
+            cp -r "/usr/share/tesseract-ocr/4/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
           elif [ -d "/usr/share/tesseract-ocr/4.00/tessdata" ]; then
             echo "Found tessdata in /usr/share/tesseract-ocr/4.00/tessdata"
-            cp -r "/usr/share/tesseract-ocr/4.00/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null || true
+            cp -r "/usr/share/tesseract-ocr/4.00/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
           elif [ -d "/usr/share/tessdata" ]; then
             echo "Found tessdata in /usr/share/tessdata"
-            cp -r "/usr/share/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null || true
+            cp -r "/usr/share/tessdata/"* tesseract_binaries/share/tessdata/ 2>/dev/null
           else
             echo "ERROR: Could not find tessdata directory!"
             echo "Searching for tessdata..."
