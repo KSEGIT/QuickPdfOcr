@@ -323,59 +323,12 @@ jobs:
           name: release-macos-arm64
           path: dist/QuickPdfOcr-macOS-ARM64.zip
 
-  build-macos-intel:
-    needs: tag
-    runs-on: macos-13
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.tag.outputs.tag_name }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install Poppler and Tesseract
-        run: |
-          brew install poppler tesseract
-          mkdir -p poppler_binaries
-          cp /usr/local/bin/pdf* poppler_binaries/ || true
-
-          mkdir -p tesseract_binaries/bin
-          mkdir -p tesseract_binaries/share
-          cp /usr/local/bin/tesseract tesseract_binaries/bin/
-          cp -r /usr/local/share/tessdata tesseract_binaries/share/ || true
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Build executable
-        run: python build.py
-
-      - name: Create ZIP archive
-        run: |
-          cd dist
-          zip -r QuickPdfOcr-macOS-x86_64.zip QuickPdfOcr.app
-          cd ..
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-macos-x86_64
-          path: dist/QuickPdfOcr-macOS-x86_64.zip
-
   publish:
     needs:
       - tag
       - build-windows
       - build-linux
       - build-macos-arm
-      - build-macos-intel
     runs-on: ubuntu-latest
     permissions:
       contents: write
