@@ -13,42 +13,390 @@ on:
         type: string
 
 jobs:
-  create-tag:
+  tag:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
+    outputs:
+      tag_name: ${{ steps.meta.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Create and push tag
-        env:
-          GH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN || github.token }}
+        with:
+          fetch-depth: 0
+
+      - id: meta
+        name: Compute tag name
+        shell: bash
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          
           TAG_NAME="${{ inputs.version }}"
-          
-          # Ensure tag starts with v
           if [[ ! "$TAG_NAME" =~ ^v ]]; then
             TAG_NAME="v$TAG_NAME"
           fi
-          
-          echo "Creating tag: $TAG_NAME"
-          
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "Using tag: $TAG_NAME"
+
+      - name: Create and push tag
+        shell: bash
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          TAG_NAME="${{ steps.meta.outputs.tag_name }}"
+
+          if git rev-parse -q --verify "refs/tags/$TAG_NAME" >/dev/null; then
+            echo "Tag already exists locally: $TAG_NAME"
+            exit 1
+          fi
+
+          # Create annotated tag on current commit
           git tag -a "$TAG_NAME" -m "${{ inputs.message || format('Release {0}', inputs.version) }}"
           git push origin "$TAG_NAME"
-          
-          echo "Tag pushed successfully."
-          
-          echo "Triggering build workflows..."
-          gh workflow run build-windows.yml -f release_tag="$TAG_NAME"
-          gh workflow run build-macos.yml -f release_tag="$TAG_NAME"
-          gh workflow run build-linux.yml -f release_tag="$TAG_NAME"
-          echo "Tag pushed successfully."
-          
-          echo "Triggering build workflows..."
-          gh workflow run build-windows.yml -f release_tag="$TAG_NAME"
-          gh workflow run build-macos.yml -f release_tag="$TAG_NAME"
-          gh workflow run build-linux.yml -f release_tag="$TAG_NAME"
+
+  build-windows:
+    needs: tag
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Download Poppler for Windows
+        run: |
+          # Download pre-compiled Poppler binaries from oschwartz10612
+          $POPPLER_VERSION = "24.08.0-0"
+          $POPPLER_URL = "https://github.com/oschwartz10612/poppler-windows/releases/download/v$POPPLER_VERSION/Release-$POPPLER_VERSION.zip"
+
+          Write-Host "Downloading Poppler $POPPLER_VERSION..."
+          Invoke-WebRequest -Uri $POPPLER_URL -OutFile poppler.zip
+
+          Write-Host "Extracting Poppler..."
+          Expand-Archive -Path poppler.zip -DestinationPath poppler_temp
+
+          # Find the actual poppler directory (it might be named differently)
+          $popplerDir = Get-ChildItem -Path poppler_temp -Directory | Select-Object -First 1
+
+          if ($popplerDir) {
+            Write-Host "Moving $($popplerDir.FullName) to poppler_binaries..."
+            Move-Item -Path $popplerDir.FullName -Destination poppler_binaries
+          } else {
+            Write-Error "No directory found in poppler_temp"
+            exit 1
+          }
+
+          if (Test-Path "poppler_binaries/Library/bin/pdfinfo.exe") {
+            Write-Host "✓ Poppler binaries downloaded successfully"
+          } else {
+            Write-Error "Failed to download Poppler binaries"
+            exit 1
+          }
+
+      - name: Setup WSL and install packages
+        run: |
+          Write-Host "Setting up WSL and installing necessary packages..."
+
+          $WSL_SETUP_WAIT_SECONDS = 15
+          $wslAvailable = Get-Command wsl -ErrorAction SilentlyContinue
+
+          if ($wslAvailable) {
+            Write-Host "WSL detected, installing packages..."
+            try {
+              wsl --set-default-version 2
+              wsl --install --distribution Ubuntu --no-launch
+              Start-Sleep -Seconds $WSL_SETUP_WAIT_SECONDS
+            } catch {
+              Write-Host "Note: WSL setup skipped (may already be configured)"
+            }
+
+            try {
+              wsl sudo apt-get update
+              wsl sudo apt-get install -y tesseract-ocr poppler-utils
+              Write-Host "✓ WSL packages installed successfully"
+            } catch {
+              Write-Host "Warning: Could not install packages in WSL, continuing with native Windows installation"
+            }
+          } else {
+            Write-Host "WSL not available on this runner, skipping WSL package installation"
+          }
+
+      - name: Install Tesseract via winget with fallback
+        run: |
+          Write-Host "Installing Tesseract..."
+
+          $WINGET_TIMEOUT_SECONDS = 180
+          $possiblePaths = @(
+            "C:\Program Files\Tesseract-OCR",
+            "C:\Program Files (x86)\Tesseract-OCR",
+            "$env:LOCALAPPDATA\Programs\Tesseract-OCR"
+          )
+
+          $tesseractPath = $null
+          $installSuccess = $false
+
+          Write-Host "Attempting installation via winget (timeout: $WINGET_TIMEOUT_SECONDS seconds)..."
+          try {
+            $job = Start-Job -ScriptBlock {
+              winget install --id UB-Mannheim.TesseractOCR --disable-interactivity --force --silent --accept-source-agreements --accept-package-agreements 2>&1
+            }
+
+            $completed = Wait-Job -Job $job -Timeout $WINGET_TIMEOUT_SECONDS
+            if ($completed) {
+              Start-Sleep -Seconds 5
+              foreach ($path in $possiblePaths) {
+                if (Test-Path "$path\tesseract.exe") {
+                  Write-Host "✓ Tesseract installed via winget at: $path"
+                  $tesseractPath = $path
+                  $installSuccess = $true
+                  break
+                }
+              }
+            } else {
+              Write-Host "⚠️ Winget timed out after $WINGET_TIMEOUT_SECONDS seconds"
+              Stop-Job -Job $job
+            }
+
+            Remove-Job -Job $job -Force
+          } catch {
+            Write-Host "⚠️ Winget installation failed: $_"
+          }
+
+          if (-not $installSuccess) {
+            Write-Host "Falling back to direct download method..."
+            $TESSERACT_URL = "https://digi.bib.uni-mannheim.de/tesseract/tesseract-ocr-w64-setup-5.3.3.20231005.exe"
+            Invoke-WebRequest -Uri $TESSERACT_URL -OutFile tesseract-installer.exe
+            Start-Process -FilePath "tesseract-installer.exe" -ArgumentList "/VERYSILENT", "/NORESTART", "/DIR=C:\Tesseract-OCR" -Wait
+
+            if (Test-Path "C:\Tesseract-OCR\tesseract.exe") {
+              $tesseractPath = "C:\Tesseract-OCR"
+              $installSuccess = $true
+            } else {
+              foreach ($path in $possiblePaths) {
+                if (Test-Path "$path\tesseract.exe") {
+                  $tesseractPath = $path
+                  $installSuccess = $true
+                  break
+                }
+              }
+            }
+          }
+
+          if (-not $installSuccess -or -not $tesseractPath) {
+            Write-Error "Failed to install Tesseract via both winget and direct download"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path tesseract_binaries
+          Copy-Item -Path "$tesseractPath\*" -Destination tesseract_binaries -Recurse
+
+          if (Test-Path "tesseract_binaries/tesseract.exe") {
+            Write-Host "✓ Tesseract binaries copied successfully"
+          } else {
+            Write-Error "Failed to copy Tesseract binaries"
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build executable
+        run: python build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/QuickPdfOcr.exe
+
+  build-linux:
+    needs: tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Poppler and Tesseract
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr
+
+          mkdir -p poppler_binaries
+          cp /usr/bin/pdf* poppler_binaries/ || true
+
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share/tessdata
+          cp /usr/bin/tesseract tesseract_binaries/bin/
+
+          if [ -d "/usr/share/tesseract-ocr/5/tessdata" ]; then
+            cp -r "/usr/share/tesseract-ocr/5/tessdata/"* tesseract_binaries/share/tessdata/
+          elif [ -d "/usr/share/tesseract-ocr/4/tessdata" ]; then
+            cp -r "/usr/share/tesseract-ocr/4/tessdata/"* tesseract_binaries/share/tessdata/
+          elif [ -d "/usr/share/tesseract-ocr/4.00/tessdata" ]; then
+            cp -r "/usr/share/tesseract-ocr/4.00/tessdata/"* tesseract_binaries/share/tessdata/
+          elif [ -d "/usr/share/tessdata" ]; then
+            cp -r "/usr/share/tessdata/"* tesseract_binaries/share/tessdata/
+          else
+            echo "ERROR: Could not find tessdata directory!"
+            find /usr/share -name "*.traineddata" 2>/dev/null | head -5
+            exit 1
+          fi
+
+          traineddata_count=$(find tesseract_binaries/share/tessdata -maxdepth 1 -name "*.traineddata" 2>/dev/null | wc -l)
+          if [ "$traineddata_count" -eq 0 ]; then
+            echo "ERROR: tessdata exists but no .traineddata files found"
+            ls -la tesseract_binaries/share/tessdata
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build executable
+        run: python build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/QuickPdfOcr
+
+  build-macos-arm:
+    needs: tag
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Poppler and Tesseract
+        run: |
+          brew install poppler tesseract
+          mkdir -p poppler_binaries
+          cp /opt/homebrew/bin/pdf* poppler_binaries/ || true
+
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share
+          cp /opt/homebrew/bin/tesseract tesseract_binaries/bin/
+          cp -r /opt/homebrew/share/tessdata tesseract_binaries/share/ || true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build executable
+        run: python build.py
+
+      - name: Create ZIP archive
+        run: |
+          cd dist
+          zip -r QuickPdfOcr-macOS-ARM64.zip QuickPdfOcr.app
+          cd ..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-arm64
+          path: dist/QuickPdfOcr-macOS-ARM64.zip
+
+  build-macos-intel:
+    needs: tag
+    runs-on: macos-13
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Poppler and Tesseract
+        run: |
+          brew install poppler tesseract
+          mkdir -p poppler_binaries
+          cp /usr/local/bin/pdf* poppler_binaries/ || true
+
+          mkdir -p tesseract_binaries/bin
+          mkdir -p tesseract_binaries/share
+          cp /usr/local/bin/tesseract tesseract_binaries/bin/
+          cp -r /usr/local/share/tessdata tesseract_binaries/share/ || true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build executable
+        run: python build.py
+
+      - name: Create ZIP archive
+        run: |
+          cd dist
+          zip -r QuickPdfOcr-macOS-x86_64.zip QuickPdfOcr.app
+          cd ..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-x86_64
+          path: dist/QuickPdfOcr-macOS-x86_64.zip
+
+  publish:
+    needs:
+      - tag
+      - build-windows
+      - build-linux
+      - build-macos-arm
+      - build-macos-intel
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist_assets
+          merge-multiple: true
+
+      - name: List assets
+        run: ls -la dist_assets
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.tag.outputs.tag_name }}
+          name: ${{ needs.tag.outputs.tag_name }}
+          body: ${{ inputs.message }}
+          files: dist_assets/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
