@@ -17,10 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
       
       - name: Create and push tag
+        env:
+          GH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN || github.token }}
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
@@ -37,4 +40,9 @@ jobs:
           git tag -a "$TAG_NAME" -m "${{ inputs.message || format('Release {0}', inputs.version) }}"
           git push origin "$TAG_NAME"
           
-          echo "Tag pushed successfully. This will trigger the build workflows."
+          echo "Tag pushed successfully."
+          
+          echo "Triggering build workflows..."
+          gh workflow run build-windows.yml -f release_tag="$TAG_NAME"
+          gh workflow run build-macos.yml -f release_tag="$TAG_NAME"
+          gh workflow run build-linux.yml -f release_tag="$TAG_NAME"
