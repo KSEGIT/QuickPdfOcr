@@ -29,8 +29,20 @@ jobs:
         shell: bash
         run: |
           TAG_NAME="${{ inputs.version }}"
+          TAG_NAME="${TAG_NAME//[[:space:]]/}"
+
+          # Normalize common typo: "v.1.2.3" -> "v1.2.3"
+          if [[ "$TAG_NAME" =~ ^v\..+ ]]; then
+            TAG_NAME="v${TAG_NAME:2}"
+          fi
+
           if [[ ! "$TAG_NAME" =~ ^v ]]; then
             TAG_NAME="v$TAG_NAME"
+          fi
+
+          if [[ "$TAG_NAME" == "v" ]]; then
+            echo "ERROR: invalid version input: '${{ inputs.version }}'"
+            exit 1
           fi
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "Using tag: $TAG_NAME"
@@ -43,8 +55,11 @@ jobs:
 
           TAG_NAME="${{ steps.meta.outputs.tag_name }}"
 
-          if git rev-parse -q --verify "refs/tags/$TAG_NAME" >/dev/null; then
-            echo "Tag already exists locally: $TAG_NAME"
+          # Ensure we can see tags (and fail if the tag already exists on origin).
+          git fetch --tags --force
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+            echo "ERROR: Tag already exists on origin: $TAG_NAME"
+            echo "Use a new version (recommended), or delete the existing tag + release manually."
             exit 1
           fi
 
