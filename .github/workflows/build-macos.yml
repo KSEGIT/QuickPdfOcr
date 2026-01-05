@@ -73,6 +73,7 @@ jobs:
           files: dist/QuickPdfOcr-macOS-ARM64.zip
           draft: false
           prerelease: false
+          generate_release_notes: true
 
   build-macos-intel:
     runs-on: macos-13  # macOS 13 on Intel (x86_64)
@@ -137,3 +138,4 @@ jobs:
           files: dist/QuickPdfOcr-macOS-x86_64.zip
           draft: false
           prerelease: false
+          generate_release_notes: true
