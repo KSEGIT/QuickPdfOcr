@@ -213,3 +213,4 @@ jobs:
           files: dist/QuickPdfOcr.exe
           draft: false
           prerelease: false
+          generate_release_notes: true
