@@ -358,13 +358,15 @@ jobs:
         run: ls -la dist_assets
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ needs.tag.outputs.tag_name }}
+          tag: ${{ needs.tag.outputs.tag_name }}
           name: ${{ needs.tag.outputs.tag_name }}
           body: ${{ inputs.message }}
-          files: dist_assets/*
+          artifacts: "dist_assets/*"
           draft: false
           prerelease: false
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+          generateReleaseNotes: true
+          allowUpdates: false
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
