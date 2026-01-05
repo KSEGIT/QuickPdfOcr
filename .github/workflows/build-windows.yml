@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag to build (e.g. v1.0.0)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -14,6 +19,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -207,9 +214,10 @@ jobs:
           path: dist/QuickPdfOcr.exe
 
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.release_tag != ''
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ inputs.release_tag }}
           files: dist/QuickPdfOcr.exe
           draft: false
           prerelease: false
