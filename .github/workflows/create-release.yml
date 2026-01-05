@@ -46,3 +46,9 @@ jobs:
           gh workflow run build-windows.yml -f release_tag="$TAG_NAME"
           gh workflow run build-macos.yml -f release_tag="$TAG_NAME"
           gh workflow run build-linux.yml -f release_tag="$TAG_NAME"
+          echo "Tag pushed successfully."
+          
+          echo "Triggering build workflows..."
+          gh workflow run build-windows.yml -f release_tag="$TAG_NAME"
+          gh workflow run build-macos.yml -f release_tag="$TAG_NAME"
+          gh workflow run build-linux.yml -f release_tag="$TAG_NAME"
