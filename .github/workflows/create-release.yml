@@ -13,10 +13,10 @@ on:
         type: string
 
 jobs:
-  tag:
+  check-tag:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       tag_name: ${{ steps.meta.outputs.tag_name }}
     steps:
@@ -47,12 +47,9 @@ jobs:
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "Using tag: $TAG_NAME"
 
-      - name: Create and push tag
+      - name: Check if tag exists
         shell: bash
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-
           TAG_NAME="${{ steps.meta.outputs.tag_name }}"
 
           # Ensure we can see tags (and fail if the tag already exists on origin).
@@ -62,20 +59,16 @@ jobs:
             echo "Use a new version (recommended), or delete the existing tag + release manually."
             exit 1
           fi
-
-          # Create annotated tag on current commit
-          git tag -a "$TAG_NAME" -m "${{ inputs.message || format('Release {0}', inputs.version) }}"
-          git push origin "$TAG_NAME"
+          
+          echo "Tag $TAG_NAME is available."
 
   build-windows:
-    needs: tag
+    needs: check-tag
     runs-on: windows-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.tag.outputs.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -231,14 +224,12 @@ jobs:
           path: dist/QuickPdfOcr.exe
 
   build-linux:
-    needs: tag
+    needs: check-tag
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.tag.outputs.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -293,14 +284,12 @@ jobs:
           path: dist/QuickPdfOcr
 
   build-macos-arm:
-    needs: tag
+    needs: check-tag
     runs-on: macos-14
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.tag.outputs.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -340,7 +329,7 @@ jobs:
 
   publish:
     needs:
-      - tag
+      - check-tag
       - build-windows
       - build-linux
       - build-macos-arm
@@ -360,13 +349,14 @@ jobs:
       - name: Publish GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ needs.tag.outputs.tag_name }}
-          name: ${{ needs.tag.outputs.tag_name }}
+          tag: ${{ needs.check-tag.outputs.tag_name }}
+          name: ${{ needs.check-tag.outputs.tag_name }}
           body: ${{ inputs.message }}
           artifacts: "dist_assets/*"
-          draft: false
+          commit: ${{ github.sha }}
+          draft: true
           prerelease: false
           generateReleaseNotes: true
-          allowUpdates: false
+          allowUpdates: true
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
