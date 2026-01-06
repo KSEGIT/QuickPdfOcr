@@ -329,6 +329,7 @@ jobs:
           draft: true
           prerelease: false
           generateReleaseNotes: true
+          immutableCreate: true
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
