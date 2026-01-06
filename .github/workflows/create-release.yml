@@ -105,34 +105,6 @@ jobs:
             exit 1
           }
 
-      - name: Setup WSL and install packages
-        run: |
-          Write-Host "Setting up WSL and installing necessary packages..."
-
-          $WSL_SETUP_WAIT_SECONDS = 15
-          $wslAvailable = Get-Command wsl -ErrorAction SilentlyContinue
-
-          if ($wslAvailable) {
-            Write-Host "WSL detected, installing packages..."
-            try {
-              wsl --set-default-version 2
-              wsl --install --distribution Ubuntu --no-launch
-              Start-Sleep -Seconds $WSL_SETUP_WAIT_SECONDS
-            } catch {
-              Write-Host "Note: WSL setup skipped (may already be configured)"
-            }
-
-            try {
-              wsl sudo apt-get update
-              wsl sudo apt-get install -y tesseract-ocr poppler-utils
-              Write-Host "✓ WSL packages installed successfully"
-            } catch {
-              Write-Host "Warning: Could not install packages in WSL, continuing with native Windows installation"
-            }
-          } else {
-            Write-Host "WSL not available on this runner, skipping WSL package installation"
-          }
-
       - name: Install Tesseract via winget with fallback
         run: |
           Write-Host "Installing Tesseract..."
