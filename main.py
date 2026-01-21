@@ -11,6 +11,7 @@ from PySide6.QtGui import QIcon, QGuiApplication
 from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
 from ui.loading_screen import LoadingScreen
+from components.poppler_utils import setup_bundled_binaries
 
 # Constants
 LOADING_TO_MAIN_DELAY = 300  # Delay in milliseconds before showing main window
@@ -24,8 +25,6 @@ def initialize_application(loading_screen):
         loading_screen: LoadingScreen instance to update with progress
     """
     # Setup bundled binaries (Poppler and Tesseract) if available
-    from components.poppler_utils import setup_bundled_binaries
-    
     def progress_callback(message):
         """Update loading screen with progress message"""
         loading_screen.set_progress(message)

@@ -47,8 +47,6 @@ class SpinnerWidget(QWidget):
         
         rect = self.rect().adjusted(5, 5, -5, -5)
         painter.drawArc(rect, self.angle * 16, 120 * 16)
-        
-        painter.end()
 
 
 class LoadingScreen(QWidget):
