@@ -7,7 +7,7 @@ A simple Qt6-based PDF OCR application
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QGuiApplication
 from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
 from ui.loading_screen import LoadingScreen
@@ -21,17 +21,14 @@ def initialize_application(loading_screen):
         loading_screen: LoadingScreen instance to update with progress
     """
     # Setup bundled binaries (Poppler and Tesseract) if available
-    loading_screen.set_progress("Setting up Poppler binaries...")
-    QApplication.processEvents()  # Process GUI events to update the display
+    from components.poppler_utils import setup_bundled_binaries
     
-    from components.poppler_utils import setup_poppler_path
-    setup_poppler_path()
+    def progress_callback(message):
+        """Update loading screen with progress message"""
+        loading_screen.set_progress(message)
+        QApplication.processEvents()  # Process GUI events to update the display
     
-    loading_screen.set_progress("Setting up Tesseract OCR...")
-    QApplication.processEvents()
-    
-    from components.poppler_utils import setup_tesseract_path
-    setup_tesseract_path()
+    setup_bundled_binaries(progress_callback=progress_callback)
     
     loading_screen.set_progress("Finalizing initialization...")
     QApplication.processEvents()

@@ -5,7 +5,7 @@ Displays a splash screen with progress feedback during application initializatio
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QPainter, QPen, QColor
+from PySide6.QtGui import QPainter, QPen, QColor, QGuiApplication
 
 
 class SpinnerWidget(QWidget):
@@ -150,7 +150,6 @@ class LoadingScreen(QWidget):
         self.fade_animation.start()
         
         # Center on screen
-        from PySide6.QtGui import QGuiApplication
         screen = QGuiApplication.primaryScreen().geometry()
         self.move(
             (screen.width() - self.width()) // 2,
