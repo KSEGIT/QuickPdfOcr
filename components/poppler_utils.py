@@ -181,10 +181,18 @@ def setup_tesseract_path():
         return None
 
 
-def setup_bundled_binaries():
+def setup_bundled_binaries(progress_callback=None):
     """
     Setup all bundled binaries (Poppler and Tesseract)
     This is a convenience function to call at application startup
+    
+    Args:
+        progress_callback: Optional callable that takes a string message to report progress
     """
+    if progress_callback:
+        progress_callback("Setting up Poppler binaries...")
     setup_poppler_path()
+    
+    if progress_callback:
+        progress_callback("Setting up Tesseract OCR...")
     setup_tesseract_path()
