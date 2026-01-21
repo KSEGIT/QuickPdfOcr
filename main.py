@@ -12,6 +12,9 @@ from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
 from ui.loading_screen import LoadingScreen
 
+# Constants
+LOADING_TO_MAIN_DELAY = 300  # Delay in milliseconds before showing main window
+
 
 def initialize_application(loading_screen):
     """
@@ -92,7 +95,7 @@ def main():
         loading_screen.close_with_fade()
         window.show()
     
-    QTimer.singleShot(300, show_main_window)
+    QTimer.singleShot(LOADING_TO_MAIN_DELAY, show_main_window)
     
     sys.exit(app.exec())
 
