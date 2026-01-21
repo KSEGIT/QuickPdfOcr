@@ -8,11 +8,33 @@ import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
+from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
+from ui.loading_screen import LoadingScreen
 
-# Setup bundled binaries (Poppler and Tesseract) if available
-from components.poppler_utils import setup_bundled_binaries
-setup_bundled_binaries()
+
+def initialize_application(loading_screen):
+    """
+    Initialize application components with progress feedback
+    
+    Args:
+        loading_screen: LoadingScreen instance to update with progress
+    """
+    # Setup bundled binaries (Poppler and Tesseract) if available
+    loading_screen.set_progress("Setting up Poppler binaries...")
+    QApplication.processEvents()  # Process GUI events to update the display
+    
+    from components.poppler_utils import setup_poppler_path
+    setup_poppler_path()
+    
+    loading_screen.set_progress("Setting up Tesseract OCR...")
+    QApplication.processEvents()
+    
+    from components.poppler_utils import setup_tesseract_path
+    setup_tesseract_path()
+    
+    loading_screen.set_progress("Finalizing initialization...")
+    QApplication.processEvents()
 
 
 def main():
@@ -32,6 +54,7 @@ def main():
     
     print("="*60 + "\n")
     
+    # Create QApplication first
     app = QApplication(sys.argv)
     app.setApplicationName("QuickPdfOcr")
     app.setOrganizationName("QuickPdfOcr")
@@ -53,8 +76,26 @@ def main():
     else:
         print(f"Warning: Icon not found at {icon_file}")
     
+    # Show loading screen immediately
+    loading_screen = LoadingScreen()
+    loading_screen.show()
+    QApplication.processEvents()  # Ensure loading screen is displayed
+    
+    # Initialize application components with progress feedback
+    initialize_application(loading_screen)
+    
+    # Create and show main window
+    loading_screen.set_progress("Loading main window...")
+    QApplication.processEvents()
+    
     window = MainWindow()
-    window.show()
+    
+    # Close loading screen and show main window with a small delay for smooth transition
+    def show_main_window():
+        loading_screen.close_with_fade()
+        window.show()
+    
+    QTimer.singleShot(300, show_main_window)
     
     sys.exit(app.exec())
 
