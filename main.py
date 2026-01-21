@@ -92,7 +92,7 @@ def main():
     # Close loading screen and show main window after fade-out completes
     def on_initialization_complete():
         """Handle transition from loading screen to main window"""
-        loading_screen.close_with_fade(on_finished=window.show)
+        loading_screen.close_with_fade(on_finished=lambda: window.show())
     
     QTimer.singleShot(LOADING_TO_MAIN_DELAY, on_initialization_complete)
     
