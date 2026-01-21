@@ -79,7 +79,6 @@ class LoadingScreen(QWidget):
         self.fade_out_animation.setStartValue(1)
         self.fade_out_animation.setEndValue(0)
         self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self.fade_out_animation.finished.connect(self.close)
     
     def _setup_ui(self):
         """Setup the user interface"""

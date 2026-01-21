@@ -7,7 +7,7 @@ A simple Qt6-based PDF OCR application
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QIcon, QGuiApplication
+from PySide6.QtGui import QIcon
 from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
 from ui.loading_screen import LoadingScreen
@@ -90,10 +90,11 @@ def main():
     window = MainWindow()
     
     # Close loading screen and show main window after fade-out completes
-    def show_main_window():
-        window.show()
+    def on_initialization_complete():
+        """Handle transition from loading screen to main window"""
+        loading_screen.close_with_fade(on_finished=window.show)
     
-    QTimer.singleShot(LOADING_TO_MAIN_DELAY, lambda: loading_screen.close_with_fade(on_finished=show_main_window))
+    QTimer.singleShot(LOADING_TO_MAIN_DELAY, on_initialization_complete)
     
     sys.exit(app.exec())
 
