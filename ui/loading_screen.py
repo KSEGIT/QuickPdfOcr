@@ -19,7 +19,16 @@ class SpinnerWidget(QWidget):
         # Animation timer
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._rotate)
-        self.timer.start(50)  # Update every 50ms for smooth animation
+    
+    def showEvent(self, event):
+        """Start animation when widget becomes visible"""
+        super().showEvent(event)
+        self.timer.start(50)  # Update every 50ms for smooth animation (20 FPS)
+    
+    def hideEvent(self, event):
+        """Stop animation when widget is hidden to save CPU resources"""
+        super().hideEvent(event)
+        self.timer.stop()
     
     def _rotate(self):
         """Rotate the spinner"""
@@ -48,6 +57,9 @@ class LoadingScreen(QWidget):
     def __init__(self):
         super().__init__()
         self._setup_ui()
+        
+        # Animation for fading in and out
+        self.fade_out_animation = None
         
         # Make it frameless and stay on top
         self.setWindowFlags(
@@ -158,10 +170,10 @@ class LoadingScreen(QWidget):
     
     def close_with_fade(self):
         """Close the loading screen with fade-out animation"""
-        fade_out = QPropertyAnimation(self, b"windowOpacity")
-        fade_out.setDuration(200)
-        fade_out.setStartValue(1)
-        fade_out.setEndValue(0)
-        fade_out.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        fade_out.finished.connect(self.close)
-        fade_out.start()
+        self.fade_out_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.fade_out_animation.setDuration(200)
+        self.fade_out_animation.setStartValue(1)
+        self.fade_out_animation.setEndValue(0)
+        self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.fade_out_animation.finished.connect(self.close)
+        self.fade_out_animation.start()
