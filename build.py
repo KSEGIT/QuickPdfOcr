@@ -125,9 +125,9 @@ def build_executable():
     poppler_path = find_poppler_binaries()
     tesseract_path = find_tesseract_binaries()
     
-    # Base PyInstaller command
+    # Base PyInstaller command - use sys.executable to ensure we use the venv's Python
     cmd = [
-        "pyinstaller",
+        sys.executable, "-m", "PyInstaller",
         "--name=QuickPdfOcr",
         "--windowed",  # No console window
         "--onefile",   # Single executable
