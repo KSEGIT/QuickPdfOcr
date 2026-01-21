@@ -56,9 +56,6 @@ class LoadingScreen(QWidget):
         super().__init__()
         self._setup_ui()
         
-        # Animation for fading in and out
-        self.fade_out_animation = None
-        
         # Make it frameless and stay on top
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint | 
@@ -66,13 +63,23 @@ class LoadingScreen(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
-        # Fade in animation
+        # Setup animations
         self.setWindowOpacity(0)
-        self.fade_animation = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_animation.setDuration(300)
-        self.fade_animation.setStartValue(0)
-        self.fade_animation.setEndValue(1)
-        self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        
+        # Fade in animation
+        self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.fade_in_animation.setDuration(300)
+        self.fade_in_animation.setStartValue(0)
+        self.fade_in_animation.setEndValue(1)
+        self.fade_in_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        
+        # Fade out animation
+        self.fade_out_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.fade_out_animation.setDuration(200)
+        self.fade_out_animation.setStartValue(1)
+        self.fade_out_animation.setEndValue(0)
+        self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.fade_out_animation.finished.connect(self.close)
     
     def _setup_ui(self):
         """Setup the user interface"""
@@ -157,7 +164,7 @@ class LoadingScreen(QWidget):
     def show(self):
         """Show the loading screen with fade-in animation"""
         super().show()
-        self.fade_animation.start()
+        self.fade_in_animation.start()
         
         # Center on screen
         screen = QGuiApplication.primaryScreen().geometry()
@@ -166,12 +173,25 @@ class LoadingScreen(QWidget):
             (screen.height() - self.height()) // 2
         )
     
-    def close_with_fade(self):
-        """Close the loading screen with fade-out animation"""
-        self.fade_out_animation = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_out_animation.setDuration(200)
-        self.fade_out_animation.setStartValue(1)
-        self.fade_out_animation.setEndValue(0)
-        self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+    def close_with_fade(self, on_finished=None):
+        """
+        Close the loading screen with fade-out animation
+        
+        Args:
+            on_finished: Optional callback to execute after fade-out completes
+        """
+        # Disconnect any previous finished connections
+        try:
+            self.fade_out_animation.finished.disconnect()
+        except RuntimeError:
+            pass  # No connections to disconnect
+        
+        # Connect close signal
         self.fade_out_animation.finished.connect(self.close)
+        
+        # Connect optional callback
+        if on_finished:
+            self.fade_out_animation.finished.connect(on_finished)
+        
+        # Start fade-out animation
         self.fade_out_animation.start()

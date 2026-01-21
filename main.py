@@ -89,12 +89,11 @@ def main():
     
     window = MainWindow()
     
-    # Close loading screen and show main window with a small delay for smooth transition
+    # Close loading screen and show main window after fade-out completes
     def show_main_window():
-        loading_screen.close_with_fade()
         window.show()
     
-    QTimer.singleShot(LOADING_TO_MAIN_DELAY, show_main_window)
+    QTimer.singleShot(LOADING_TO_MAIN_DELAY, lambda: loading_screen.close_with_fade(on_finished=show_main_window))
     
     sys.exit(app.exec())
 
