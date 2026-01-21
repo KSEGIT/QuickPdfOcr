@@ -1,0 +1,77 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Setup Venv",
+            "type": "shell",
+            "command": "python -m venv .venv; .venv\\Scripts\\activate; pip install -r requirements.txt",
+            "windows": {
+                "command": "python -m venv .venv; .venv\\Scripts\\Activate.ps1; pip install -r requirements.txt"
+            },
+            "linux": {
+                "command": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+            },
+            "osx": {
+                "command": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Application",
+            "type": "process",
+            "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+            "args": ["main.py"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Executable",
+            "type": "process",
+            "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+            "args": ["build.py"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build and Run",
+            "dependsOrder": "sequence",
+            "dependsOn": ["Build Executable"],
+            "type": "shell",
+            "command": "${workspaceFolder}/dist/QuickPdfOcr.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\dist\\QuickPdfOcr.exe"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
