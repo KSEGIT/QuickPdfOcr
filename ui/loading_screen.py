@@ -33,7 +33,7 @@ class SpinnerWidget(QWidget):
         
         # Draw spinning arc
         pen = QPen(QColor("#2196F3"), 4, Qt.PenStyle.SolidLine)
-        pen.setCapStyle(Qt.PenCap.RoundCap)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         
         rect = self.rect().adjusted(5, 5, -5, -5)
