@@ -162,15 +162,16 @@ class LoadingScreen(QWidget):
     
     def show(self):
         """Show the loading screen with fade-in animation"""
-        super().show()
-        self.fade_in_animation.start()
-        
-        # Center on screen
+        # Center on screen before showing
         screen = QGuiApplication.primaryScreen().geometry()
         self.move(
             (screen.width() - self.width()) // 2,
             (screen.height() - self.height()) // 2
         )
+        
+        # Show and start fade-in animation
+        super().show()
+        self.fade_in_animation.start()
     
     def close_with_fade(self, on_finished=None):
         """
@@ -179,10 +180,10 @@ class LoadingScreen(QWidget):
         Args:
             on_finished: Optional callback to execute after fade-out completes
         """
-        # Disconnect any previous finished connections
+        # Disconnect any previous finished connections to avoid duplicate calls
         try:
             self.fade_out_animation.finished.disconnect()
-        except RuntimeError:
+        except TypeError:
             pass  # No connections to disconnect
         
         # Connect close signal
