@@ -22,16 +22,20 @@ class OCRWorker(QObject):
         try:
             # Create OCR processor
             processor = PdfOcrProcessor(lang='eng')
-            
+
             # Run OCR with progress callback
             text = processor.process(
-                self.pdf_path, 
+                self.pdf_path,
                 output_file=None,
                 progress_callback=self.progress.emit
             )
-            
-            # Check if we got any text
-            if not text or text.strip() == "":
+
+            # Check if we got any meaningful text beyond page headers
+            # The processor always adds "--- Page N ---" headers, so we must
+            # strip those before checking for actual content
+            import re
+            content_only = re.sub(r'---\s*Page\s+\d+\s*---', '', text).strip()
+            if not content_only:
                 self.error.emit("No text could be extracted from the PDF")
                 return
             
