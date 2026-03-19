@@ -2,6 +2,8 @@
 OCR Worker - Background thread for PDF OCR processing
 """
 
+import re
+
 from PySide6.QtCore import QObject, Signal
 from components.pdf_ocr import PdfOcrProcessor
 
@@ -33,7 +35,6 @@ class OCRWorker(QObject):
             # Check if we got any meaningful text beyond page headers
             # The processor always adds "--- Page N ---" headers, so we must
             # strip those before checking for actual content
-            import re
             content_only = re.sub(r'---\s*Page\s+\d+\s*---', '', text).strip()
             if not content_only:
                 self.error.emit("No text could be extracted from the PDF")
