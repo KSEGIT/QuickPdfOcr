@@ -313,7 +313,9 @@ class MainWindow(QMainWindow):
         # Clean up any previous thread before starting a new one
         if self.ocr_thread is not None and self.ocr_thread.isRunning():
             self.ocr_thread.quit()
-            self.ocr_thread.wait()
+            if not self.ocr_thread.wait(5000):
+                self.ocr_thread.terminate()
+                self.ocr_thread.wait()
 
         # Disable buttons during processing
         self.start_ocr_btn.setEnabled(False)
