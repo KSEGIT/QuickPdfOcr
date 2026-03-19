@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox
 )
-from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtCore import Qt, Signal, QThread, QTimer
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 from components.ocr_worker import OCRWorker
@@ -20,10 +20,18 @@ class DropZoneLabel(QLabel):
     
     file_dropped = Signal(str)
     
+    _DEFAULT_TEXT = "📄 Drop PDF file here"
+
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.setAcceptDrops(True)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Timer to auto-clear the drop-zone warning after a delay
+        self._warning_timer = QTimer(self)
+        self._warning_timer.setSingleShot(True)
+        self._warning_timer.timeout.connect(self._reset_text)
+
         self.setStyleSheet("""
             QLabel {
                 border: 3px dashed #aaa;
@@ -76,13 +84,24 @@ class DropZoneLabel(QLabel):
     def dropEvent(self, event: QDropEvent):
         """Handle dropped files"""
         files = [url.toLocalFile() for url in event.mimeData().urls()]
-        if files and files[0].lower().endswith('.pdf'):
+        if not files:
+            self._show_drop_warning()
+        elif files[0].lower().endswith('.pdf'):
+            self._warning_timer.stop()
             self.file_dropped.emit(files[0])
         else:
-            # Reset style and show feedback for non-PDF files
-            self.setText("⚠️ Please drop a PDF file")
+            self._show_drop_warning()
         event.acceptProposedAction()
         self.dragLeaveEvent(event)
+
+    def _show_drop_warning(self):
+        """Show a temporary warning when a non-PDF (or empty) drop occurs."""
+        self.setText("⚠️ Please drop a PDF file")
+        self._warning_timer.start(3000)
+
+    def _reset_text(self):
+        """Restore the default drop-zone label text."""
+        self.setText(self._DEFAULT_TEXT)
 
 
 class MainWindow(QMainWindow):
@@ -109,7 +128,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         
         # Drop zone label
-        self.drop_zone = DropZoneLabel("📄 Drop PDF file here")
+        self.drop_zone = DropZoneLabel(DropZoneLabel._DEFAULT_TEXT)
         self.drop_zone.file_dropped.connect(self._on_file_dropped)
         layout.addWidget(self.drop_zone)
         
@@ -312,8 +331,16 @@ class MainWindow(QMainWindow):
 
         # Clean up any previous thread before starting a new one
         if self.ocr_thread is not None and self.ocr_thread.isRunning():
+            # Ask the worker to stop cooperatively first
+            if self.ocr_worker is not None:
+                self.ocr_worker.request_stop()
             self.ocr_thread.quit()
             if not self.ocr_thread.wait(5000):
+                print(
+                    f"WARNING: OCR thread (id={int(self.ocr_thread.currentThreadId())}) "
+                    "did not stop within 5 s — calling terminate(). "
+                    "This may leak platform resources."
+                )
                 self.ocr_thread.terminate()
                 self.ocr_thread.wait()
 
@@ -432,7 +459,7 @@ class MainWindow(QMainWindow):
         self.current_file = None
         
         # Reset drop zone
-        self.drop_zone.setText("📄 Drop PDF file here")
+        self.drop_zone.setText(DropZoneLabel._DEFAULT_TEXT)
         self.drop_zone.setAcceptDrops(True)
         
         # Hide all optional elements
