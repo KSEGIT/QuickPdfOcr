@@ -78,6 +78,9 @@ class DropZoneLabel(QLabel):
         files = [url.toLocalFile() for url in event.mimeData().urls()]
         if files and files[0].lower().endswith('.pdf'):
             self.file_dropped.emit(files[0])
+        else:
+            # Reset style and show feedback for non-PDF files
+            self.setText("⚠️ Please drop a PDF file")
         event.acceptProposedAction()
         self.dragLeaveEvent(event)
 
@@ -306,12 +309,17 @@ class MainWindow(QMainWindow):
         """Start OCR processing in background thread"""
         if not self.current_file:
             return
-        
+
+        # Clean up any previous thread before starting a new one
+        if self.ocr_thread is not None and self.ocr_thread.isRunning():
+            self.ocr_thread.quit()
+            self.ocr_thread.wait()
+
         # Disable buttons during processing
         self.start_ocr_btn.setEnabled(False)
         self.open_btn.setEnabled(False)
         self.drop_zone.setAcceptDrops(False)
-        
+
         # Show progress
         self.progress_label.setText("⏳ Converting PDF to images...")
         self.progress_label.setStyleSheet("""
@@ -324,7 +332,7 @@ class MainWindow(QMainWindow):
             }
         """)
         self.progress_label.show()
-        
+
         # Create worker thread
         self.ocr_thread = QThread()
         self.ocr_worker = OCRWorker(self.current_file)
@@ -413,6 +421,7 @@ class MainWindow(QMainWindow):
     def _retry_ocr(self):
         """Retry OCR on the same file"""
         self.retry_btn.hide()
+        self.start_over_btn.hide()
         self.progress_label.hide()
         self._start_ocr()
     
