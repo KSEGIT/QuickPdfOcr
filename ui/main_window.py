@@ -87,7 +87,6 @@ class DropZoneLabel(QLabel):
         if not files:
             self._show_drop_warning()
         elif files[0].lower().endswith('.pdf'):
-            self._warning_timer.stop()
             self.file_dropped.emit(files[0])
         else:
             self._show_drop_warning()
@@ -309,7 +308,12 @@ class MainWindow(QMainWindow):
         """Handle file selection (drag-drop or file picker)"""
         self.current_file = file_path
         file_name = Path(file_path).name
-        
+
+        # Cancel any pending warning-reset timer so it cannot overwrite the
+        # filename we are about to display.  This is the single code path for
+        # both drag-drop and file-dialog selection.
+        self.drop_zone._warning_timer.stop()
+
         # Update UI
         self.drop_zone.setText(f"✅ {file_name}")
         self.file_label.setText(f"Selected: {file_name}")
@@ -342,7 +346,12 @@ class MainWindow(QMainWindow):
                     "This may leak platform resources."
                 )
                 self.ocr_thread.terminate()
-                self.ocr_thread.wait()
+                if not self.ocr_thread.wait(5000):
+                    print(
+                        "ERROR: OCR thread did not terminate within 5 s after "
+                        "terminate(). Aborting new OCR to avoid undefined state."
+                    )
+                    return
 
         # Disable buttons during processing
         self.start_ocr_btn.setEnabled(False)
