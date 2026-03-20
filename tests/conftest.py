@@ -13,13 +13,12 @@ def qapp():
 
 
 @pytest.fixture(autouse=True)
-def isolated_settings(tmp_path):
-    """Redirect QSettings to a temporary INI file so tests never touch
-    the real registry / plist / .conf."""
-    QSettings.setDefaultFormat(QSettings.Format.IniFormat)
-    QSettings.setPath(
-        QSettings.Format.IniFormat,
-        QSettings.Scope.UserScope,
-        str(tmp_path),
-    )
+def isolated_settings():
+    """Clear QSettings before and after each test so tests never see
+    values left by other tests or prior runs."""
+    qs = QSettings("QuickPdfOcr", "QuickPdfOcr")
+    qs.clear()
+    qs.sync()
     yield
+    qs.clear()
+    qs.sync()
