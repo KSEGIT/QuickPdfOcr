@@ -291,7 +291,22 @@ class MainWindow(QMainWindow):
         self.copy_btn.clicked.connect(self._copy_to_clipboard)
         self.copy_btn.hide()
         button_layout.addWidget(self.copy_btn)
-        
+
+        # Save to file button (hidden initially)
+        self.save_btn = QPushButton("Save to File")
+        self.save_btn.setMinimumHeight(35)
+        self.save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50; color: white; border: none;
+                border-radius: 5px; font-size: 13px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #45a049; }
+            QPushButton:pressed { background-color: #2E7D32; }
+        """)
+        self.save_btn.clicked.connect(self._save_to_file)
+        self.save_btn.hide()
+        button_layout.addWidget(self.save_btn)
+
         # Try again button (hidden initially)
         self.retry_btn = QPushButton("🔄 Try Again")
         self.retry_btn.setMinimumHeight(35)
@@ -475,6 +490,7 @@ class MainWindow(QMainWindow):
         self.text_area.hide()
         self.text_area.clear()
         self.copy_btn.hide()
+        self.save_btn.hide()
         self.retry_btn.hide()
         self.start_over_btn.hide()
         self.progress_label.hide()
@@ -584,6 +600,7 @@ class MainWindow(QMainWindow):
         self.text_area.setPlainText(text)
         self.text_area.show()
         self.copy_btn.show()
+        self.save_btn.show()
         self.start_over_btn.show()
         
         # Re-enable controls
@@ -631,6 +648,30 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Ok
         )
     
+    def _save_to_file(self):
+        """Save extracted text to a file."""
+        default_dir = self.settings.output_directory or ""
+        default_name = ""
+        if self.current_file:
+            default_name = Path(self.current_file).stem + "_ocr.txt"
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Extracted Text",
+            str(Path(default_dir) / default_name) if default_dir else default_name,
+            "Text Files (*.txt);;Markdown Files (*.md);;All Files (*)",
+        )
+        if not file_path:
+            return
+
+        try:
+            text = self.text_area.toPlainText()
+            Path(file_path).write_text(text, encoding="utf-8")
+            self.settings.output_directory = str(Path(file_path).parent)
+            QMessageBox.information(self, "Saved", f"Text saved to:\n{file_path}")
+        except OSError as e:
+            QMessageBox.critical(self, "Save Failed", f"Could not save file:\n{e}")
+
     def _retry_ocr(self):
         """Retry OCR on the same file"""
         self.retry_btn.hide()
@@ -656,9 +697,10 @@ class MainWindow(QMainWindow):
         self.text_area.hide()
         self.text_area.clear()
         self.copy_btn.hide()
+        self.save_btn.hide()
         self.retry_btn.hide()
         self.start_over_btn.hide()
-        
+
         # Re-enable controls
         self.start_ocr_btn.setEnabled(True)
         self.open_btn.setEnabled(True)
