@@ -6,13 +6,14 @@ text display with copy functionality
 
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 from components.ocr_worker import OCRWorker
+from components.settings import Settings
 
 
 class DropZoneLabel(QLabel):
@@ -90,10 +91,11 @@ class MainWindow(QMainWindow):
         self.current_file = None
         self.ocr_thread = None
         self.ocr_worker = None
-        
+        self.settings = Settings()
+
         self.setWindowTitle("QuickPdfOcr")
         self.setMinimumSize(600, 500)
-        
+
         self._setup_ui()
     
     def _setup_ui(self):
@@ -131,7 +133,27 @@ class MainWindow(QMainWindow):
         """)
         self.open_btn.clicked.connect(self._open_file_dialog)
         layout.addWidget(self.open_btn)
-        
+
+        # Language selector row
+        lang_layout = QHBoxLayout()
+        lang_label = QLabel("Language:")
+        lang_label.setStyleSheet("font-weight: bold; color: #333;")
+        lang_layout.addWidget(lang_label)
+
+        self.lang_combo = QComboBox()
+        self.lang_combo.setMinimumHeight(30)
+        self.lang_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
+        lang_layout.addWidget(self.lang_combo, 1)
+        layout.addLayout(lang_layout)
+
         # File name label (hidden initially)
         self.file_label = QLabel("")
         self.file_label.setStyleSheet("color: #333; font-weight: bold;")
@@ -270,7 +292,45 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.start_over_btn)
         
         layout.addLayout(button_layout)
-    
+
+        self._populate_languages()
+
+    def _populate_languages(self):
+        """Detect installed Tesseract languages and populate the combo box."""
+        import pytesseract
+        try:
+            langs = pytesseract.get_languages(config="")
+            langs = [l for l in langs if l != "osd"]
+        except Exception:
+            langs = ["eng"]
+
+        self.lang_combo.blockSignals(True)  # Don't trigger save while populating
+        self.lang_combo.clear()
+        LANG_NAMES = {
+            "eng": "English", "fra": "French", "deu": "German",
+            "spa": "Spanish", "ita": "Italian", "por": "Portuguese",
+            "nld": "Dutch", "pol": "Polish", "rus": "Russian",
+            "chi_sim": "Chinese (Simplified)", "chi_tra": "Chinese (Traditional)",
+            "jpn": "Japanese", "kor": "Korean", "ara": "Arabic",
+            "hin": "Hindi", "tur": "Turkish", "vie": "Vietnamese",
+            "ukr": "Ukrainian", "ces": "Czech", "swe": "Swedish",
+        }
+        for lang_code in sorted(langs):
+            display = LANG_NAMES.get(lang_code, lang_code)
+            self.lang_combo.addItem(f"{display} ({lang_code})", lang_code)
+
+        saved_lang = self.settings.language
+        idx = self.lang_combo.findData(saved_lang)
+        if idx >= 0:
+            self.lang_combo.setCurrentIndex(idx)
+        self.lang_combo.blockSignals(False)
+
+    def _on_language_changed(self):
+        """Save selected language to settings."""
+        lang = self.lang_combo.currentData()
+        if lang:
+            self.settings.language = lang
+
     def _open_file_dialog(self):
         """Open file picker dialog"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -327,7 +387,8 @@ class MainWindow(QMainWindow):
         
         # Create worker thread
         self.ocr_thread = QThread()
-        self.ocr_worker = OCRWorker(self.current_file)
+        selected_lang = self.lang_combo.currentData() or "eng"
+        self.ocr_worker = OCRWorker(self.current_file, lang=selected_lang)
         self.ocr_worker.moveToThread(self.ocr_thread)
         
         # Connect signals
