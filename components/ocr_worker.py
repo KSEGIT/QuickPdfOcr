@@ -10,9 +10,10 @@ from components.pdf_ocr import PdfOcrProcessor
 class OCRWorker(QObject):
     """Worker class to run OCR in a background thread"""
 
-    progress = Signal(str)      # Progress message
-    finished = Signal(str)      # Completed with extracted text
-    error = Signal(str)         # Error message
+    progress = Signal(str)          # Progress message
+    page_progress = Signal(int, int)  # (current_page, total_pages)
+    finished = Signal(str)          # Completed with extracted text
+    error = Signal(str)             # Error message
 
     def __init__(self, pdf_path: str, lang: str = "eng"):
         super().__init__()
@@ -33,6 +34,10 @@ class OCRWorker(QObject):
                 if self._stop_requested:
                     raise InterruptedError("OCR processing was cancelled")
                 self.progress.emit(message)
+                # Parse "Processing page X/Y..." messages for progress bar
+                match = re.match(r'Processing page (\d+)/(\d+)', message)
+                if match:
+                    self.page_progress.emit(int(match.group(1)), int(match.group(2)))
 
             text = processor.process(
                 self.pdf_path,
