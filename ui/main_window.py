@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox
 )
-from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtCore import Qt, Signal, QThread, QTimer
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 from components.ocr_worker import OCRWorker
@@ -20,10 +20,18 @@ class DropZoneLabel(QLabel):
     
     file_dropped = Signal(str)
     
+    _DEFAULT_TEXT = "📄 Drop PDF file here"
+
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.setAcceptDrops(True)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Timer to auto-clear the drop-zone warning after a delay
+        self._warning_timer = QTimer(self)
+        self._warning_timer.setSingleShot(True)
+        self._warning_timer.timeout.connect(self._reset_text)
+
         self.setStyleSheet("""
             QLabel {
                 border: 3px dashed #aaa;
@@ -76,10 +84,23 @@ class DropZoneLabel(QLabel):
     def dropEvent(self, event: QDropEvent):
         """Handle dropped files"""
         files = [url.toLocalFile() for url in event.mimeData().urls()]
-        if files and files[0].lower().endswith('.pdf'):
+        if not files:
+            self._show_drop_warning()
+        elif files[0].lower().endswith('.pdf'):
             self.file_dropped.emit(files[0])
+        else:
+            self._show_drop_warning()
         event.acceptProposedAction()
         self.dragLeaveEvent(event)
+
+    def _show_drop_warning(self):
+        """Show a temporary warning when a non-PDF (or empty) drop occurs."""
+        self.setText("⚠️ Please drop a PDF file")
+        self._warning_timer.start(3000)
+
+    def _reset_text(self):
+        """Restore the default drop-zone label text."""
+        self.setText(self._DEFAULT_TEXT)
 
 
 class MainWindow(QMainWindow):
@@ -106,7 +127,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         
         # Drop zone label
-        self.drop_zone = DropZoneLabel("📄 Drop PDF file here")
+        self.drop_zone = DropZoneLabel(DropZoneLabel._DEFAULT_TEXT)
         self.drop_zone.file_dropped.connect(self._on_file_dropped)
         layout.addWidget(self.drop_zone)
         
@@ -287,7 +308,12 @@ class MainWindow(QMainWindow):
         """Handle file selection (drag-drop or file picker)"""
         self.current_file = file_path
         file_name = Path(file_path).name
-        
+
+        # Cancel any pending warning-reset timer so it cannot overwrite the
+        # filename we are about to display.  This is the single code path for
+        # both drag-drop and file-dialog selection.
+        self.drop_zone._warning_timer.stop()
+
         # Update UI
         self.drop_zone.setText(f"✅ {file_name}")
         self.file_label.setText(f"Selected: {file_name}")
@@ -306,12 +332,32 @@ class MainWindow(QMainWindow):
         """Start OCR processing in background thread"""
         if not self.current_file:
             return
-        
+
+        # Clean up any previous thread before starting a new one
+        if self.ocr_thread is not None and self.ocr_thread.isRunning():
+            # Ask the worker to stop cooperatively first
+            if self.ocr_worker is not None:
+                self.ocr_worker.request_stop()
+            self.ocr_thread.quit()
+            if not self.ocr_thread.wait(5000):
+                print(
+                    f"WARNING: OCR thread (id={int(self.ocr_thread.currentThreadId())}) "
+                    "did not stop within 5 s — calling terminate(). "
+                    "This may leak platform resources."
+                )
+                self.ocr_thread.terminate()
+                if not self.ocr_thread.wait(5000):
+                    print(
+                        "ERROR: OCR thread did not terminate within 5 s after "
+                        "terminate(). Aborting new OCR to avoid undefined state."
+                    )
+                    return
+
         # Disable buttons during processing
         self.start_ocr_btn.setEnabled(False)
         self.open_btn.setEnabled(False)
         self.drop_zone.setAcceptDrops(False)
-        
+
         # Show progress
         self.progress_label.setText("⏳ Converting PDF to images...")
         self.progress_label.setStyleSheet("""
@@ -324,7 +370,7 @@ class MainWindow(QMainWindow):
             }
         """)
         self.progress_label.show()
-        
+
         # Create worker thread
         self.ocr_thread = QThread()
         self.ocr_worker = OCRWorker(self.current_file)
@@ -413,6 +459,7 @@ class MainWindow(QMainWindow):
     def _retry_ocr(self):
         """Retry OCR on the same file"""
         self.retry_btn.hide()
+        self.start_over_btn.hide()
         self.progress_label.hide()
         self._start_ocr()
     
@@ -421,7 +468,7 @@ class MainWindow(QMainWindow):
         self.current_file = None
         
         # Reset drop zone
-        self.drop_zone.setText("📄 Drop PDF file here")
+        self.drop_zone.setText(DropZoneLabel._DEFAULT_TEXT)
         self.drop_zone.setAcceptDrops(True)
         
         # Hide all optional elements

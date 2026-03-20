@@ -48,7 +48,6 @@ def get_bundled_tesseract_path():
         bundle_dir = Path(sys._MEIPASS)
         
         # Check for Tesseract in different locations based on platform
-        import platform
         system = platform.system()
         
         if system == "Windows":
@@ -79,7 +78,6 @@ def setup_poppler_path():
         print(f"Using bundled Poppler from: {bundled_path}")
         
         # Verify critical executables exist
-        import platform
         exe_ext = ".exe" if platform.system() == "Windows" else ""
         critical_tools = ["pdftoppm", "pdfinfo"]
         for tool in critical_tools:

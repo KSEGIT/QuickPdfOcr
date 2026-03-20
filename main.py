@@ -59,7 +59,6 @@ def main():
     app.setOrganizationName("QuickPdfOcr")
     
     # Set application icon
-    icon_path = None
     if getattr(sys, 'frozen', False):
         # Running from PyInstaller bundle
         base_path = Path(sys._MEIPASS)
