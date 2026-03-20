@@ -7,7 +7,7 @@ text display with copy functionality
 from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox, QComboBox
+    QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox, QComboBox, QProgressBar
 )
 from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
@@ -93,6 +93,7 @@ class MainWindow(QMainWindow):
         self.ocr_worker = None
         self.settings = Settings()
         self._download_thread = None
+        self._ocr_cancelled = False
 
         self.setWindowTitle("QuickPdfOcr")
         self.setMinimumSize(600, 500)
@@ -219,7 +220,35 @@ class MainWindow(QMainWindow):
         """)
         self.progress_label.hide()
         layout.addWidget(self.progress_label)
-        
+
+        # Progress bar (hidden initially)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimumHeight(20)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #ccc; border-radius: 5px; text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #2196F3; border-radius: 5px;
+            }
+        """)
+        self.progress_bar.hide()
+        layout.addWidget(self.progress_bar)
+
+        # Cancel button (hidden initially)
+        self.cancel_btn = QPushButton("Cancel OCR")
+        self.cancel_btn.setMinimumHeight(35)
+        self.cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336; color: white; border: none;
+                border-radius: 5px; font-size: 13px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #d32f2f; }
+        """)
+        self.cancel_btn.clicked.connect(self._cancel_ocr)
+        self.cancel_btn.hide()
+        layout.addWidget(self.cancel_btn)
+
         # Text area for results (hidden initially)
         self.text_area = QTextEdit()
         self.text_area.setReadOnly(True)
@@ -472,7 +501,13 @@ class MainWindow(QMainWindow):
             }
         """)
         self.progress_label.show()
-        
+        self._ocr_cancelled = False
+        self.progress_bar.setValue(0)
+        self.progress_bar.show()
+        self.cancel_btn.show()
+        self.cancel_btn.setEnabled(True)
+        self.cancel_btn.setText("Cancel OCR")
+
         # Create worker thread
         self.ocr_thread = QThread()
         selected_lang = self.lang_combo.currentData() or "eng"
@@ -489,10 +524,43 @@ class MainWindow(QMainWindow):
         self.ocr_worker.finished.connect(self.ocr_worker.deleteLater)
         self.ocr_worker.error.connect(self.ocr_worker.deleteLater)
         self.ocr_thread.finished.connect(self.ocr_thread.deleteLater)
-        
+        self.ocr_worker.page_progress.connect(self._on_page_progress)
+        self.ocr_thread.finished.connect(self._on_ocr_thread_finished)
+
         # Start processing
         self.ocr_thread.start()
     
+    def _cancel_ocr(self):
+        """Cancel in-progress OCR."""
+        self._ocr_cancelled = True
+        if self.ocr_worker is not None:
+            self.ocr_worker.request_stop()
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.setText("Cancelling...")
+
+    def _on_page_progress(self, current: int, total: int):
+        """Update progress bar with page-level progress."""
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(current)
+        self.progress_bar.setFormat(f"Page {current}/{total}")
+
+    def _on_ocr_thread_finished(self):
+        """Called when OCR thread finishes. If cancelled, neither success nor error was emitted."""
+        if self._ocr_cancelled:
+            self.progress_label.setText("OCR cancelled.")
+            self.progress_label.setStyleSheet("""
+                QLabel {
+                    color: #F57C00; font-size: 14px; padding: 10px;
+                    background-color: #FFF3E0; border-radius: 5px;
+                }
+            """)
+            self.progress_bar.hide()
+            self.cancel_btn.hide()
+            self.start_over_btn.show()
+            self.start_ocr_btn.setEnabled(True)
+            self.open_btn.setEnabled(True)
+            self.drop_zone.setAcceptDrops(True)
+
     def _on_progress(self, message: str):
         """Update progress message"""
         self.progress_label.setText(f"⏳ {message}")
@@ -509,7 +577,9 @@ class MainWindow(QMainWindow):
                 border-radius: 5px;
             }
         """)
-        
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
+
         # Show results
         self.text_area.setPlainText(text)
         self.text_area.show()
@@ -533,7 +603,9 @@ class MainWindow(QMainWindow):
                 border-radius: 5px;
             }
         """)
-        
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
+
         # Show retry buttons
         self.retry_btn.show()
         self.start_over_btn.show()
@@ -563,6 +635,8 @@ class MainWindow(QMainWindow):
         """Retry OCR on the same file"""
         self.retry_btn.hide()
         self.progress_label.hide()
+        self.cancel_btn.hide()
+        self.progress_bar.hide()
         self._start_ocr()
     
     def _start_over(self):
@@ -577,6 +651,8 @@ class MainWindow(QMainWindow):
         self.file_label.hide()
         self.start_ocr_btn.hide()
         self.progress_label.hide()
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
         self.text_area.hide()
         self.text_area.clear()
         self.copy_btn.hide()
