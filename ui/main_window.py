@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
         self.ocr_thread = None
         self.ocr_worker = None
         self.settings = Settings()
+        self._download_thread = None
 
         self.setWindowTitle("QuickPdfOcr")
         self.setMinimumSize(600, 500)
@@ -152,6 +153,23 @@ class MainWindow(QMainWindow):
         """)
         self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
         lang_layout.addWidget(self.lang_combo, 1)
+
+        self.download_lang_btn = QPushButton("Download...")
+        self.download_lang_btn.setMinimumHeight(30)
+        self.download_lang_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #607D8B;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+            QPushButton:hover { background-color: #455A64; }
+        """)
+        self.download_lang_btn.clicked.connect(self._show_download_dialog)
+        lang_layout.addWidget(self.download_lang_btn)
+
         layout.addLayout(lang_layout)
 
         # File name label (hidden initially)
@@ -294,6 +312,76 @@ class MainWindow(QMainWindow):
         layout.addLayout(button_layout)
 
         self._populate_languages()
+
+    def _show_download_dialog(self):
+        """Show a dialog to select and download language packs."""
+        if self._download_thread is not None and self._download_thread.isRunning():
+            QMessageBox.information(self, "Download", "A download is already in progress.")
+            return
+
+        from components.language_manager import LanguageManager, AVAILABLE_LANGUAGES
+
+        mgr = LanguageManager()
+        installed = set(mgr.get_installed_languages())
+        downloadable = {k: v for k, v in AVAILABLE_LANGUAGES.items() if k not in installed}
+
+        if not downloadable:
+            QMessageBox.information(self, "Languages", "All available languages are already installed.")
+            return
+
+        items = [f"{name} ({code})" for code, name in sorted(downloadable.items(), key=lambda x: x[1])]
+        from PySide6.QtWidgets import QInputDialog
+        item, ok = QInputDialog.getItem(self, "Download Language", "Select language to download:", items, 0, False)
+        if not ok or not item:
+            return
+
+        lang_code = item.split("(")[-1].rstrip(")")
+
+        self.download_lang_btn.setEnabled(False)
+
+        self.progress_label.setText(f"Downloading {item}...")
+        self.progress_label.setStyleSheet("""
+            QLabel {
+                color: #1976D2; font-size: 14px; padding: 10px;
+                background-color: #e3f2fd; border-radius: 5px;
+            }
+        """)
+        self.progress_label.show()
+
+        mgr.download_progress.connect(lambda code, pct: self.progress_label.setText(f"Downloading {item}... {pct}%"))
+        mgr.download_finished.connect(lambda code: self._on_language_downloaded(code))
+        mgr.download_error.connect(lambda code, err: self._on_language_download_error(err))
+        self._lang_manager = mgr
+
+        self._download_thread = QThread()
+        mgr.moveToThread(self._download_thread)
+        self._download_thread.started.connect(lambda: mgr.download_language(lang_code))
+        mgr.download_finished.connect(self._download_thread.quit)
+        mgr.download_error.connect(self._download_thread.quit)
+        self._download_thread.start()
+
+    def _on_language_downloaded(self, lang_code: str):
+        """Handle successful language download."""
+        self.download_lang_btn.setEnabled(True)
+        self.progress_label.setText("Language downloaded successfully!")
+        self.progress_label.setStyleSheet("""
+            QLabel {
+                color: #2E7D32; font-size: 14px; padding: 10px;
+                background-color: #C8E6C9; border-radius: 5px;
+            }
+        """)
+        self._populate_languages()
+
+    def _on_language_download_error(self, error_msg: str):
+        """Handle language download failure."""
+        self.download_lang_btn.setEnabled(True)
+        self.progress_label.setText(f"Download failed: {error_msg}")
+        self.progress_label.setStyleSheet("""
+            QLabel {
+                color: #C62828; font-size: 14px; padding: 10px;
+                background-color: #FFCDD2; border-radius: 5px;
+            }
+        """)
 
     def _populate_languages(self):
         """Detect installed Tesseract languages and populate the combo box."""
