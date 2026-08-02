@@ -259,3 +259,6 @@ tesseract-installer.exe
 
 # Icon generation temporary files
 *.iconset/
+
+# Superpowers SDD scratch (ledger, briefs, review packages)
+.superpowers/
