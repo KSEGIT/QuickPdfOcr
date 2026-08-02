@@ -41,3 +41,11 @@ def test_is_immutable():
 
     with pytest.raises(Exception):
         page.width = 5
+
+
+def test_rejects_stride_smaller_than_row_width():
+    """Stride must be at least width * 4 for RGBX pixels. A buffer that passes
+    the size check but has insufficient stride per row is physically impossible
+    and will corrupt silently when handed to CoreGraphics."""
+    with pytest.raises(ValueError, match="stride"):
+        PageImage(width=100, height=1, stride=4, buffer=b"\x00" * 4, mode="RGBX")
