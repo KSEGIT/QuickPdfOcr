@@ -12,60 +12,58 @@ permissions:
   contents: read
 
 jobs:
-  build-macos-arm:
-    runs-on: macos-14  # macOS 14 on Apple Silicon (ARM64)
+  build-macos:
+    runs-on: macos-14  # Apple Silicon
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release_tag || github.ref }}
-      
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
-      - name: Install Poppler and Tesseract
-        run: |
-          # Install Poppler and Tesseract via Homebrew
-          brew install poppler tesseract
-          
-          # Create directory for Poppler binaries
-          mkdir -p poppler_binaries
-          
-          # Copy Poppler binaries to project directory
-          cp /opt/homebrew/bin/pdf* poppler_binaries/ || true
-          
-          # Verify Poppler
-          ls -la poppler_binaries/
-          echo "✓ Poppler installed and copied"
-          
-          # Create directory for Tesseract and copy installation
-          mkdir -p tesseract_binaries/bin
-          mkdir -p tesseract_binaries/share
-          cp /opt/homebrew/bin/tesseract tesseract_binaries/bin/
-          cp -r /opt/homebrew/share/tessdata tesseract_binaries/share/ || true
-          
-          # Verify Tesseract
-          ls -la tesseract_binaries/bin/
-          ls -la tesseract_binaries/share/tessdata/ | head -5
-          echo "✓ Tesseract installed and copied"
-      
+
+      # No Homebrew step. Poppler and Tesseract are not used on macOS:
+      # rendering ships inside the pypdfium2 wheel and OCR comes from the OS.
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
-      - name: Build executable
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+      - name: Build .app
         run: python build.py
-      
+
+      - name: Make universal2 and sign
+        run: python packaging/make_universal.py
+
+      - name: Smoke test the built app
+        run: |
+          ./dist/QuickPdfOcr.app/Contents/MacOS/QuickPdfOcr \
+            --selftest tests/fixtures/sample_invoice.pdf
+
+      - name: Verify no Poppler or Tesseract in the bundle
+        run: |
+          if find dist/QuickPdfOcr.app \
+               \( -name "*poppler*" -o -name "pdfinfo" -o -name "pdftoppm" \
+                  -o -name "tesseract*" -o -name "*.traineddata" \) \
+               -print | grep .; then
+            echo "::error::External OCR binaries leaked into the bundle"
+            exit 1
+          fi
+          echo "Bundle is clean"
+
       - name: Create ZIP archive
         run: |
           cd dist
-          zip -r QuickPdfOcr-macOS-ARM64.zip QuickPdfOcr.app
-          cd ..
-      
+          ditto -c -k --keepParent QuickPdfOcr.app QuickPdfOcr-macOS-universal2.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QuickPdfOcr-macOS-ARM64
-          path: dist/QuickPdfOcr-macOS-ARM64.zip
+          name: QuickPdfOcr-macOS-universal2
+          path: dist/QuickPdfOcr-macOS-universal2.zip
