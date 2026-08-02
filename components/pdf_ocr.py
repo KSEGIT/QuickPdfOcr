@@ -53,6 +53,8 @@ class PdfOcrProcessor:
                 if renderer.page_count() == 0:
                     return DEFAULT_DPI
                 width_in, height_in = renderer.page_size_inches(0)
+        except FileNotFoundError:
+            raise
         except Exception as exc:
             print(f"Warning: could not auto-detect DPI ({exc}), using {DEFAULT_DPI}")
             return DEFAULT_DPI
