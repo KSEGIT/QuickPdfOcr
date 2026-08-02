@@ -11,7 +11,6 @@ from PySide6.QtGui import QIcon
 from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
 from ui.loading_screen import LoadingScreen
-from components.poppler_utils import setup_bundled_binaries
 
 # Constants
 LOADING_TO_MAIN_DELAY = 300  # Delay in milliseconds before showing main window
@@ -20,18 +19,23 @@ LOADING_TO_MAIN_DELAY = 300  # Delay in milliseconds before showing main window
 def initialize_application(loading_screen):
     """
     Initialize application components with progress feedback
-    
+
     Args:
         loading_screen: LoadingScreen instance to update with progress
     """
-    # Setup bundled binaries (Poppler and Tesseract) if available
-    def progress_callback(message):
-        """Update loading screen with progress message"""
-        loading_screen.set_progress(message)
-        QApplication.processEvents()  # Process GUI events to update the display
-    
-    setup_bundled_binaries(progress_callback=progress_callback)
-    
+    # There are no external binaries to locate any more: PDF rendering is
+    # bundled in the pypdfium2 wheel and OCR comes from the OS on macOS.
+    loading_screen.set_progress("Preparing OCR engine...")
+    QApplication.processEvents()
+
+    # Instantiating the engine here surfaces any platform problem on the
+    # loading screen rather than on the first OCR run.
+    from components.ocr import get_engine
+
+    engine = get_engine()
+    loading_screen.set_progress(f"Using {engine.name}...")
+    QApplication.processEvents()
+
     loading_screen.set_progress("Finalizing initialization...")
     QApplication.processEvents()
 
