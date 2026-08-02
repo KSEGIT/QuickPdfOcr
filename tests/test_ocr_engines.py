@@ -70,3 +70,32 @@ class TestTesseractEngine(EngineContractTests):
         from components.ocr.tesseract_engine import TesseractOcrEngine
 
         return TesseractOcrEngine()
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Vision is macOS-only")
+class TestVisionEngine(EngineContractTests):
+    @staticmethod
+    def engine_factory():
+        from components.ocr.vision_engine import VisionOcrEngine
+
+        return VisionOcrEngine()
+
+    def test_supports_polish(self, engine):
+        """Issue #26's document is a Polish invoice."""
+        assert "pl-PL" in engine.supported_languages()
+
+    def test_language_codes_are_bcp47(self, engine):
+        assert all("-" in code for code in engine.supported_languages())
+
+    def test_orders_lines_top_to_bottom(self, engine, sample_pdf):
+        """Vision returns observations in no guaranteed order; the engine must
+        sort them, or multi-line documents come out scrambled."""
+        from components.rendering import get_renderer
+
+        with get_renderer(sample_pdf) as renderer:
+            page = renderer.render_page(0, dpi=300)
+
+        text = engine.recognize(page)
+
+        assert text.index("FAKTURA") < text.index("1234,56")
+        assert text.index("1234,56") < text.index("527-10-26-863")
