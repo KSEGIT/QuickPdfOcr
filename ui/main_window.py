@@ -6,13 +6,14 @@ text display with copy functionality
 
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt, Signal, QThread, QTimer
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 
 from components.ocr_worker import OCRWorker
+from components.ocr import describe_language, get_engine
 
 
 class DropZoneLabel(QLabel):
@@ -111,7 +112,11 @@ class MainWindow(QMainWindow):
         self.current_file = None
         self.ocr_thread = None
         self.ocr_worker = None
-        
+
+        # Query the platform engine once; the language list depends on the OS
+        # version, so it is never hardcoded.
+        self.engine = get_engine()
+
         self.setWindowTitle("QuickPdfOcr")
         self.setMinimumSize(600, 500)
         
@@ -152,7 +157,22 @@ class MainWindow(QMainWindow):
         """)
         self.open_btn.clicked.connect(self._open_file_dialog)
         layout.addWidget(self.open_btn)
-        
+
+        # Language selector, populated from whichever engine this platform uses
+        language_layout = QHBoxLayout()
+        language_layout.setSpacing(10)
+
+        language_caption = QLabel("Language:")
+        language_caption.setStyleSheet("color: #333;")
+        language_layout.addWidget(language_caption)
+
+        self.language_combo = QComboBox()
+        self.language_combo.setMinimumHeight(30)
+        self._populate_languages()
+        language_layout.addWidget(self.language_combo, 1)
+
+        layout.addLayout(language_layout)
+
         # File name label (hidden initially)
         self.file_label = QLabel("")
         self.file_label.setStyleSheet("color: #333; font-weight: bold;")
@@ -291,7 +311,23 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.start_over_btn)
         
         layout.addLayout(button_layout)
-    
+
+    def _populate_languages(self):
+        """Fill the language dropdown from the active engine.
+
+        Vision's language list grows with the macOS version and Tesseract's
+        depends on installed .traineddata, so this is queried at runtime.
+        """
+        self.language_combo.addItem(f"Automatic ({self.engine.name})", None)
+
+        for code in self.engine.supported_languages():
+            self.language_combo.addItem(f"{describe_language(code)} ({code})", code)
+
+    def _selected_languages(self):
+        """Language codes for the current selection, or None for automatic."""
+        code = self.language_combo.currentData()
+        return [code] if code else None
+
     def _open_file_dialog(self):
         """Open file picker dialog"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -357,6 +393,7 @@ class MainWindow(QMainWindow):
         self.start_ocr_btn.setEnabled(False)
         self.open_btn.setEnabled(False)
         self.drop_zone.setAcceptDrops(False)
+        self.language_combo.setEnabled(False)
 
         # Show progress
         self.progress_label.setText("⏳ Converting PDF to images...")
@@ -373,7 +410,7 @@ class MainWindow(QMainWindow):
 
         # Create worker thread
         self.ocr_thread = QThread()
-        self.ocr_worker = OCRWorker(self.current_file)
+        self.ocr_worker = OCRWorker(self.current_file, languages=self._selected_languages())
         self.ocr_worker.moveToThread(self.ocr_thread)
         
         # Connect signals
@@ -417,7 +454,8 @@ class MainWindow(QMainWindow):
         self.start_ocr_btn.setEnabled(True)
         self.open_btn.setEnabled(True)
         self.drop_zone.setAcceptDrops(True)
-    
+        self.language_combo.setEnabled(True)
+
     def _on_ocr_error(self, error_msg: str):
         """Handle OCR error"""
         self.progress_label.setText(f"❌ Error: {error_msg}")
@@ -439,7 +477,8 @@ class MainWindow(QMainWindow):
         self.start_ocr_btn.setEnabled(True)
         self.open_btn.setEnabled(True)
         self.drop_zone.setAcceptDrops(True)
-    
+        self.language_combo.setEnabled(True)
+
     def _copy_to_clipboard(self):
         """Copy text to clipboard (works on macOS, Linux, Windows)"""
         from PySide6.QtGui import QGuiApplication

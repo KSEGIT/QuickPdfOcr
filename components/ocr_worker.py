@@ -15,9 +15,10 @@ class OCRWorker(QObject):
     finished = Signal(str)  # Completed with extracted text
     error = Signal(str)     # Error message
 
-    def __init__(self, pdf_path: str):
+    def __init__(self, pdf_path: str, languages: list[str] | None = None):
         super().__init__()
         self.pdf_path = pdf_path
+        self.languages = languages
         self._stop_requested = False
 
     def request_stop(self):
@@ -28,7 +29,7 @@ class OCRWorker(QObject):
         """Execute OCR processing"""
         try:
             # Create OCR processor
-            processor = PdfOcrProcessor(lang='eng')
+            processor = PdfOcrProcessor(languages=self.languages)
 
             # Wrap the progress callback to check for stop requests between
             # pages.  The processor calls this once per page, giving us a
