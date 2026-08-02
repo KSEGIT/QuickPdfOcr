@@ -11,6 +11,7 @@ from dataclasses import dataclass
 # from 24-bit RGB -- it returns a 0x0 image and Vision then fails with a bare
 # None result rather than an error, which is very hard to debug.
 SUPPORTED_MODES = ("RGBX",)
+BYTES_PER_PIXEL = 4
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,11 @@ class PageImage:
         if self.width <= 0 or self.height <= 0:
             raise ValueError(
                 f"Invalid dimensions {self.width}x{self.height}; both must be positive"
+            )
+        if self.stride < self.width * BYTES_PER_PIXEL:
+            raise ValueError(
+                f"stride {self.stride} is too small for width {self.width} * "
+                f"{BYTES_PER_PIXEL} bytes/pixel = {self.width * BYTES_PER_PIXEL}"
             )
         if len(self.buffer) != self.expected_size:
             raise ValueError(
