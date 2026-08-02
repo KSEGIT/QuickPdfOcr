@@ -14,15 +14,33 @@ permissions:
 jobs:
   build-macos:
     runs-on: macos-14  # Apple Silicon
+    env:
+      QUICKPDFOCR_UNIVERSAL2: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release_tag || github.ref }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      # No actions/setup-python here: it provisions Homebrew-style arm64-only
+      # interpreters on Apple Silicon runners. PyInstaller freezes the host
+      # interpreter into the app, so a thin interpreter produces a thin app
+      # no matter what packaging/quickpdfocr.spec's target_arch says.
+      # python.org's own macos11.pkg installers are universal2 (arm64 +
+      # x86_64) for the duration of a release's bugfix-support window;
+      # 3.12.10 is the last 3.12.x release with one -- later 3.12.x releases
+      # are source-only security fixes with no macOS installer.
+      - name: Install universal2 Python from python.org
+        run: |
+          curl -fsSL -o python-installer.pkg \
+            https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg
+          sudo installer -pkg python-installer.pkg -target /
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 --version
+          lipo -info /Library/Frameworks/Python.framework/Versions/3.12/bin/python3
+
+      - name: Create virtual environment
+        run: |
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 -m venv .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       # No Homebrew step. Poppler and Tesseract are not used on macOS:
       # rendering ships inside the pypdfium2 wheel and OCR comes from the OS.
@@ -35,11 +53,14 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -v
 
-      - name: Build .app
+      - name: Prepare universal2 dependencies
+        run: python packaging/prepare_universal_deps.py
+
+      - name: Build .app (universal2)
         run: python build.py
 
-      - name: Make universal2 and sign
-        run: python packaging/make_universal.py
+      - name: Verify universal2 and sign
+        run: python packaging/verify_universal.py
 
       - name: Smoke test the built app
         run: |
