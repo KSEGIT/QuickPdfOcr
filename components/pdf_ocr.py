@@ -1,321 +1,202 @@
 #!/usr/bin/env python3
-"""
-PDF OCR Component - Extract text from PDF files using OCR
-Uses pytesseract (Tesseract OCR) - the most popular open-source OCR engine
+"""PDF OCR orchestration.
+
+Deliberately knows nothing about binaries, dylibs, PATH, or TESSDATA_PREFIX.
+It renders pages through a PdfRenderer and recognizes them through an
+OcrEngine; which concrete implementations those are is decided in
+components/rendering/__init__.py and components/ocr/__init__.py.
 """
 
-import os
-import platform
 import sys
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Callable, Optional
 
-try:
-    from pdf2image import convert_from_path
-    from pdf2image.exceptions import PDFInfoNotInstalledError
-    import pytesseract
-    from PIL import Image
-    import PyPDF2
-except ImportError as e:
-    print(f"Error: Missing required library - {e}")
-    print("\nPlease install required packages:")
-    print("  pip install pytesseract pdf2image pillow PyPDF2")
-    print("\nAlso install system dependencies:")
-    print("  macOS: brew install tesseract poppler")
-    print("  Linux: sudo apt-get install tesseract-ocr poppler-utils")
-    sys.exit(1)
+from components.ocr.base import OcrEngine
+from components.rendering import get_renderer
+
+# DPI bands keyed on the page's longest edge in inches. Small pages (receipts)
+# need more pixels per inch to resolve small type; very large pages do not.
+DPI_BANDS = (
+    (6, 400, "small document detected"),
+    (10, 300, "standard document size"),
+    (14, 250, "large document detected"),
+)
+FALLBACK_DPI = 200
+DEFAULT_DPI = 300
 
 
 class PdfOcrProcessor:
-    """PDF OCR Processor Component"""
-    
-    def __init__(self, lang='eng'):
+    """Extracts text from a PDF, one page at a time."""
+
+    def __init__(
+        self,
+        engine: Optional[OcrEngine] = None,
+        languages: Optional[list[str]] = None,
+    ):
         """
-        Initialize the PDF OCR processor
-        
         Args:
-            lang (str): Tesseract language code (default: 'eng' for English)
+            engine: OCR backend. Defaults to the platform's engine.
+            languages: Engine-native language codes. Defaults to the engine's own.
         """
-        self.lang = lang
+        if engine is None:
+            from components.ocr import get_engine
+
+            engine = get_engine()
+        self.engine = engine
+        self.languages = languages
         self.dpi = None
-    
-    def detect_optimal_dpi(self, pdf_path: Path) -> int:
-        """
-        Auto-detect optimal DPI based on PDF characteristics
-        
-        Args:
-            pdf_path (Path): Path to the PDF file
-        
-        Returns:
-            int: Recommended DPI value
-        """
+
+    def detect_optimal_dpi(self, pdf_path) -> int:
+        """Pick a rendering resolution from the first page's physical size."""
         try:
-            with open(pdf_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                
-                # Get first page to analyze
-                if len(pdf_reader.pages) == 0:
-                    return 300  # Default fallback
-                
-                page = pdf_reader.pages[0]
-                
-                # Get page dimensions (in points, 1 point = 1/72 inch)
-                if '/MediaBox' in page:
-                    media_box = page.mediabox
-                    width_points = float(media_box.width)
-                    height_points = float(media_box.height)
-                    
-                    # Convert to inches
-                    width_inches = width_points / 72
-                    height_inches = height_points / 72
-                    
-                    # Determine DPI based on page size
-                    # Small pages (like receipts) need higher DPI
-                    # Standard letter/A4 can use medium DPI
-                    # Large pages can use lower DPI
-                    
-                    max_dimension = max(width_inches, height_inches)
-                    
-                    if max_dimension < 6:  # Small document (receipt, card, etc.)
-                        dpi = 400
-                        reason = "small document detected"
-                    elif max_dimension < 10:  # Standard size (letter, A4)
-                        dpi = 300
-                        reason = "standard document size"
-                    elif max_dimension < 14:  # Legal, A3
-                        dpi = 250
-                        reason = "large document detected"
-                    else:  # Very large documents
-                        dpi = 200
-                        reason = "very large document detected"
-                    
-                    print(f"Auto-detected DPI: {dpi} ({reason})")
-                    print(f"  Page size: {width_inches:.1f}\" × {height_inches:.1f}\"")
-                    return dpi
-                
-        except Exception as e:
-            print(f"Warning: Could not auto-detect DPI ({e}), using default 300")
-        
-        return 300  # Default fallback
-    
+            with get_renderer(pdf_path) as renderer:
+                if renderer.page_count() == 0:
+                    return DEFAULT_DPI
+                width_in, height_in = renderer.page_size_inches(0)
+        except Exception as exc:
+            print(f"Warning: could not auto-detect DPI ({exc}), using {DEFAULT_DPI}")
+            return DEFAULT_DPI
+
+        longest_edge = max(width_in, height_in)
+        for limit, dpi, reason in DPI_BANDS:
+            if longest_edge < limit:
+                print(f"Auto-detected DPI: {dpi} ({reason})")
+                print(f'  Page size: {width_in:.1f}" x {height_in:.1f}"')
+                return dpi
+
+        print(f"Auto-detected DPI: {FALLBACK_DPI} (very large document detected)")
+        return FALLBACK_DPI
+
     def process(
-        self, 
-        pdf_path: str, 
-        output_file: Optional[str] = None, 
+        self,
+        pdf_path,
+        output_file: Optional[str] = None,
         dpi: Optional[int] = None,
-        progress_callback: Optional[Callable[[str], None]] = None
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> str:
-        """
-        Extract text from PDF using OCR
-        
+        """Extract text from every page of a PDF.
+
         Args:
-            pdf_path (str): Path to the PDF file
-            output_file (str, optional): Path to save extracted text. If None, doesn't save to file
-            dpi (int, optional): Resolution for PDF to image conversion. If None, auto-detects optimal DPI
-            progress_callback (callable, optional): Function to call with progress updates
-        
+            pdf_path: Path to the PDF.
+            output_file: If given, the extracted text is also written here.
+            dpi: Rendering resolution. Auto-detected when None.
+            progress_callback: Called with a status string per page.
+
         Returns:
-            str: Extracted text
-        
+            The extracted text, with a '--- Page N ---' header per page.
+
         Raises:
-            FileNotFoundError: If PDF file doesn't exist
-            ValueError: If file is not a PDF
-            RuntimeError: If PDF conversion or OCR fails
+            FileNotFoundError: The PDF does not exist.
+            ValueError: The path is not a PDF.
+            RuntimeError: The document could not be opened.
         """
-        # Validate input file
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-        
-        if not pdf_path.suffix.lower() == '.pdf':
+        if pdf_path.suffix.lower() != ".pdf":
             raise ValueError(f"File must be a PDF: {pdf_path}")
-        
+
         self._log(f"Processing PDF: {pdf_path.name}", progress_callback)
-        
-        # Auto-detect DPI if not specified
+
         if dpi is None:
             dpi = self.detect_optimal_dpi(pdf_path)
-        
         self.dpi = dpi
-        self._log(f"Converting PDF to images (DPI: {dpi})...", progress_callback)
-        
-        # Convert PDF to images
+
         try:
-            images = convert_from_path(pdf_path, dpi=dpi)
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "poppler" in error_msg or "pdftoppm" in error_msg or "pdfinfo" in error_msg:
-                raise RuntimeError(
-                    f"Poppler utilities not found. Please ensure Poppler is installed.\n"
-                    f"Original error: {e}"
-                )
-            else:
-                raise RuntimeError(f"Failed to convert PDF to images: {e}")
-        
-        self._log(f"Found {len(images)} page(s)", progress_callback)
-        
-        # Extract text from each page
-        all_text = []
-        
-        # Get tessdata configuration if running from bundle
-        tessdata_config = self._get_tessdata_config()
-        
-        for i, image in enumerate(images, 1):
-            self._log(f"Processing page {i}/{len(images)}...", progress_callback)
-            try:
-                # Perform OCR on the image
-                # Pass tessdata config if available to ensure Tesseract finds language files
-                if tessdata_config:
-                    text = pytesseract.image_to_string(image, lang=self.lang, config=tessdata_config)
-                else:
-                    text = pytesseract.image_to_string(image, lang=self.lang)
-                all_text.append(f"--- Page {i} ---\n{text}\n")
-            except Exception as e:
-                error_msg = str(e).lower()
-                if "tesseract" in error_msg or "not found" in error_msg or "traineddata" in error_msg:
-                    # Critical error - Tesseract not available or misconfigured
-                    tessdata_prefix = os.environ.get('TESSDATA_PREFIX', 'Not set')
-                    tessdata_dir = os.environ.get('TESSDATA_DIR', 'Not set')
-                    raise RuntimeError(
-                        f"Tesseract OCR not found or not configured properly.\n"
-                        f"TESSDATA_PREFIX: {tessdata_prefix}\n"
-                        f"TESSDATA_DIR: {tessdata_dir}\n"
-                        f"Original error: {e}"
-                    )
-                else:
-                    # Page-specific error - continue with other pages
-                    print(f"Warning: Failed to process page {i}: {e}")
-                    all_text.append(f"--- Page {i} ---\n[OCR Error: {e}]\n")
-        
-        # Combine all text
-        final_text = "\n".join(all_text)
-        
-        # Save results if output file specified
+            renderer = get_renderer(pdf_path)
+        except Exception as exc:
+            raise RuntimeError(f"Failed to open PDF: {exc}") from exc
+
+        try:
+            total = renderer.page_count()
+            self._log(f"Found {total} page(s)", progress_callback)
+
+            sections = []
+            for index in range(total):
+                self._log(f"Processing page {index + 1}/{total}...", progress_callback)
+                sections.append(self._process_page(renderer, index, dpi))
+        finally:
+            renderer.close()
+
+        final_text = "\n".join(sections)
+
         if output_file:
             output_path = Path(output_file)
-            output_path.write_text(final_text, encoding='utf-8')
+            output_path.write_text(final_text, encoding="utf-8")
             self._log(f"Text extracted and saved to: {output_path}", progress_callback)
-        
+
         return final_text
-    
-    def _get_tessdata_config(self) -> Optional[str]:
-        """
-        Get Tesseract configuration string for tessdata directory if running from bundle
-        
-        Returns:
-            str or None: Configuration string to pass to pytesseract, or None if not needed
-        """
-        # Only needed when running from PyInstaller bundle
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            bundle_dir = Path(sys._MEIPASS)
-            tessdata_path = bundle_dir / "tesseract" / "tessdata"
-            
-            if tessdata_path.exists():
-                # Use --tessdata-dir to explicitly tell Tesseract where to find language data
-                # This is more reliable than relying on TESSDATA_PREFIX alone
-                tessdata_str = os.path.abspath(str(tessdata_path))
-                
-                # On Windows, use forward slashes which Tesseract handles better
-                # and add double quotes if the path contains spaces
-                if platform.system() == "Windows":
-                    # Convert backslashes to forward slashes for better compatibility
-                    tessdata_str = tessdata_str.replace('\\', '/')
-                    # Add double quotes if path contains spaces
-                    if ' ' in tessdata_str:
-                        tessdata_str = f'"{tessdata_str}"'
-                else:
-                    # On Unix-like systems, add quotes if path contains spaces
-                    if ' ' in tessdata_str:
-                        # Use double quotes for better compatibility
-                        tessdata_str = f'"{tessdata_str}"'
-                
-                return f'--tessdata-dir {tessdata_str}'
-        
-        return None
-    
+
+    def _process_page(self, renderer, index: int, dpi: int) -> str:
+        """Render and recognize one page. A page-level failure is recorded in
+        the output rather than aborting the whole document."""
+        try:
+            page = renderer.render_page(index, dpi=dpi)
+            text = self.engine.recognize(page, languages=self.languages)
+        except Exception as exc:
+            print(f"Warning: failed to process page {index + 1}: {exc}")
+            return f"--- Page {index + 1} ---\n[OCR Error: {exc}]\n"
+        return f"--- Page {index + 1} ---\n{text}\n"
+
     def _log(self, message: str, callback: Optional[Callable[[str], None]] = None):
-        """
-        Log a message, either via callback or print
-        
-        Args:
-            message (str): Message to log
-            callback (callable, optional): Progress callback function
-        """
+        """Report progress via the callback if given, else stdout."""
         if callback:
             callback(message)
         else:
             print(message)
 
 
-# Backward compatibility function
-def ocr_pdf(pdf_path, output_file=None, dpi=None, lang='eng'):
-    """
-    Legacy function for backward compatibility
-    Extract text from PDF using OCR
-    
-    Args:
-        pdf_path (str): Path to the PDF file
-        output_file (str, optional): Path to save extracted text. If None, prints to stdout
-        dpi (int, optional): Resolution for PDF to image conversion. If None, auto-detects optimal DPI
-        lang (str): Tesseract language code (default: 'eng' for English)
-    
-    Returns:
-        str: Extracted text
-    """
-    processor = PdfOcrProcessor(lang=lang)
+def ocr_pdf(pdf_path, output_file=None, dpi=None, languages=None) -> str:
+    """Convenience wrapper for command-line use."""
+    processor = PdfOcrProcessor(languages=languages)
     final_text = processor.process(pdf_path, output_file=output_file, dpi=dpi)
-    
+
     if not output_file:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("EXTRACTED TEXT:")
-        print("="*60)
+        print("=" * 60)
         print(final_text)
-    
+
     return final_text
 
 
 def main():
-    """Main entry point for command-line usage"""
+    """Command-line entry point."""
     if len(sys.argv) < 2:
         print("Usage: python pdf_ocr.py <pdf_file> [output_file] [--dpi DPI] [--lang LANG]")
         print("\nExamples:")
-        print("  python pdf_ocr.py document.pdf                      # Auto-detect DPI")
-        print("  python pdf_ocr.py document.pdf output.txt")
-        print("  python pdf_ocr.py document.pdf --dpi 400 --lang eng # Manual DPI")
-        print("  python pdf_ocr.py document.pdf output.txt --lang fra")
-        print("\nCommon language codes:")
-        print("  eng = English, fra = French, deu = German, spa = Spanish")
-        print("  chi_sim = Chinese Simplified, jpn = Japanese")
-        print("\nNote: DPI is auto-detected by default based on document size")
+        print("  python pdf_ocr.py document.pdf")
+        print("  python pdf_ocr.py document.pdf output.txt --dpi 400")
+        print("  python pdf_ocr.py document.pdf --lang pl-PL   # macOS (Vision)")
+        print("  python pdf_ocr.py document.pdf --lang pol      # Windows/Linux")
+        print("\nDPI is auto-detected by default based on page size.")
         sys.exit(1)
-    
-    # Parse arguments
+
     pdf_path = sys.argv[1]
     output_file = None
-    dpi = None  # Auto-detect by default
-    lang = 'eng'
-    
+    dpi = None
+    languages = None
+
     i = 2
     while i < len(sys.argv):
         arg = sys.argv[i]
-        if arg == '--dpi' and i + 1 < len(sys.argv):
+        if arg == "--dpi" and i + 1 < len(sys.argv):
             dpi = int(sys.argv[i + 1])
             i += 2
-        elif arg == '--lang' and i + 1 < len(sys.argv):
-            lang = sys.argv[i + 1]
+        elif arg == "--lang" and i + 1 < len(sys.argv):
+            languages = sys.argv[i + 1].split("+")
             i += 2
-        elif not arg.startswith('--'):
+        elif not arg.startswith("--"):
             output_file = arg
             i += 1
         else:
             i += 1
-    
-    # Run OCR
+
     try:
-        ocr_pdf(pdf_path, output_file, dpi=dpi, lang=lang)
-        print("\n✓ OCR completed successfully!")
-    except Exception as e:
-        print(f"\n✗ Error: {e}", file=sys.stderr)
+        ocr_pdf(pdf_path, output_file, dpi=dpi, languages=languages)
+        print("\n[OK] OCR completed successfully!")
+    except Exception as exc:
+        print(f"\n[FAIL] Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
