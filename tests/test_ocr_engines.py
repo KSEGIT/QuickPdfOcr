@@ -162,3 +162,29 @@ class TestVisionEngine(EngineContractTests):
         lines = engine._read_in_order([top, bottom])
 
         assert lines == ["line one", "line two"]
+
+
+def test_factory_returns_the_platform_engine():
+    from components.ocr import get_engine
+
+    engine = get_engine()
+
+    if sys.platform == "darwin":
+        assert engine.name == "Apple Vision"
+    else:
+        assert engine.name == "Tesseract"
+
+
+def test_describe_language_is_human_readable():
+    from components.ocr import describe_language
+
+    assert describe_language("pl-PL") == "Polish"
+    assert describe_language("pol") == "Polish"
+    assert describe_language("en-US") == "English"
+    assert describe_language("eng") == "English"
+
+
+def test_describe_language_falls_back_to_the_raw_code():
+    from components.ocr import describe_language
+
+    assert describe_language("zz-ZZ") == "zz-ZZ"
