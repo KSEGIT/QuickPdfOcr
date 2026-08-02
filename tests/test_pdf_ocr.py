@@ -81,6 +81,13 @@ def test_detects_250_dpi_for_a4(sample_pdf):
     assert processor.detect_optimal_dpi(sample_pdf) == 250
 
 
+def test_detect_optimal_dpi_propagates_missing_file(tmp_path):
+    processor = PdfOcrProcessor(engine=FakeEngine())
+
+    with pytest.raises(FileNotFoundError):
+        processor.detect_optimal_dpi(tmp_path / "nope.pdf")
+
+
 def test_rejects_a_missing_file(tmp_path):
     processor = PdfOcrProcessor(engine=FakeEngine())
 
@@ -97,13 +104,20 @@ def test_rejects_a_non_pdf(tmp_path):
         processor.process(other)
 
 
-def test_one_failing_page_does_not_abort_the_document(sample_pdf):
-    class ExplodingEngine(FakeEngine):
+def test_one_failing_page_does_not_abort_the_document(multipage_pdf):
+    class FirstPageExplodingEngine(FakeEngine):
         def recognize(self, page, languages=None):
-            raise RuntimeError("boom")
+            self.calls.append((page, languages))
+            if len(self.calls) == 1:
+                raise RuntimeError("boom")
+            return f"good text {len(self.calls)}"
 
-    processor = PdfOcrProcessor(engine=ExplodingEngine())
+    engine = FirstPageExplodingEngine()
+    processor = PdfOcrProcessor(engine=engine)
 
-    text = processor.process(sample_pdf)
+    text = processor.process(multipage_pdf)
 
-    assert "OCR Error" in text
+    assert "--- Page 1 ---\n[OCR Error" in text
+    assert "good text 2" in text
+    assert "good text 3" in text
+    assert len(engine.calls) == 3

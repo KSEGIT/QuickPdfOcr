@@ -19,3 +19,12 @@ def sample_pdf() -> Path:
     if not path.exists():
         pytest.skip(f"fixture missing: {path}; run tests/fixtures/make_fixture.py")
     return path
+
+
+@pytest.fixture
+def multipage_pdf() -> Path:
+    """Path to the committed three-page fixture (pages read 'STRONA 1/2/3')."""
+    path = FIXTURE_DIR / "sample_multipage.pdf"
+    if not path.exists():
+        pytest.skip(f"fixture missing: {path}; run tests/fixtures/make_fixture.py")
+    return path

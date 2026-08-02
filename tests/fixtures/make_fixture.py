@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Regenerate tests/fixtures/sample_invoice.pdf. macOS only; run manually.
+"""Regenerate tests/fixtures/sample_invoice.pdf and sample_multipage.pdf.
+
+macOS only; run manually.
 
     python tests/fixtures/make_fixture.py
 
@@ -30,3 +32,25 @@ for i, line in enumerate(LINES):
 Quartz.CGPDFContextEndPage(ctx)
 Quartz.CGPDFContextClose(ctx)
 print(f"wrote {out}")
+
+# Three-page fixture used to test that OCR containment (one bad page does not
+# abort the rest of the document) actually exercises multiple pages, not just
+# a single-page document that happens to fail.
+multipage_out = Path(__file__).parent / "sample_multipage.pdf"
+multipage_url = NSURL.fileURLWithPath_(str(multipage_out))
+multipage_ctx = Quartz.CGPDFContextCreateWithURL(
+    multipage_url, Quartz.CGRectMake(0, 0, 595, 842), None
+)
+for page_num in range(1, 4):
+    page_lines = [
+        f"STRONA {page_num}".encode("ascii"),
+        f"Kwota brutto: {page_num}00,00 PLN".encode("ascii"),
+    ]
+    Quartz.CGPDFContextBeginPage(multipage_ctx, None)
+    Quartz.CGContextSelectFont(multipage_ctx, b"Helvetica", 24.0, Quartz.kCGEncodingMacRoman)
+    Quartz.CGContextSetTextDrawingMode(multipage_ctx, Quartz.kCGTextFill)
+    for i, line in enumerate(page_lines):
+        Quartz.CGContextShowTextAtPoint(multipage_ctx, 60, 700 - i * 40, line, len(line))
+    Quartz.CGPDFContextEndPage(multipage_ctx)
+Quartz.CGPDFContextClose(multipage_ctx)
+print(f"wrote {multipage_out}")
