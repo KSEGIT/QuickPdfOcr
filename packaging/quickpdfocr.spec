@@ -8,11 +8,23 @@ issue #26's @rpath lookup failed, and re-extracting the bundle each run is slow.
 There are no external binaries to bundle any more.
 """
 
+import os
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(SPECPATH).parent
 IS_MACOS = sys.platform == "darwin"
+
+# universal2 is opt-in via this env var, set by CI after
+# packaging/prepare_universal_deps.py has fattened pypdfium2's dylib in
+# site-packages and after CI has installed a universal2 interpreter from
+# python.org (Homebrew and uv publish arm64-only interpreters for Apple
+# Silicon, so a normal local dev venv cannot supply one). PyInstaller errors
+# out if target_arch="universal2" is requested while any collected binary --
+# including the interpreter itself -- is thin, which is exactly the check we
+# want in CI and exactly what we must not impose on an arm64 dev machine.
+UNIVERSAL2 = os.environ.get("QUICKPDFOCR_UNIVERSAL2") == "1"
+TARGET_ARCH = "universal2" if (IS_MACOS and UNIVERSAL2) else None
 
 a = Analysis(
     [str(PROJECT_ROOT / "main.py")],
@@ -57,6 +69,7 @@ exe = EXE(
     upx=False,
     console=False,
     icon=str(PROJECT_ROOT / "resources" / ("icon.icns" if IS_MACOS else "icon.ico")),
+    target_arch=TARGET_ARCH,
 )
 
 coll = COLLECT(
