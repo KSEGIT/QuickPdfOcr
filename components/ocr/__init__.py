@@ -16,7 +16,7 @@ __all__ = ["OcrEngine", "get_engine", "describe_language"]
 # Maps both BCP-47 (Vision) and ISO 639-2 (Tesseract) codes to display names,
 # so the UI can label whichever engine is active.
 _LANGUAGE_NAMES = {
-    "ar": "Arabic", "ara": "Arabic",
+    "ar": "Arabic", "ara": "Arabic", "ars": "Arabic",
     "cs": "Czech", "ces": "Czech",
     "da": "Danish", "dan": "Danish",
     "de": "German", "deu": "German",
