@@ -55,12 +55,21 @@ class PdfiumRenderer:
             rev_byteorder=True,
             prefer_bgrx=True,
         )
+        # Validate that the library produced RGBX format. If either prefer_bgrx
+        # or rev_byteorder stopped taking effect, this will catch it loudly
+        # rather than silently swapping red and blue channels to CoreGraphics.
+        mode = bitmap.mode
+        if mode != "RGBX":
+            raise RuntimeError(
+                f"Expected RGBX pixel format from render(), got {mode!r}. "
+                "Check that prefer_bgrx=True and rev_byteorder=True are still effective."
+            )
         return PageImage(
             width=bitmap.width,
             height=bitmap.height,
             stride=bitmap.stride,
             buffer=bytes(bitmap.buffer),
-            mode="RGBX",
+            mode=mode,
         )
 
     def close(self) -> None:
