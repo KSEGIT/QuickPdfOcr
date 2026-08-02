@@ -4,6 +4,7 @@ QuickPdfOcr - GUI Application Entry Point
 A simple Qt6-based PDF OCR application
 """
 
+import re
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
@@ -41,7 +42,14 @@ def initialize_application(loading_screen):
 
 
 def _run_selftest(argv) -> int:
-    """Run OCR on a PDF without starting the GUI. Returns a process exit code."""
+    """Run OCR on a PDF without starting the GUI.
+
+    Exit codes:
+        0 -- OCR ran and produced text beyond the page headers.
+        1 -- OCR raised an exception (missing file, unreadable PDF, engine failure).
+        2 -- usage error: --selftest was given with no path following it.
+        3 -- OCR completed without error but extracted no text.
+    """
     index = argv.index("--selftest")
     if index + 1 >= len(argv):
         print("--selftest requires a PDF path", file=sys.stderr)
@@ -60,10 +68,14 @@ def _run_selftest(argv) -> int:
         print(f"self-test FAILED: {exc}", file=sys.stderr)
         return 1
 
-    stripped = text.replace("--- Page 1 ---", "").strip()
+    # The processor always adds "--- Page N ---" headers, so every one of them
+    # must be stripped before checking for actual content -- not just the
+    # first, or a multi-page document with zero OCR text still "passes" on
+    # the strength of its own page headers.
+    stripped = re.sub(r'---\s*Page\s+\d+\s*---', '', text).strip()
     if not stripped:
         print("self-test FAILED: no text extracted", file=sys.stderr)
-        return 1
+        return 3
 
     print(f"self-test PASSED, {len(stripped)} characters extracted")
     print(text)

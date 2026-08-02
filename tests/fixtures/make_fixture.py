@@ -54,3 +54,19 @@ for page_num in range(1, 4):
     Quartz.CGPDFContextEndPage(multipage_ctx)
 Quartz.CGPDFContextClose(multipage_ctx)
 print(f"wrote {multipage_out}")
+
+# Two-page fixture with no drawn text on either page. Used to test that the
+# self-test entry point (main._run_selftest) correctly reports "no text
+# extracted" for a document Vision/Tesseract legitimately return nothing for,
+# rather than false-passing on the "--- Page N ---" headers PdfOcrProcessor
+# adds regardless of content.
+blank_out = Path(__file__).parent / "sample_blank.pdf"
+blank_url = NSURL.fileURLWithPath_(str(blank_out))
+blank_ctx = Quartz.CGPDFContextCreateWithURL(
+    blank_url, Quartz.CGRectMake(0, 0, 595, 842), None
+)
+for _ in range(2):
+    Quartz.CGPDFContextBeginPage(blank_ctx, None)
+    Quartz.CGPDFContextEndPage(blank_ctx)
+Quartz.CGPDFContextClose(blank_ctx)
+print(f"wrote {blank_out}")

@@ -28,3 +28,12 @@ def multipage_pdf() -> Path:
     if not path.exists():
         pytest.skip(f"fixture missing: {path}; run tests/fixtures/make_fixture.py")
     return path
+
+
+@pytest.fixture
+def blank_pdf() -> Path:
+    """Path to the committed two-page fixture with no drawn text on either page."""
+    path = FIXTURE_DIR / "sample_blank.pdf"
+    if not path.exists():
+        pytest.skip(f"fixture missing: {path}; run tests/fixtures/make_fixture.py")
+    return path
