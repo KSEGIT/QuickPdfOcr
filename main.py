@@ -40,8 +40,44 @@ def initialize_application(loading_screen):
     QApplication.processEvents()
 
 
+def _run_selftest(argv) -> int:
+    """Run OCR on a PDF without starting the GUI. Returns a process exit code."""
+    index = argv.index("--selftest")
+    if index + 1 >= len(argv):
+        print("--selftest requires a PDF path", file=sys.stderr)
+        return 2
+
+    pdf_path = argv[index + 1]
+    from components.ocr import get_engine
+    from components.pdf_ocr import PdfOcrProcessor
+
+    engine = get_engine()
+    print(f"self-test: engine={engine.name} file={pdf_path}")
+
+    try:
+        text = PdfOcrProcessor().process(pdf_path)
+    except Exception as exc:
+        print(f"self-test FAILED: {exc}", file=sys.stderr)
+        return 1
+
+    stripped = text.replace("--- Page 1 ---", "").strip()
+    if not stripped:
+        print("self-test FAILED: no text extracted", file=sys.stderr)
+        return 1
+
+    print(f"self-test PASSED, {len(stripped)} characters extracted")
+    print(text)
+    return 0
+
+
 def main():
     """Main application entry point"""
+    # Headless self-test, used by CI to prove the packaged app can actually OCR.
+    # The existing build produced artifacts that were never executed, which is
+    # why issue #26 shipped.
+    if "--selftest" in sys.argv:
+        sys.exit(_run_selftest(sys.argv))
+
     # Print startup diagnostics
     print("\n" + "="*60)
     print("QuickPdfOcr - Starting Application")
