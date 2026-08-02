@@ -188,3 +188,12 @@ def test_describe_language_falls_back_to_the_raw_code():
     from components.ocr import describe_language
 
     assert describe_language("zz-ZZ") == "zz-ZZ"
+
+
+def test_describe_language_covers_every_language_the_engine_offers():
+    from components.ocr import describe_language, get_engine
+
+    engine = get_engine()
+
+    for code in engine.supported_languages():
+        assert describe_language(code) != code, f"{code!r} has no human-readable name"

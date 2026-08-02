@@ -328,6 +328,19 @@ class MainWindow(QMainWindow):
         code = self.language_combo.currentData()
         return [code] if code else None
 
+    def _set_controls_enabled(self, enabled: bool):
+        """Enable or disable the four interactive controls together.
+
+        Keeps start_ocr_btn, open_btn, language_combo, and the drop zone's
+        drop-acceptance in one consistent state, so no exit path -- success,
+        error, or a failed-cleanup early return -- can strand a subset of
+        them disabled while the rest of the window looks usable.
+        """
+        self.start_ocr_btn.setEnabled(enabled)
+        self.open_btn.setEnabled(enabled)
+        self.language_combo.setEnabled(enabled)
+        self.drop_zone.setAcceptDrops(enabled)
+
     def _open_file_dialog(self):
         """Open file picker dialog"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -387,13 +400,29 @@ class MainWindow(QMainWindow):
                         "ERROR: OCR thread did not terminate within 5 s after "
                         "terminate(). Aborting new OCR to avoid undefined state."
                     )
+                    # The stuck worker's run() exits via InterruptedError,
+                    # which emits no signal, so neither _on_ocr_success nor
+                    # _on_ocr_error will ever fire to re-enable the controls
+                    # the previous _start_ocr() call disabled. Re-enable them
+                    # here so the window isn't left permanently unusable.
+                    self._set_controls_enabled(True)
+                    self.progress_label.setText(
+                        "❌ The previous OCR run could not be stopped. Please try again."
+                    )
+                    self.progress_label.setStyleSheet("""
+                        QLabel {
+                            color: #C62828;
+                            font-size: 14px;
+                            padding: 10px;
+                            background-color: #FFCDD2;
+                            border-radius: 5px;
+                        }
+                    """)
+                    self.progress_label.show()
                     return
 
         # Disable buttons during processing
-        self.start_ocr_btn.setEnabled(False)
-        self.open_btn.setEnabled(False)
-        self.drop_zone.setAcceptDrops(False)
-        self.language_combo.setEnabled(False)
+        self._set_controls_enabled(False)
 
         # Show progress
         self.progress_label.setText("⏳ Converting PDF to images...")
@@ -451,10 +480,7 @@ class MainWindow(QMainWindow):
         self.start_over_btn.show()
         
         # Re-enable controls
-        self.start_ocr_btn.setEnabled(True)
-        self.open_btn.setEnabled(True)
-        self.drop_zone.setAcceptDrops(True)
-        self.language_combo.setEnabled(True)
+        self._set_controls_enabled(True)
 
     def _on_ocr_error(self, error_msg: str):
         """Handle OCR error"""
@@ -474,10 +500,7 @@ class MainWindow(QMainWindow):
         self.start_over_btn.show()
         
         # Re-enable controls
-        self.start_ocr_btn.setEnabled(True)
-        self.open_btn.setEnabled(True)
-        self.drop_zone.setAcceptDrops(True)
-        self.language_combo.setEnabled(True)
+        self._set_controls_enabled(True)
 
     def _copy_to_clipboard(self):
         """Copy text to clipboard (works on macOS, Linux, Windows)"""
@@ -521,5 +544,4 @@ class MainWindow(QMainWindow):
         self.start_over_btn.hide()
         
         # Re-enable controls
-        self.start_ocr_btn.setEnabled(True)
-        self.open_btn.setEnabled(True)
+        self._set_controls_enabled(True)
