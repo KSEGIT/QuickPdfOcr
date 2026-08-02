@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """The rendering interface. One job: PDF page -> raw pixels."""
 
-from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from components.page_image import PageImage

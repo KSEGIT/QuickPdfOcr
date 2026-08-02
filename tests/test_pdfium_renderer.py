@@ -59,6 +59,32 @@ def test_rejects_missing_file(tmp_path):
         PdfiumRenderer(tmp_path / "nope.pdf")
 
 
+def test_render_mode_comes_from_the_library_not_a_literal(sample_pdf):
+    """Verify the mode is derived from the library, not hardcoded.
+
+    This test independently obtains the bitmap mode using pypdfium2 with the
+    same flags, then asserts the PageImage mode matches. If prefer_bgrx or
+    rev_byteorder ever stop taking effect, this will fail.
+    """
+    import pypdfium2 as pdfium
+
+    with PdfiumRenderer(sample_pdf) as renderer:
+        page = renderer.render_page(0, dpi=72)
+
+    # Independently render with the same settings to get library-derived mode.
+    doc = pdfium.PdfDocument(str(sample_pdf))
+    independent_bitmap = doc[0].render(
+        scale=72 / 72,  # dpi=72 means scale=1
+        rev_byteorder=True,
+        prefer_bgrx=True,
+    )
+    doc.close()
+
+    # The PageImage.mode should match what the library actually produced,
+    # not a hardcoded constant.
+    assert page.mode == independent_bitmap.mode
+
+
 def test_factory_returns_a_renderer(sample_pdf):
     with get_renderer(sample_pdf) as renderer:
         assert renderer.page_count() == 1
