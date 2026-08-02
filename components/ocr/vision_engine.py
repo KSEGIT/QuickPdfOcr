@@ -21,6 +21,12 @@ DEFAULT_LANGUAGES = ["en-US", "pl-PL", "de-DE", "fr-FR"]
 # Used if the OS query fails, which should not happen on a supported system.
 FALLBACK_LANGUAGES = ["en-US"]
 
+# Two observations count as sharing a visual line when their vertical centres
+# are within half a box height of each other. Real text lines are rarely
+# bit-for-bit aligned -- baselines and box heights differ slightly even for
+# words that a human reads as "the same row".
+LINE_OVERLAP_RATIO = 0.5
+
 
 def page_image_to_cgimage(page: PageImage):
     """Wrap a PageImage's raw buffer in a CGImage.
@@ -29,6 +35,10 @@ def page_image_to_cgimage(page: PageImage):
     a 0x0 image, and Vision then reports failure with a None result rather than
     raising. PageImage rejects non-RGBX modes to make that unrepresentable.
     """
+    # PyObjC retains its own strong reference to the Python buffer passed here,
+    # so the CGImage (and anything derived from it) does not depend on the
+    # PageImage outliving this call. Verified experimentally with a __del__
+    # canary on the buffer object.
     provider = Quartz.CGDataProviderCreateWithData(
         None, page.buffer, len(page.buffer), None
     )
@@ -102,18 +112,43 @@ class VisionOcrEngine:
 
     @staticmethod
     def _read_in_order(observations) -> list[str]:
-        """Sort observations into reading order and take the best candidate.
+        """Group observations into visual lines and read each line left to right.
 
         Vision does not guarantee ordering. Bounding boxes are normalized with
-        the origin at the bottom-left, so descending y is top-to-bottom.
+        the origin at the bottom-left, so descending vertical centre is
+        top-to-bottom. A single sort by (y, x) is not enough: two observations
+        on the same printed line rarely share an identical origin.y (box
+        heights and baselines differ), so an x tiebreak that only applies on
+        exact y equality never fires on real documents -- rows like
+        "Netto: 1000,00    VAT: 234,56" can come out reversed. Grouping by
+        vertical proximity first, then sorting each group by x, fixes that.
         """
-        def position(observation):
+        def vertical_center(observation):
             box = observation.boundingBox()
-            return -box.origin.y, box.origin.x
+            return box.origin.y + box.size.height / 2
+
+        ordered = sorted(observations, key=vertical_center, reverse=True)
+
+        groups = []
+        for observation in ordered:
+            box = observation.boundingBox()
+            center = box.origin.y + box.size.height / 2
+            if groups:
+                group_center, _ = groups[-1]
+                threshold = LINE_OVERLAP_RATIO * box.size.height
+                if abs(center - group_center) <= threshold:
+                    groups[-1][1].append(observation)
+                    continue
+            groups.append((center, [observation]))
 
         lines = []
-        for observation in sorted(observations, key=position):
-            candidates = observation.topCandidates_(1)
-            if candidates:
-                lines.append(candidates[0].string())
+        for _, members in groups:
+            members.sort(key=lambda observation: observation.boundingBox().origin.x)
+            words = []
+            for observation in members:
+                candidates = observation.topCandidates_(1)
+                if candidates:
+                    words.append(candidates[0].string())
+            if words:
+                lines.append(" ".join(words))
         return lines

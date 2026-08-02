@@ -6,6 +6,7 @@ never agree character for character.
 """
 
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -72,6 +73,39 @@ class TestTesseractEngine(EngineContractTests):
         return TesseractOcrEngine()
 
 
+class _FakeCandidate:
+    """Stands in for a VNRecognizedText's top candidate."""
+
+    def __init__(self, text):
+        self._text = text
+
+    def string(self):
+        return self._text
+
+
+class _FakeObservation:
+    """Stands in for a VNRecognizedTextObservation.
+
+    _read_in_order only ever calls boundingBox() and topCandidates_(n) on a
+    real observation, so a fake exposing just those two is enough to test the
+    grouping/sorting logic without depending on what Vision actually returns
+    for any given image.
+    """
+
+    def __init__(self, x, y, height, text):
+        self._box = SimpleNamespace(
+            origin=SimpleNamespace(x=x, y=y),
+            size=SimpleNamespace(height=height),
+        )
+        self._text = text
+
+    def boundingBox(self):
+        return self._box
+
+    def topCandidates_(self, n):
+        return [_FakeCandidate(self._text)]
+
+
 @pytest.mark.skipif(sys.platform != "darwin", reason="Vision is macOS-only")
 class TestVisionEngine(EngineContractTests):
     @staticmethod
@@ -99,3 +133,32 @@ class TestVisionEngine(EngineContractTests):
 
         assert text.index("FAKTURA") < text.index("1234,56")
         assert text.index("1234,56") < text.index("527-10-26-863")
+
+    def test_read_in_order_sorts_shuffled_observations_top_to_bottom(self, engine):
+        """The sort must do the work: feed it out of order and check it fixes it."""
+        top = _FakeObservation(x=0.1, y=0.8, height=0.05, text="top")
+        middle = _FakeObservation(x=0.1, y=0.5, height=0.05, text="middle")
+        bottom = _FakeObservation(x=0.1, y=0.2, height=0.05, text="bottom")
+
+        lines = engine._read_in_order([middle, bottom, top])
+
+        assert lines == ["top", "middle", "bottom"]
+
+    def test_read_in_order_sorts_same_line_left_to_right(self, engine):
+        """Two boxes on one visual line rarely share an identical origin.y --
+        heights and baselines differ slightly -- so the tiebreak must trigger
+        on near-equal y, not only exact equality."""
+        left = _FakeObservation(x=0.1, y=0.500, height=0.05, text="Netto:")
+        right = _FakeObservation(x=0.5, y=0.505, height=0.05, text="VAT:")
+
+        lines = engine._read_in_order([right, left])
+
+        assert lines == ["Netto: VAT:"]
+
+    def test_read_in_order_separates_distinct_lines(self, engine):
+        top = _FakeObservation(x=0.1, y=0.9, height=0.05, text="line one")
+        bottom = _FakeObservation(x=0.1, y=0.1, height=0.05, text="line two")
+
+        lines = engine._read_in_order([top, bottom])
+
+        assert lines == ["line one", "line two"]
