@@ -87,7 +87,7 @@ class VisionOcrEngine:
         chosen = [code for code in DEFAULT_LANGUAGES if code in supported]
         return chosen or self.supported_languages()[:1]
 
-    def recognize(self, page: PageImage, languages=None) -> str:
+    def recognize(self, page: PageImage, languages: list[str] | None = None) -> str:
         """Extract text from one page, in top-to-bottom reading order."""
         codes = languages or self.default_languages()
         cgimage = page_image_to_cgimage(page)

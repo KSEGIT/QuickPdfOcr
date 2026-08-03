@@ -33,12 +33,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
       - name: Build executable
         run: python build.py
-      
+
+      # build.py now produces an onedir bundle (dist/QuickPdfOcr/QuickPdfOcr
+      # plus dist/QuickPdfOcr/_internal/), not a single dist/QuickPdfOcr
+      # executable -- a onedir binary cannot run without its _internal/
+      # sibling, so archive the whole directory as one runnable unit.
+      - name: Create tarball
+        run: tar -czf dist/QuickPdfOcr-Linux-x86_64.tar.gz -C dist QuickPdfOcr
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QuickPdfOcr-Linux
-          path: dist/QuickPdfOcr
+          name: QuickPdfOcr-Linux-x86_64
+          path: dist/QuickPdfOcr-Linux-x86_64.tar.gz
+          if-no-files-found: error

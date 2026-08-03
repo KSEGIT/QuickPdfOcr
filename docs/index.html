@@ -4,21 +4,21 @@
     <!-- Global Meta Tags -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="QuickPdfOcr is a simple, cross-platform PDF OCR desktop app that extracts text from scanned PDFs using Tesseract. Drag & drop a PDF, run OCR, and copy results—fully offline.">
-    <meta name="keywords" content="PDF, OCR, Tesseract, PDF text extraction, offline OCR, desktop app, PySide6, Qt6">
+    <meta name="description" content="QuickPdfOcr is a simple, cross-platform PDF OCR desktop app that extracts text from scanned PDFs using Apple Vision on macOS and Tesseract on Windows/Linux. Drag & drop a PDF, run OCR, and copy results—fully offline.">
+    <meta name="keywords" content="PDF, OCR, Apple Vision, Tesseract, PDF text extraction, offline OCR, desktop app, PySide6, Qt6">
     <meta name="author" content="KSEGIT">
-    
+
     <!-- Open Graph / Social Media Meta Tags -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://ksegit.github.io/QuickPdfOcr/">
     <meta property="og:title" content="QuickPdfOcr - OCR Scanned PDFs Locally">
-    <meta property="og:description" content="Simple, cross-platform PDF OCR desktop app. Drag & drop PDFs, extract text with Tesseract OCR, fully offline and privacy-friendly.">
+    <meta property="og:description" content="Simple, cross-platform PDF OCR desktop app. Drag & drop PDFs, extract text with Apple Vision (macOS) or Tesseract (Windows/Linux), fully offline and privacy-friendly.">
     <meta property="og:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon_512.png">
-    
+
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="QuickPdfOcr - OCR Scanned PDFs Locally">
-    <meta name="twitter:description" content="Simple, cross-platform PDF OCR desktop app. Drag & drop PDFs, extract text with Tesseract OCR, fully offline and privacy-friendly.">
+    <meta name="twitter:description" content="Simple, cross-platform PDF OCR desktop app. Drag & drop PDFs, extract text with Apple Vision (macOS) or Tesseract (Windows/Linux), fully offline and privacy-friendly.">
     <meta name="twitter:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon_512.png">
     
     <title>QuickPdfOcr - OCR Scanned PDFs Locally</title>
@@ -480,8 +480,8 @@
             <h1>QuickPdfOcr</h1>
             <p class="tagline">OCR scanned PDFs in seconds — locally, with a clean desktop UI.</p>
             <p class="description">
-                Drag and drop a PDF, click Start OCR, then copy the extracted text to your clipboard. 
-                Built with PySide6 (Qt6) and powered by Tesseract OCR.
+                Drag and drop a PDF, click Start OCR, then copy the extracted text to your clipboard.
+                Built with PySide6 (Qt6), powered by Apple Vision on macOS and Tesseract OCR on Windows/Linux.
             </p>
             <div class="cta-buttons">
                 <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download Latest Release</a>
@@ -495,9 +495,9 @@
         <div class="container">
             <h2 class="section-title">What It Does</h2>
             <p class="section-subtitle">
-                QuickPdfOcr is a lightweight PDF OCR application that helps you extract text from image-based 
-                or scanned PDFs using Tesseract. It's designed to be straightforward: choose a PDF (or drag it in), 
-                run OCR, and copy the text.
+                QuickPdfOcr is a lightweight PDF OCR application that helps you extract text from image-based
+                or scanned PDFs using Apple Vision on macOS and Tesseract on Windows/Linux. It's designed to be
+                straightforward: choose a PDF (or drag it in), run OCR, and copy the text.
             </p>
         </div>
     </section>
@@ -519,8 +519,8 @@
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔍</div>
-                    <h3>Tesseract-Powered OCR</h3>
-                    <p>Industry-standard Tesseract OCR engine extracts text accurately from scanned pages.</p>
+                    <h3>Native OCR Engines</h3>
+                    <p>Apple's Vision framework (built into macOS) and industry-standard Tesseract on Windows/Linux extract text accurately from scanned pages.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
@@ -545,7 +545,7 @@
                 <div class="feature-card">
                     <div class="feature-icon">📦</div>
                     <h3>Fully Standalone</h3>
-                    <p>Pre-built executables include everything—Python, Tesseract, and Poppler. No installation needed!</p>
+                    <p>Pre-built executables bundle Python and PDF rendering (pypdfium2 — no Poppler, ever) on every platform. On macOS, OCR uses the Vision framework built into the OS, so there's nothing else to install. Windows/Linux need Tesseract installed separately.</p>
                 </div>
             </div>
         </div>
@@ -575,24 +575,26 @@
                 <div class="download-card">
                     <div class="platform-icon">🪟</div>
                     <h3>Windows</h3>
-                    <p>Standalone .exe executable</p>
+                    <p>Standalone .exe (Tesseract required, installed separately)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
                 <div class="download-card">
                     <div class="platform-icon">🍎</div>
                     <h3>macOS</h3>
-                    <p>.app bundle (Intel & ARM64 versions available)</p>
+                    <p>universal2 .app bundle (Apple Silicon &amp; Intel in one download, macOS 13+)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
                 <div class="download-card">
                     <div class="platform-icon">🐧</div>
                     <h3>Linux</h3>
-                    <p>Standalone executable</p>
+                    <p>Standalone executable (Tesseract required, installed separately)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
             </div>
             <p class="mt-2" style="color: var(--text-gray);">
-                All executables include Python, PySide6, Tesseract OCR, and Poppler—everything you need bundled in one package.
+                All executables bundle Python, PySide6, and PDF rendering (pypdfium2 — no Poppler, on any platform).
+                macOS also bundles OCR via the Vision framework built into the OS — nothing else to install.
+                Windows and Linux use Tesseract OCR, which is not bundled and must be installed separately.
             </p>
         </div>
     </section>
@@ -602,14 +604,15 @@
         <div class="container">
             <h2>For Developers</h2>
             <p class="section-subtitle">
-                Run from source (Python) or build your own standalone binary. The project uses PySide6, 
-                pytesseract, pdf2image, PyPDF2, and Pillow.
+                Run from source (Python) or build your own standalone binary. The project uses PySide6,
+                pypdfium2 for PDF rendering on every platform, Apple's Vision framework for OCR on macOS,
+                and pytesseract + Pillow for OCR on Windows/Linux.
             </p>
             <div class="tech-stack">
                 <div class="tech-item">PySide6 (Qt6)</div>
+                <div class="tech-item">pypdfium2</div>
+                <div class="tech-item">Apple Vision</div>
                 <div class="tech-item">Tesseract OCR</div>
-                <div class="tech-item">pdf2image</div>
-                <div class="tech-item">PyPDF2</div>
                 <div class="tech-item">Pillow</div>
                 <div class="tech-item">PyInstaller</div>
             </div>

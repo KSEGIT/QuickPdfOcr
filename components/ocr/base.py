@@ -6,6 +6,21 @@ from typing import Protocol, runtime_checkable
 from components.page_image import PageImage
 
 
+class OcrEngineUnavailable(Exception):
+    """Raised when the OCR backend itself cannot run at all -- e.g.
+    Tesseract is not installed, or none of the requested languages has its
+    .traineddata installed.
+
+    This is a whole-document failure, categorically different from a
+    per-page rendering/recognition glitch: if the engine is unavailable,
+    every page would fail identically, so PdfOcrProcessor lets this
+    propagate out of process() instead of recording it as page text (see
+    PdfOcrProcessor._process_page()). OCRWorker then reports it to the
+    caller as a run failure rather than emitting a false "OCR completed
+    successfully!".
+    """
+
+
 @runtime_checkable
 class OcrEngine(Protocol):
     """Recognizes text in a rasterized page.

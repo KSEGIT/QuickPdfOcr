@@ -27,6 +27,18 @@ PROJECT_ROOT = Path(__file__).parent.parent
 APP = PROJECT_ROOT / "dist" / "QuickPdfOcr.app"
 REQUIRED_ARCHES = {"arm64", "x86_64"}
 
+# The real bundle has ~118 Mach-O files (PySide6/Qt alone accounts for most
+# of them). This is a floor, not the expected count, so it tolerates normal
+# variation across dependency versions without needing updates on every
+# bump. It exists because "no thin binaries found" is otherwise defined as
+# success with no lower bound on the census: if Mach-O detection ever
+# regressed to matching nothing (e.g. a `file` output format change, or
+# census()'s rglob/symlink filtering breaking), the fatness gate below would
+# vacuously pass over zero files and sign a thin (or otherwise broken)
+# bundle without ever noticing. This exact "a check that cannot fail"
+# pattern has already caused several defects on this branch.
+MIN_PLAUSIBLE_MACHO_COUNT = 50
+
 
 def run(cmd, **kwargs) -> subprocess.CompletedProcess:
     """Run a command, echoing it, and raise on failure."""
@@ -77,6 +89,16 @@ def main() -> int:
     print("Scanning bundle for Mach-O binaries...")
     arches = census()
     print(f"Found {len(arches)} Mach-O file(s).")
+
+    if len(arches) < MIN_PLAUSIBLE_MACHO_COUNT:
+        raise SystemExit(
+            f"Only {len(arches)} Mach-O file(s) found in {APP}, fewer than "
+            f"the {MIN_PLAUSIBLE_MACHO_COUNT} floor -- Mach-O detection is "
+            "suspected broken (census()'s `file`-based matching, or its "
+            "symlink filtering) rather than the bundle genuinely containing "
+            "that few binaries. A real build has ~118. Refusing to sign or "
+            "report a pass on a census this implausible."
+        )
 
     tally: dict = {}
     for present in arches.values():
