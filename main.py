@@ -82,6 +82,40 @@ def _run_selftest(argv) -> int:
     return 0
 
 
+class QuickPdfOcrApplication(QApplication):
+    """QApplication that accepts files opened from Finder or the Dock.
+
+    macOS does not pass double-clicked files in argv -- it sends a FileOpen
+    event, which may arrive before the main window exists. Early events are
+    queued and replayed once the window is ready.
+    """
+
+    def __init__(self, argv):
+        super().__init__(argv)
+        self._window = None
+        self._pending_file = None
+
+    def set_window(self, window):
+        """Attach the main window and replay any queued file."""
+        self._window = window
+        if self._pending_file:
+            window.open_file(self._pending_file)
+            self._pending_file = None
+
+    def event(self, event):
+        from PySide6.QtCore import QEvent
+
+        if event.type() == QEvent.Type.FileOpen:
+            path = event.file()
+            if path.lower().endswith(".pdf"):
+                if self._window is not None:
+                    self._window.open_file(path)
+                else:
+                    self._pending_file = path
+            return True
+        return super().event(event)
+
+
 def main():
     """Main application entry point"""
     # Headless self-test, used by CI to prove the packaged app can actually OCR.
@@ -106,7 +140,7 @@ def main():
     print("="*60 + "\n")
     
     # Create QApplication first
-    app = QApplication(sys.argv)
+    app = QuickPdfOcrApplication(sys.argv)
     app.setApplicationName("QuickPdfOcr")
     app.setOrganizationName("QuickPdfOcr")
     
@@ -139,7 +173,14 @@ def main():
     QApplication.processEvents()
     
     window = MainWindow()
-    
+    app.set_window(window)
+
+    # Windows and Linux pass the file in argv; macOS uses the FileOpen event above.
+    for argument in sys.argv[1:]:
+        if argument.lower().endswith(".pdf") and Path(argument).exists():
+            window.open_file(argument)
+            break
+
     # Close loading screen and show main window after fade-out completes
     def on_initialization_complete():
         """Handle transition from loading screen to main window"""

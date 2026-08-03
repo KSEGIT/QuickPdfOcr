@@ -353,8 +353,9 @@ class MainWindow(QMainWindow):
         if file_path:
             self._on_file_dropped(file_path)
     
-    def _on_file_dropped(self, file_path: str):
-        """Handle file selection (drag-drop or file picker)"""
+    def open_file(self, file_path: str):
+        """Load a PDF for OCR. Public entry point used by drag-drop, the file
+        picker, and macOS 'Open With' / Dock-drop events."""
         self.current_file = file_path
         file_name = Path(file_path).name
 
@@ -376,7 +377,11 @@ class MainWindow(QMainWindow):
         self.retry_btn.hide()
         self.start_over_btn.hide()
         self.progress_label.hide()
-    
+
+    def _on_file_dropped(self, file_path: str):
+        """Slot for the drop zone's file_dropped signal."""
+        self.open_file(file_path)
+
     def _start_ocr(self):
         """Start OCR processing in background thread"""
         if not self.current_file:
