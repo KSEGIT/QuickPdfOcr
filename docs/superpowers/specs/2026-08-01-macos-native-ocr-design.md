@@ -287,3 +287,37 @@ signing identity. Launch Services registers it the first time the app runs.
 
 Phase 1 alone resolves the reported bug. Phases 2–4 deliver the self-contained, zero-install
 app.
+
+## Corrections after implementation
+
+This section records three places where implementation proved this design wrong. The body
+above is left as originally written, as a record of what was designed and why; corrections
+live here rather than being edited in-place.
+
+1. **universal2 does not reduce to lipo-merging one dylib.** The "2. universal2" section
+   above describes fattening `pypdfium2_raw/libpdfium.dylib` and treats that as sufficient.
+   In practice, PyInstaller also freezes the *host Python interpreter* into the app, and
+   `target_arch="universal2"` fails outright if any collected binary — including that
+   interpreter — is thin. Neither Homebrew nor `uv` publish universal2 CPython interpreters
+   for Apple Silicon (both ship arm64-only), so a normal local dev venv cannot supply one at
+   all. The actual pipeline (see `.github/workflows/build-macos.yml`) installs python.org's
+   own `macos11.pkg` installer (universal2 through a release's bugfix-support window) and
+   builds the venv from that interpreter specifically — a whole extra CI step this design
+   did not anticipate, not just a dylib merge.
+2. **Size estimate was off by nearly 2x.** "Expected app size: ~250 MB → ~60 MB" under
+   "What this deletes" did not hold up. The actual built bundle is **109 MB** (confirmed via
+   `du -sh dist/QuickPdfOcr.app` during Task 11's verification) — still a large reduction
+   from the ~250 MB baseline, just not to the ~60 MB this document projected.
+3. **The NSServices section understated what "Finder right-click" requires.** "5. Finder
+   right-click" above describes only the `Info.plist` `NSServices` declaration
+   (`NSSendFileTypes`, the menu item) and does not mention that this is a distinct delivery
+   mechanism from `QEvent.FileOpen`. A Cocoa Services invocation never produces a
+   `QFileOpenEvent` — it calls the `openFile:userData:error:` selector directly, via
+   distributed objects, delivering the selected file on an `NSPasteboard`. Declaring
+   `NSServices` in the `Info.plist` alone is not sufficient; the app must also call
+   `NSApplication.setServicesProvider_(provider)` with a real Objective-C object implementing
+   that selector, or the Services menu item appears in Finder but does nothing when clicked.
+   This was missed in the original implementation pass and only caught in code review (see
+   `.superpowers/sdd/2026-08-01-macos-native-ocr/task-11-report.md`, "Fix round 2"), which
+   added `main.py`'s `_build_services_provider()` / `_register_services_provider()` and the
+   `pyobjc-framework-Cocoa` dependency this section's plan never listed.

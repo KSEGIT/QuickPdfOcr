@@ -73,6 +73,61 @@ class TestTesseractEngine(EngineContractTests):
         return TesseractOcrEngine()
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin", reason="Tesseract is not installed on macOS builds"
+)
+class TestTesseractEngineUnavailability:
+    """Regression coverage for the whole-branch review finding: a missing
+    Tesseract install (or missing language data) used to be swallowed by
+    PdfOcrProcessor._process_page()'s blanket except and recorded as
+    ordinary page text, so the UI reported success on a document that was
+    never actually OCR'd. TesseractOcrEngine.recognize() must instead raise
+    OcrEngineUnavailable for both of those conditions.
+
+    Uses monkeypatch rather than a real broken Tesseract install so this
+    runs deterministically wherever Tesseract is genuinely installed (CI's
+    build-linux.yml/build-windows.yml, and any local machine with it on
+    PATH) rather than depending on the environment actually being broken.
+    """
+
+    @staticmethod
+    def _blank_page():
+        from components.page_image import PageImage
+
+        return PageImage(width=10, height=10, stride=40, buffer=b"\xff" * 400, mode="RGBX")
+
+    def test_missing_language_data_raises_ocr_engine_unavailable(self, monkeypatch):
+        from components.ocr.base import OcrEngineUnavailable
+        from components.ocr.tesseract_engine import TesseractOcrEngine
+
+        engine = TesseractOcrEngine()
+        # Simulate only English being installed, then ask for a language
+        # that is not -- checked up front by recognize(), before ever
+        # invoking the tesseract subprocess (see the comment in
+        # tesseract_engine.py's recognize() for why).
+        monkeypatch.setattr(engine, "supported_languages", lambda: ["eng"])
+
+        with pytest.raises(OcrEngineUnavailable):
+            engine.recognize(self._blank_page(), languages=["fra"])
+
+    def test_tesseract_not_found_raises_ocr_engine_unavailable(self, monkeypatch):
+        import pytesseract
+
+        from components.ocr.base import OcrEngineUnavailable
+        from components.ocr.tesseract_engine import TesseractOcrEngine
+
+        engine = TesseractOcrEngine()
+        monkeypatch.setattr(engine, "supported_languages", lambda: ["eng"])
+
+        def _raise_not_found(*args, **kwargs):
+            raise pytesseract.TesseractNotFoundError()
+
+        monkeypatch.setattr(pytesseract, "image_to_string", _raise_not_found)
+
+        with pytest.raises(OcrEngineUnavailable):
+            engine.recognize(self._blank_page(), languages=["eng"])
+
+
 class _FakeCandidate:
     """Stands in for a VNRecognizedText's top candidate."""
 

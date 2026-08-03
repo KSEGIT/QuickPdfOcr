@@ -86,17 +86,24 @@ Once installed you can also:
 
 ### Windows
 
-1. Download `QuickPdfOcr.exe` from the
+1. Download `QuickPdfOcr-Windows-x64.zip` from the
    [latest release](https://github.com/KSEGIT/QuickPdfOcr/releases).
-2. Install Tesseract OCR — it is not bundled (see [Prerequisites](#prerequisites)).
-3. Run `QuickPdfOcr.exe`.
+2. Extract the ZIP — this produces a `QuickPdfOcr` folder containing
+   `QuickPdfOcr.exe` alongside an `_internal` folder it needs; keep them
+   together.
+3. Install Tesseract OCR — it is not bundled (see [Prerequisites](#prerequisites)).
+4. Run `QuickPdfOcr.exe` from inside the extracted folder.
 
 ### Linux
 
-1. Download `QuickPdfOcr` from the
+1. Download `QuickPdfOcr-Linux-x86_64.tar.gz` from the
    [latest release](https://github.com/KSEGIT/QuickPdfOcr/releases).
-2. Install Tesseract OCR — it is not bundled (see [Prerequisites](#prerequisites)).
-3. Make it executable and run it: `chmod +x QuickPdfOcr && ./QuickPdfOcr`.
+2. Extract it: `tar -xzf QuickPdfOcr-Linux-x86_64.tar.gz`. This produces a
+   `QuickPdfOcr` folder containing the `QuickPdfOcr` executable alongside an
+   `_internal` folder it needs; keep them together.
+3. Install Tesseract OCR — it is not bundled (see [Prerequisites](#prerequisites)).
+4. Make it executable and run it from inside the extracted folder:
+   `chmod +x QuickPdfOcr/QuickPdfOcr && ./QuickPdfOcr/QuickPdfOcr`.
 
 ### Run from Source
 
@@ -259,9 +266,13 @@ and needs no system binary on any platform.
 ### Automated Builds (GitHub Actions)
 
 The project includes GitHub Actions workflows that build executables for
-Windows, Linux, and macOS. The macOS workflow builds a universal2 (Apple
-Silicon + Intel) app, runs the test suite and a self-test OCR pass, ad-hoc
-signs the result, and uploads `QuickPdfOcr-macOS-universal2.zip`.
+Windows, Linux, and macOS. All three run the test suite before building.
+PyInstaller now produces a directory (onedir) bundle on every platform, so
+each workflow archives that directory as a single asset: `QuickPdfOcr-Windows-x64.zip`,
+`QuickPdfOcr-Linux-x86_64.tar.gz`, and `QuickPdfOcr-macOS-universal2.zip`.
+The macOS workflow additionally builds a universal2 (Apple Silicon + Intel)
+app, runs a self-test OCR pass against the built bundle, and ad-hoc signs
+the result.
 
 To create a release, run the "Create Release" workflow from the Actions tab
 with the version you want to tag. Artifacts will be available in the

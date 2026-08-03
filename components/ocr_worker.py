@@ -5,6 +5,7 @@ OCR Worker - Background thread for PDF OCR processing
 import re
 
 from PySide6.QtCore import QObject, Signal
+from components.ocr.base import OcrEngineUnavailable
 from components.pdf_ocr import PdfOcrProcessor
 
 
@@ -64,6 +65,12 @@ class OCRWorker(QObject):
             self.error.emit(f"File not found: {str(e)}")
         except ValueError as e:
             self.error.emit(f"Invalid file: {str(e)}")
+        except OcrEngineUnavailable as e:
+            # A whole-document failure (missing OCR engine/language data),
+            # not a bug in this app -- report it plainly, like the other
+            # expected-failure branches above, rather than falling through
+            # to the generic handler's full traceback dump.
+            self.error.emit(str(e))
         except Exception as e:
             # Provide more detailed error information
             import traceback

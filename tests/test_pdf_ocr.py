@@ -2,6 +2,7 @@
 
 import pytest
 
+from components.ocr.base import OcrEngineUnavailable
 from components.page_image import PageImage
 from components.pdf_ocr import PdfOcrProcessor
 
@@ -121,3 +122,28 @@ def test_one_failing_page_does_not_abort_the_document(multipage_pdf):
     assert "good text 2" in text
     assert "good text 3" in text
     assert len(engine.calls) == 3
+
+
+def test_engine_unavailable_aborts_the_whole_document(multipage_pdf):
+    """Contrasts with test_one_failing_page_does_not_abort_the_document
+    above: a generic per-page exception (e.g. a corrupt page image) is
+    contained and recorded as page text, but OcrEngineUnavailable -- a
+    whole-document failure, since a missing OCR engine or missing language
+    data would fail identically on every page -- must propagate out of
+    process() instead, so the caller (OCRWorker) reports a run failure
+    rather than "OCR completed successfully!" with every page reading
+    '[OCR Error: ...]'."""
+    class UnavailableEngine(FakeEngine):
+        def recognize(self, page, languages=None):
+            self.calls.append((page, languages))
+            raise OcrEngineUnavailable("tesseract is not installed or not in PATH")
+
+    engine = UnavailableEngine()
+    processor = PdfOcrProcessor(engine=engine)
+
+    with pytest.raises(OcrEngineUnavailable):
+        processor.process(multipage_pdf)
+
+    # Aborted after the first page -- did not keep going and paper over the
+    # failure by recording it as per-page text for the remaining pages.
+    assert len(engine.calls) == 1

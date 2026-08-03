@@ -88,3 +88,4 @@ jobs:
         with:
           name: QuickPdfOcr-macOS-universal2
           path: dist/QuickPdfOcr-macOS-universal2.zip
+          if-no-files-found: error

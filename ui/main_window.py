@@ -361,7 +361,21 @@ class MainWindow(QMainWindow):
         and file-picker button, are not disabled by
         _set_controls_enabled(False) while a run is active.
         """
-        return self.ocr_thread is not None and self.ocr_thread.isRunning()
+        if self.ocr_thread is None:
+            return False
+        try:
+            return self.ocr_thread.isRunning()
+        except RuntimeError:
+            # self.ocr_thread is a Python wrapper around a QThread whose
+            # underlying C++ object has already been deleted (deleteLater()
+            # fired -- see the wiring in _start_ocr()) but the attribute
+            # itself was not reset in time to observe that. A deleted
+            # QThread cannot possibly still be running, so treat this the
+            # same as "no thread at all" rather than letting the exception
+            # propagate out of a slot, where PySide only prints it to
+            # stderr (invisible inside a packaged .app) and leaves the
+            # caller's control flow silently broken.
+            return False
 
     def open_file(self, file_path: str):
         """Load a PDF for OCR. Public entry point used by drag-drop, the file
@@ -418,8 +432,11 @@ class MainWindow(QMainWindow):
         if not self.current_file:
             return
 
-        # Clean up any previous thread before starting a new one
-        if self.ocr_thread is not None and self.ocr_thread.isRunning():
+        # Clean up any previous thread before starting a new one. Routed
+        # through _is_ocr_running() rather than calling isRunning() directly
+        # here, so this guard gets the same defensiveness against a deleted
+        # QThread wrapper as open_file()'s guard does.
+        if self._is_ocr_running():
             # Ask the worker to stop cooperatively first
             if self.ocr_worker is not None:
                 self.ocr_worker.request_stop()
@@ -477,7 +494,8 @@ class MainWindow(QMainWindow):
         self.ocr_thread = QThread()
         self.ocr_worker = OCRWorker(self.current_file, languages=self._selected_languages())
         self.ocr_worker.moveToThread(self.ocr_thread)
-        
+        thread = self.ocr_thread  # local alias for the closure below
+
         # Connect signals
         self.ocr_thread.started.connect(self.ocr_worker.run)
         self.ocr_worker.progress.connect(self._on_progress)
@@ -488,7 +506,40 @@ class MainWindow(QMainWindow):
         self.ocr_worker.finished.connect(self.ocr_worker.deleteLater)
         self.ocr_worker.error.connect(self.ocr_worker.deleteLater)
         self.ocr_thread.finished.connect(self.ocr_thread.deleteLater)
-        
+
+        def _clear_ocr_thread_reference():
+            """Drop self.ocr_thread once QThread's own 'finished' signal
+            proves the managed thread has genuinely stopped -- see the
+            long comment on this connection, below, for why this cannot be
+            done from _on_ocr_success()/_on_ocr_error() instead, and why a
+            closure over `thread` is used rather than a plain bound method
+            relying on self.sender() (confirmed experimentally to return
+            None for this connection, since it is a Python-level slot
+            invoked through a queued cross-thread delivery, not a real Qt
+            meta-slot that Qt's sender-tracking recognizes)."""
+            # A subsequent _start_ocr() call may already have replaced
+            # self.ocr_thread with a new QThread by the time this
+            # (possibly delayed) signal is delivered -- only ever clear
+            # our own reference to *this* thread, never a newer one.
+            if self.ocr_thread is thread:
+                self.ocr_thread = None
+
+        # Clearing self.ocr_thread happens here, tied to QThread's own
+        # "the managed thread has actually stopped" signal, rather than in
+        # _on_ocr_success()/_on_ocr_error(). Those two are connected to the
+        # same worker.finished/error signal *ahead of* self.ocr_thread.quit()
+        # a few lines above -- a cross-thread queued connection delivered in
+        # FIFO order -- so by the time either slot runs, quit() has not even
+        # been dispatched yet, let alone taken effect. Clearing
+        # self.ocr_thread there would drop the last Python reference to a
+        # QThread wrapper while Qt still considers the underlying thread
+        # running, which cascades into deleting a still-running QThread's
+        # C++ object -- verified experimentally to abort the whole process
+        # ("QThread: Destroyed while thread is still running") rather than
+        # merely log a warning. QThread.finished only fires once the
+        # managed thread has actually stopped, so clearing here is safe.
+        self.ocr_thread.finished.connect(_clear_ocr_thread_reference)
+
         # Start processing
         self.ocr_thread.start()
     
@@ -514,9 +565,19 @@ class MainWindow(QMainWindow):
         self.text_area.show()
         self.copy_btn.show()
         self.start_over_btn.show()
-        
+
         # Re-enable controls
         self._set_controls_enabled(True)
+
+        # Clear our reference to the worker, now that it is done -- safe
+        # here because worker.deleteLater() (connected in _start_ocr(),
+        # ahead of this slot on the same signal) already ran synchronously
+        # as a direct, same-thread connection by the time this slot is
+        # even reachable, so the worker's fate is already sealed either
+        # way. self.ocr_thread is deliberately NOT cleared here -- see the
+        # comment on the ocr_thread.finished connection in _start_ocr() for
+        # why doing so from this slot would be unsafe.
+        self.ocr_worker = None
 
     def _on_ocr_error(self, error_msg: str):
         """Handle OCR error"""
@@ -534,9 +595,13 @@ class MainWindow(QMainWindow):
         # Show retry buttons
         self.retry_btn.show()
         self.start_over_btn.show()
-        
+
         # Re-enable controls
         self._set_controls_enabled(True)
+
+        # See the matching comment in _on_ocr_success() for why only the
+        # worker reference is cleared here.
+        self.ocr_worker = None
 
     def _copy_to_clipboard(self):
         """Copy text to clipboard (works on macOS, Linux, Windows)"""
@@ -564,7 +629,21 @@ class MainWindow(QMainWindow):
     def _start_over(self):
         """Reset to initial state"""
         self.current_file = None
-        
+
+        # Defensive: self.ocr_worker is normally already cleared by
+        # _on_ocr_success()/_on_ocr_error() by the time Start Over is
+        # reachable, but reset it unconditionally here too. self.ocr_thread
+        # is handled the same way, but ONLY if _is_ocr_running() reports it
+        # as not running -- unconditionally nulling it here has the same
+        # hazard documented on the ocr_thread.finished connection in
+        # _start_ocr(): it could drop the last Python reference to a
+        # QThread Qt still considers running, which aborts the process
+        # rather than merely leaving a harmless stale reference for
+        # _is_ocr_running() to catch defensively.
+        self.ocr_worker = None
+        if self.ocr_thread is not None and not self._is_ocr_running():
+            self.ocr_thread = None
+
         # Reset drop zone
         self.drop_zone.setText(DropZoneLabel._DEFAULT_TEXT)
         self.drop_zone.setAcceptDrops(True)

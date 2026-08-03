@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Callable, Optional
 
-from components.ocr.base import OcrEngine
+from components.ocr.base import OcrEngine, OcrEngineUnavailable
 from components.rendering import get_renderer
 
 # DPI bands keyed on the page's longest edge in inches. Small pages (receipts)
@@ -131,10 +131,20 @@ class PdfOcrProcessor:
 
     def _process_page(self, renderer, index: int, dpi: int) -> str:
         """Render and recognize one page. A page-level failure is recorded in
-        the output rather than aborting the whole document."""
+        the output rather than aborting the whole document.
+
+        OcrEngineUnavailable is deliberately NOT caught here: a missing OCR
+        engine (or missing language data) is a whole-document failure --
+        every subsequent page would fail identically -- not a per-page one,
+        so it propagates out of process() entirely rather than being
+        recorded as `[OCR Error: ...]` page text. See OcrEngineUnavailable's
+        docstring.
+        """
         try:
             page = renderer.render_page(index, dpi=dpi)
             text = self.engine.recognize(page, languages=self.languages)
+        except OcrEngineUnavailable:
+            raise
         except Exception as exc:
             print(f"Warning: failed to process page {index + 1}: {exc}")
             return f"--- Page {index + 1} ---\n[OCR Error: {exc}]\n"
