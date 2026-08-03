@@ -353,9 +353,40 @@ class MainWindow(QMainWindow):
         if file_path:
             self._on_file_dropped(file_path)
     
+    def _is_ocr_running(self) -> bool:
+        """Whether an OCR run is currently in progress.
+
+        Guards entry points the OS can invoke at arbitrary times -- Finder
+        double-click, Dock drop, "Open With" -- which, unlike the drop zone
+        and file-picker button, are not disabled by
+        _set_controls_enabled(False) while a run is active.
+        """
+        return self.ocr_thread is not None and self.ocr_thread.isRunning()
+
     def open_file(self, file_path: str):
         """Load a PDF for OCR. Public entry point used by drag-drop, the file
-        picker, and macOS 'Open With' / Dock-drop events."""
+        picker, and macOS 'Open With' / Dock-drop events. macOS can invoke
+        this at any time -- including mid-OCR -- so a run already in progress
+        is refused rather than silently swapping out current_file underneath
+        it and misattributing the in-flight result to the wrong document."""
+        if self._is_ocr_running():
+            file_name = Path(file_path).name
+            self.progress_label.setText(
+                f"⚠️ Ignored \"{file_name}\": an OCR run is already in "
+                "progress. Please wait for it to finish."
+            )
+            self.progress_label.setStyleSheet("""
+                QLabel {
+                    color: #C62828;
+                    font-size: 14px;
+                    padding: 10px;
+                    background-color: #FFCDD2;
+                    border-radius: 5px;
+                }
+            """)
+            self.progress_label.show()
+            return
+
         self.current_file = file_path
         file_name = Path(file_path).name
 
