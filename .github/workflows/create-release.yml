@@ -75,36 +75,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Download Poppler for Windows
-        run: |
-          # Download pre-compiled Poppler binaries from oschwartz10612
-          $POPPLER_VERSION = "24.08.0-0"
-          $POPPLER_URL = "https://github.com/oschwartz10612/poppler-windows/releases/download/v$POPPLER_VERSION/Release-$POPPLER_VERSION.zip"
-
-          Write-Host "Downloading Poppler $POPPLER_VERSION..."
-          Invoke-WebRequest -Uri $POPPLER_URL -OutFile poppler.zip
-
-          Write-Host "Extracting Poppler..."
-          Expand-Archive -Path poppler.zip -DestinationPath poppler_temp
-
-          # Find the actual poppler directory (it might be named differently)
-          $popplerDir = Get-ChildItem -Path poppler_temp -Directory | Select-Object -First 1
-
-          if ($popplerDir) {
-            Write-Host "Moving $($popplerDir.FullName) to poppler_binaries..."
-            Move-Item -Path $popplerDir.FullName -Destination poppler_binaries
-          } else {
-            Write-Error "No directory found in poppler_temp"
-            exit 1
-          }
-
-          if (Test-Path "poppler_binaries/Library/bin/pdfinfo.exe") {
-            Write-Host "✓ Poppler binaries downloaded successfully"
-          } else {
-            Write-Error "Failed to download Poppler binaries"
-            exit 1
-          }
-
       - name: Install Tesseract via winget with fallback
         run: |
           Write-Host "Installing Tesseract..."
@@ -171,16 +141,6 @@ jobs:
             exit 1
           }
 
-          New-Item -ItemType Directory -Force -Path tesseract_binaries
-          Copy-Item -Path "$tesseractPath\*" -Destination tesseract_binaries -Recurse
-
-          if (Test-Path "tesseract_binaries/tesseract.exe") {
-            Write-Host "✓ Tesseract binaries copied successfully"
-          } else {
-            Write-Error "Failed to copy Tesseract binaries"
-            exit 1
-          }
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -208,38 +168,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Poppler and Tesseract
+      - name: Install Tesseract
         run: |
           sudo apt-get update
-          sudo apt-get install -y poppler-utils tesseract-ocr
-
-          mkdir -p poppler_binaries
-          cp /usr/bin/pdf* poppler_binaries/ || true
-
-          mkdir -p tesseract_binaries/bin
-          mkdir -p tesseract_binaries/share/tessdata
-          cp /usr/bin/tesseract tesseract_binaries/bin/
-
-          if [ -d "/usr/share/tesseract-ocr/5/tessdata" ]; then
-            cp -r "/usr/share/tesseract-ocr/5/tessdata/"* tesseract_binaries/share/tessdata/
-          elif [ -d "/usr/share/tesseract-ocr/4/tessdata" ]; then
-            cp -r "/usr/share/tesseract-ocr/4/tessdata/"* tesseract_binaries/share/tessdata/
-          elif [ -d "/usr/share/tesseract-ocr/4.00/tessdata" ]; then
-            cp -r "/usr/share/tesseract-ocr/4.00/tessdata/"* tesseract_binaries/share/tessdata/
-          elif [ -d "/usr/share/tessdata" ]; then
-            cp -r "/usr/share/tessdata/"* tesseract_binaries/share/tessdata/
-          else
-            echo "ERROR: Could not find tessdata directory!"
-            find /usr/share -name "*.traineddata" 2>/dev/null | head -5
-            exit 1
-          fi
-
-          traineddata_count=$(find tesseract_binaries/share/tessdata -maxdepth 1 -name "*.traineddata" 2>/dev/null | wc -l)
-          if [ "$traineddata_count" -eq 0 ]; then
-            echo "ERROR: tessdata exists but no .traineddata files found"
-            ls -la tesseract_binaries/share/tessdata
-            exit 1
-          fi
+          sudo apt-get install -y tesseract-ocr
 
       - name: Install dependencies
         run: |
@@ -257,47 +189,81 @@ jobs:
 
   build-macos-arm:
     needs: check-tag
-    runs-on: macos-14
+    runs-on: macos-14  # Apple Silicon
     permissions:
       contents: read
+    env:
+      QUICKPDFOCR_UNIVERSAL2: '1'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      - name: Install Poppler and Tesseract
+      # No actions/setup-python here: it provisions Homebrew-style arm64-only
+      # interpreters on Apple Silicon runners. PyInstaller freezes the host
+      # interpreter into the app, so a thin interpreter produces a thin app
+      # no matter what packaging/quickpdfocr.spec's target_arch says.
+      # python.org's own macos11.pkg installers are universal2 (arm64 +
+      # x86_64) for the duration of a release's bugfix-support window;
+      # 3.12.10 is the last 3.12.x release with one -- later 3.12.x releases
+      # are source-only security fixes with no macOS installer.
+      - name: Install universal2 Python from python.org
         run: |
-          brew install poppler tesseract
-          mkdir -p poppler_binaries
-          cp /opt/homebrew/bin/pdf* poppler_binaries/ || true
+          curl -fsSL -o python-installer.pkg \
+            https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg
+          sudo installer -pkg python-installer.pkg -target /
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 --version
+          lipo -info /Library/Frameworks/Python.framework/Versions/3.12/bin/python3
 
-          mkdir -p tesseract_binaries/bin
-          mkdir -p tesseract_binaries/share
-          cp /opt/homebrew/bin/tesseract tesseract_binaries/bin/
-          cp -r /opt/homebrew/share/tessdata tesseract_binaries/share/ || true
+      - name: Create virtual environment
+        run: |
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 -m venv .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      # No Homebrew step. Poppler and Tesseract are not used on macOS:
+      # rendering ships inside the pypdfium2 wheel and OCR comes from the OS.
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Build executable
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+      - name: Prepare universal2 dependencies
+        run: python packaging/prepare_universal_deps.py
+
+      - name: Build .app (universal2)
         run: python build.py
+
+      - name: Verify universal2 and sign
+        run: python packaging/verify_universal.py
+
+      - name: Smoke test the built app
+        run: |
+          ./dist/QuickPdfOcr.app/Contents/MacOS/QuickPdfOcr \
+            --selftest tests/fixtures/sample_invoice.pdf
+
+      - name: Verify no Poppler or Tesseract in the bundle
+        run: |
+          if find dist/QuickPdfOcr.app \
+               \( -name "*poppler*" -o -name "pdfinfo" -o -name "pdftoppm" \
+                  -o -name "tesseract*" -o -name "*.traineddata" \) \
+               -print | grep .; then
+            echo "::error::External OCR binaries leaked into the bundle"
+            exit 1
+          fi
+          echo "Bundle is clean"
 
       - name: Create ZIP archive
         run: |
           cd dist
-          zip -r QuickPdfOcr-macOS-ARM64.zip QuickPdfOcr.app
-          cd ..
+          ditto -c -k --keepParent QuickPdfOcr.app QuickPdfOcr-macOS-universal2.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-macos-arm64
-          path: dist/QuickPdfOcr-macOS-ARM64.zip
+          name: QuickPdfOcr-macOS-universal2
+          path: dist/QuickPdfOcr-macOS-universal2.zip
 
   publish:
     needs:
