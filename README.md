@@ -77,9 +77,12 @@ Vision framework.
 **Requires macOS 13 (Ventura) or later.**
 
 Once installed you can also:
-- Right-click any PDF in Finder → **Services → OCR with QuickPdfOcr**
 - Drag a PDF onto the app's Dock icon
 - Right-click a PDF → **Open With → QuickPdfOcr**
+- Right-click a PDF → **Services → OCR with QuickPdfOcr**, once the item
+  appears — macOS registers Services menu entries the first time the app
+  runs, so launch QuickPdfOcr at least once before checking Finder's
+  Services submenu (a Finder restart or a short wait may also be needed)
 
 ### Windows
 
