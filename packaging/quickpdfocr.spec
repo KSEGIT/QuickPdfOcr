@@ -103,5 +103,13 @@ if IS_MACOS:
                     "LSHandlerRank": "Alternate",
                 }
             ],
+            "NSServices": [
+                {
+                    "NSMenuItem": {"default": "OCR with QuickPdfOcr"},
+                    "NSMessage": "openFile",
+                    "NSPortName": "QuickPdfOcr",
+                    "NSSendFileTypes": ["com.adobe.pdf"],
+                }
+            ],
         },
     )
