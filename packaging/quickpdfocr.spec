@@ -95,5 +95,13 @@ if IS_MACOS:
             "LSMinimumSystemVersion": "13.0",
             "NSHighResolutionCapable": True,
             "NSHumanReadableCopyright": "See THIRD_PARTY_LICENSES.md",
+            "CFBundleDocumentTypes": [
+                {
+                    "CFBundleTypeName": "PDF Document",
+                    "CFBundleTypeRole": "Viewer",
+                    "LSItemContentTypes": ["com.adobe.pdf"],
+                    "LSHandlerRank": "Alternate",
+                }
+            ],
         },
     )
