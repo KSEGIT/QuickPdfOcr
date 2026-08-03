@@ -82,25 +82,116 @@ def _run_selftest(argv) -> int:
     return 0
 
 
+# Lazily-built, process-wide cache for the Services provider's Objective-C
+# class. PyObjC raises if two distinct Python classes are ever registered
+# under the same Objective-C class name in one process, so the class itself
+# must be defined exactly once -- see _get_services_provider_class().
+_pdf_services_provider_class = None
+
+
+def _pdf_path_from_pasteboard(pasteboard):
+    """Extract the first usable PDF path from a Cocoa Services pasteboard.
+
+    Modern senders put NSURL objects on the pasteboard; NSSendFileTypes in
+    packaging/quickpdfocr.spec restricts Finder to offering this Service for
+    PDFs only, but a deleted-since-selected or otherwise-wrong path is still
+    checked defensively rather than trusted, the same as main()'s argv
+    handling does for double-clicked files. Some senders instead put a bare
+    path string on the pasteboard, so that is tried as a fallback.
+    """
+    import AppKit
+
+    def _is_usable_pdf(path) -> bool:
+        return bool(path) and path.lower().endswith(".pdf") and Path(path).exists()
+
+    urls = pasteboard.readObjectsForClasses_options_([AppKit.NSURL], None) or []
+    for url in urls:
+        path = url.path()
+        if _is_usable_pdf(path):
+            return path
+
+    text = pasteboard.stringForType_(AppKit.NSPasteboardTypeString)
+    if _is_usable_pdf(text):
+        return text
+
+    return None
+
+
+def _get_services_provider_class():
+    """Lazily define, once, the NSObject subclass implementing the Cocoa
+    Services 'openFile:userData:error:' selector declared by NSServices in
+    packaging/quickpdfocr.spec's Info.plist.
+
+    AppKit is imported here, inside this macOS-only code path, rather than
+    at module top -- Windows and Linux cannot import it at all, and
+    --selftest must stay free of GUI/AppKit imports.
+    """
+    global _pdf_services_provider_class
+    if _pdf_services_provider_class is not None:
+        return _pdf_services_provider_class
+
+    import AppKit
+
+    class _PdfServicesProvider(AppKit.NSObject):
+        """A Services invocation is delivered via distributed objects, not
+        a QEvent.FileOpen -- Finder's Services menu never produces the
+        event QuickPdfOcrApplication.event() handles below. This is a
+        second, required delivery path for the same PDF-opening behavior;
+        `.app` is set on each instance after construction and is the
+        QuickPdfOcrApplication to forward opened files to.
+        """
+
+        def openFile_userData_error_(self, pasteboard, userData, error):
+            app = getattr(self, "app", None)
+            if app is None:
+                return None
+            path = _pdf_path_from_pasteboard(pasteboard)
+            if path:
+                app._open_pdf_path(path)
+            return None
+
+    _pdf_services_provider_class = _PdfServicesProvider
+    return _pdf_services_provider_class
+
+
 class QuickPdfOcrApplication(QApplication):
-    """QApplication that accepts files opened from Finder or the Dock.
+    """QApplication that accepts files opened from Finder, the Dock, or the
+    Finder Services menu.
 
     macOS does not pass double-clicked files in argv -- it sends a FileOpen
     event, which may arrive before the main window exists. Early events are
-    queued and replayed once the window is ready.
+    queued and replayed once the window is ready. A Finder Services
+    invocation ("Right-click a PDF -> Services -> OCR with QuickPdfOcr")
+    arrives through a completely different mechanism -- see
+    _register_services_provider() -- but converges on the same
+    queue-or-open-immediately logic in _open_pdf_path().
     """
 
     def __init__(self, argv):
         super().__init__(argv)
         self._window = None
         self._pending_file = None
+        self._services_provider = None  # see _register_services_provider()
 
     def set_window(self, window):
-        """Attach the main window and replay any queued file."""
+        """Attach the main window, replay any queued file, and register the
+        Finder Services provider now that there is a window to deliver to."""
         self._window = window
         if self._pending_file:
             window.open_file(self._pending_file)
             self._pending_file = None
+        self._register_services_provider()
+
+    def _open_pdf_path(self, path):
+        """Shared delivery point for a PDF path arriving via QEvent.FileOpen
+        or a Finder Services invocation: queue it if the window is not
+        attached yet (mirroring the FileOpen behavior above), otherwise hand
+        it straight to MainWindow.open_file(), which itself refuses the
+        file while an OCR run is already in progress."""
+        if self._window is not None:
+            self._window.open_file(path)
+        else:
+            self._pending_file = path
 
     def event(self, event):
         from PySide6.QtCore import QEvent
@@ -108,12 +199,49 @@ class QuickPdfOcrApplication(QApplication):
         if event.type() == QEvent.Type.FileOpen:
             path = event.file()
             if path.lower().endswith(".pdf"):
-                if self._window is not None:
-                    self._window.open_file(path)
-                else:
-                    self._pending_file = path
+                self._open_pdf_path(path)
             return True
         return super().event(event)
+
+    def _build_services_provider(self):
+        """Construct, but do not register, the NSObject implementing the
+        Cocoa Services selector. Split out from _register_services_provider
+        so tests can build a provider and call its method directly without
+        touching the real, process-wide NSApplication services
+        registration. Callers must only invoke this on macOS."""
+        provider_class = _get_services_provider_class()
+        provider = provider_class.alloc().init()
+        provider.app = self
+        return provider
+
+    def _register_services_provider(self):
+        """Register the Finder Services entry declared by NSServices in
+        packaging/quickpdfocr.spec, so 'Right-click a PDF -> Services ->
+        OCR with QuickPdfOcr' actually calls into the app instead of
+        silently doing nothing.
+
+        A no-op off macOS and idempotent (registration only needs to happen
+        once). Best-effort: any import or registration failure is logged
+        and swallowed rather than raised -- a broken Service must not
+        prevent the app from launching.
+        """
+        if sys.platform != "darwin" or self._services_provider is not None:
+            return
+        try:
+            provider = self._build_services_provider()
+            # setServicesProvider_ does NOT retain its argument (unlike most
+            # AppKit setters). A provider that only lived in a local
+            # variable here would be garbage-collected as soon as this
+            # method returns, and the Service would then silently do
+            # nothing the next time Finder invokes it. Storing it on self
+            # keeps it alive for the app's lifetime.
+            self._services_provider = provider
+
+            import AppKit
+
+            AppKit.NSApplication.sharedApplication().setServicesProvider_(provider)
+        except Exception as exc:
+            print(f"Warning: could not register Finder Services provider: {exc}")
 
 
 def main():

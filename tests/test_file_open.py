@@ -24,7 +24,21 @@ guard in MainWindow.open_file() itself, an OS-delivered FileOpen event
 mid-run would silently swap current_file out from under the in-flight
 OCRWorker, misattributing its result (or a "Try Again" retry) to the wrong
 document.
+
+The remaining tests cover a fifth, unrelated delivery path found in review:
+Finder's Services menu ("Right-click a PDF -> Services -> OCR with
+QuickPdfOcr", declared via NSServices in packaging/quickpdfocr.spec) never
+produces a QEvent.FileOpen at all -- it invokes the Cocoa Services selector
+openFile:userData:error: directly, via distributed objects, delivering the
+selected file(s) on an NSPasteboard instead of as a QFileOpenEvent. Without
+a services-provider object implementing that selector, the Services menu
+item does nothing when clicked. QuickPdfOcrApplication._build_services_provider()
+builds that object; these tests call its openFile_userData_error_ directly
+against fake pasteboards, so no real NSPasteboard or Services round-trip is
+needed.
 """
+
+import sys
 
 import pytest
 from PySide6.QtCore import QEvent
@@ -158,3 +172,80 @@ def test_file_open_is_refused_while_ocr_is_running(app, window, sample_pdf, mult
     assert window.current_file == str(sample_pdf), (
         "file-open delivered while OCR is running must not replace current_file"
     )
+
+
+class FakeNSURL:
+    """Stand-in for an NSURL the pasteboard hands back for a selected file.
+    Only the .path() accessor _pdf_path_from_pasteboard() reads is
+    implemented -- a real NSURL is not needed to exercise that code."""
+
+    def __init__(self, path: str):
+        self._path = path
+
+    def path(self):
+        return self._path
+
+
+class FakePasteboard:
+    """Stand-in for the NSPasteboard a Cocoa Services invocation delivers.
+    Exposes only the two accessors _pdf_path_from_pasteboard() reads, so
+    these tests never construct a real NSPasteboard."""
+
+    def __init__(self, urls=None, string=None):
+        self._urls = urls if urls is not None else []
+        self._string = string
+
+    def readObjectsForClasses_options_(self, classes, options):
+        return self._urls
+
+    def stringForType_(self, pasteboard_type):
+        return self._string
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="NSServices provider is macOS-only")
+def test_services_provider_opens_a_pdf_from_the_pasteboard(app, window, sample_pdf):
+    """The common case: Finder puts an NSURL for the selected PDF on the
+    pasteboard. The provider must resolve it and open it exactly like a
+    FileOpen event would."""
+    app.set_window(window)
+    window.current_file = None
+
+    provider = app._build_services_provider()
+    pasteboard = FakePasteboard(urls=[FakeNSURL(str(sample_pdf))])
+
+    provider.openFile_userData_error_(pasteboard, None, None)
+
+    assert window.current_file == str(sample_pdf)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="NSServices provider is macOS-only")
+def test_services_provider_ignores_a_non_pdf(app, window):
+    """NSSendFileTypes in packaging/quickpdfocr.spec should already keep
+    Finder from offering this Service for non-PDFs, but the provider must
+    not trust that blindly -- a non-PDF path on the pasteboard must be
+    ignored, leaving current_file untouched."""
+    app.set_window(window)
+    window.current_file = None
+
+    provider = app._build_services_provider()
+    pasteboard = FakePasteboard(urls=[FakeNSURL("/some/document.txt")])
+
+    provider.openFile_userData_error_(pasteboard, None, None)
+
+    assert window.current_file is None, "non-PDF path from the pasteboard was opened"
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="NSServices provider is macOS-only")
+def test_services_provider_falls_back_to_a_pasteboard_string(app, window, sample_pdf):
+    """Some callers put a bare path string on the pasteboard instead of an
+    NSURL. When readObjectsForClasses_options_ comes back empty, the
+    provider must fall back to stringForType_."""
+    app.set_window(window)
+    window.current_file = None
+
+    provider = app._build_services_provider()
+    pasteboard = FakePasteboard(urls=[], string=str(sample_pdf))
+
+    provider.openFile_userData_error_(pasteboard, None, None)
+
+    assert window.current_file == str(sample_pdf)
