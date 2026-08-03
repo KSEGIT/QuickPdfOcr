@@ -2,18 +2,16 @@
 
 ## Project Overview
 
-QuickPdfOcr is a cross-platform desktop application for extracting text from PDF files using OCR (Optical Character Recognition). It features a modern Qt6-based GUI built with PySide6 and uses Tesseract OCR for text extraction.
+QuickPdfOcr is a cross-platform desktop application for extracting text from PDF files using OCR (Optical Character Recognition). It features a modern Qt6-based GUI built with PySide6. Text recognition uses Apple's Vision framework on macOS (built into the OS) and Tesseract OCR on Windows/Linux; PDF rendering uses pypdfium2 on every platform.
 
 **Key Technologies:**
 - **PySide6** (Qt6 for Python) - GUI framework
-- **Tesseract OCR** - Text recognition engine
-- **Poppler** - PDF processing utilities
+- **pypdfium2** - PDF rendering, bundled on every platform (no Poppler)
+- **Apple Vision** (`pyobjc-framework-Vision`) - Text recognition engine on macOS
+- **Tesseract OCR** (`pytesseract`) - Text recognition engine on Windows/Linux
+- **Pillow (PIL)** - Image processing (Windows/Linux only)
 - **PyInstaller** - Standalone executable bundling
 - **Python 3.12** - Core language (CI uses 3.12, likely works with 3.10+)
-- **pdf2image** - PDF to image conversion
-- **pytesseract** - Python wrapper for Tesseract
-- **Pillow (PIL)** - Image processing
-- **PyPDF2** - PDF metadata and analysis
 
 ## Build and Test Commands
 
@@ -34,16 +32,20 @@ pip install -r requirements.txt
 # Build standalone executable for current platform
 python build.py
 
+# On macOS, ad-hoc sign the bundle -- required before it will launch
+python packaging/verify_universal.py
+
 # Output will be in dist/ directory
 ```
 
 ### Testing
 ```bash
-# Test bundled dependencies (for built executables)
-python test_bundled_deps.py
+pytest tests/
 ```
 
-**Note:** This project does not currently have a comprehensive test suite. When adding new features, consider adding appropriate tests if it makes sense for the feature.
+When adding new features, add or update tests under `tests/` -- see
+`components/rendering/` and `components/ocr/` for the backends most
+OCR/rendering features touch.
 
 ## Project Structure
 
@@ -53,15 +55,20 @@ QuickPdfOcr/
 ├── __main__.py                # Module entry point (currently empty placeholder)
 ├── build.py                   # PyInstaller build script
 ├── requirements.txt           # Python dependencies
-├── test_bundled_deps.py      # Test script for bundled binaries
 ├── components/
 │   ├── __init__.py
 │   ├── pdf_ocr.py            # Core OCR processor (PdfOcrProcessor class)
 │   ├── ocr_worker.py         # Qt background worker thread
-│   └── poppler_utils.py      # Poppler binary detection and setup
+│   ├── page_image.py         # Rendered-page pixel buffer
+│   ├── rendering/            # PDF rendering backend (pypdfium2)
+│   └── ocr/                  # OCR backends (Apple Vision / Tesseract)
 ├── ui/
 │   ├── __init__.py
 │   └── main_window.py        # Main GUI window (MainWindow class)
+├── packaging/
+│   ├── quickpdfocr.spec      # PyInstaller spec (incl. macOS Info.plist)
+│   └── verify_universal.py   # Architecture census + ad-hoc signing
+├── tests/                     # pytest suite
 ├── docs/                      # Documentation files
 └── .github/
     └── workflows/             # CI/CD build workflows
@@ -115,15 +122,20 @@ def function_name(param: str) -> bool:
 ## Platform-Specific Considerations
 
 ### Binary Bundling
-- The application bundles **Poppler** and **Tesseract** for standalone executables
-- `setup_bundled_binaries()` must be called early in startup
-- Use `getattr(sys, 'frozen', False)` to detect PyInstaller bundle
+- PDF rendering ships inside the `pypdfium2` wheel on every platform -- there
+  is no Poppler to detect or bundle any more
+- macOS OCR comes from the Vision framework, built into the OS -- Tesseract
+  is neither bundled nor needed there
+- Windows/Linux still require a system-installed Tesseract; it is not bundled
+- Use `getattr(sys, 'frozen', False)` to detect a PyInstaller bundle
 - Access bundled resources via `sys._MEIPASS` when frozen
 
 ### Cross-Platform Paths
-- Homebrew paths differ on ARM64 (`/opt/homebrew/`) vs Intel (`/usr/local/`) macOS
+- `components/ocr/__init__.py`'s `get_engine()` is the only platform branch
+  for OCR selection; `components/rendering/__init__.py`'s `get_renderer()`
+  makes no platform decision at all since pypdfium2 behaves identically
+  everywhere
 - Windows uses backslashes - always use `Path` objects to handle this
-- Linux typically has Poppler in `/usr/bin/`
 
 ## Key Components and Patterns
 
@@ -156,7 +168,8 @@ def function_name(param: str) -> bool:
 - Validate file paths to prevent directory traversal
 - Sanitize user inputs before displaying in UI
 - Be cautious with `eval()` or `exec()` - avoid if possible
-- The bundled Tesseract/Poppler binaries come from trusted sources
+- macOS OCR runs through Apple's own Vision framework; Windows/Linux depend
+  on a system-installed Tesseract, not a bundled binary
 
 ## Git Workflow
 
@@ -184,7 +197,7 @@ def function_name(param: str) -> bool:
 ```python
 from components.pdf_ocr import PdfOcrProcessor
 
-processor = PdfOcrProcessor(lang='eng')
+processor = PdfOcrProcessor(languages=['eng'])
 text = processor.process(
     pdf_path,
     output_file=None,  # or specify a path to save
@@ -217,12 +230,12 @@ from pathlib import Path
 
 if getattr(sys, 'frozen', False):
     # Running from PyInstaller bundle
-    bundle_dir = Path(sys._MEIPASS)
-    binary_path = bundle_dir / "poppler" / "bin"
+    base_path = Path(sys._MEIPASS)
 else:
-    # Running from source - use platform-specific paths
-    # See poppler_utils.py for actual cross-platform detection
-    binary_path = Path("/usr/local/bin")  # macOS/Linux example
+    # Running from source
+    base_path = Path(__file__).parent
+
+icon_file = base_path / "resources" / "icon.png"
 ```
 
 ## Boundaries and Restrictions
@@ -233,7 +246,7 @@ else:
 - Binary files or bundled dependencies in `dist/` (these are build artifacts)
 
 ### Be Careful With
-- PyInstaller spec file generation in `build.py`
+- `packaging/quickpdfocr.spec` (the PyInstaller spec) and `build.py`'s platform detection
 - Binary paths and platform detection logic
 - Qt Signal/Slot connections (easy to create memory leaks)
 - Thread cleanup (always stop threads properly)
@@ -246,15 +259,17 @@ else:
 
 ## Troubleshooting Common Issues
 
-### "Tesseract not found" Error
-- Bundled executables include Tesseract - check `setup_bundled_binaries()`
-- For source: Ensure Tesseract is installed and in PATH
-- Build artifacts bundle Tesseract in `tesseract_binaries/` directory
+### "Tesseract not found" Error (Windows/Linux only)
+- macOS does not need Tesseract at all -- it uses the Vision framework
+- For source or a pre-built binary: Tesseract is not bundled, ensure it is
+  installed and in PATH
+- See `components/ocr/tesseract_engine.py` for how the engine locates it
 
-### "Poppler not found" Error
-- Ensure `poppler_utils.py` is correctly setting up paths
-- Check `poppler_binaries/` directory for bundled version
-- Verify `pdf2image` can find the Poppler binaries
+### PDF rendering failures
+- PDF rendering is bundled via `pypdfium2` on every platform -- there is no
+  Poppler install to check any more
+- See `components/rendering/pdfium_renderer.py`; a rendering failure usually
+  means the PDF itself is corrupted or password-protected
 
 ### GUI Freezing
 - Long operations must run in QThread, not main thread
@@ -263,8 +278,10 @@ else:
 
 ### Build Failures
 - Verify all dependencies in `requirements.txt` are installed
-- Check platform-specific binary paths in `build.py`
-- Ensure Poppler/Tesseract are available during build
+- Check `packaging/quickpdfocr.spec` for platform-specific packaging logic
+- On macOS, run `packaging/verify_universal.py` after `build.py` -- unsigned
+  arm64 binaries will not launch
+- On Windows/Linux, ensure Tesseract is installed on the build machine
 
 ## Development Tips
 
@@ -280,7 +297,7 @@ else:
 - [PySide6 Documentation](https://doc.qt.io/qtforpython/)
 - [Tesseract OCR Documentation](https://github.com/tesseract-ocr/tesseract)
 - [PyInstaller Manual](https://pyinstaller.org/en/stable/)
-- [pdf2image Documentation](https://github.com/Belval/pdf2image)
+- [pypdfium2 Documentation](https://pypdfium2.readthedocs.io/)
 
 ---
 
