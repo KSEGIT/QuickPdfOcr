@@ -263,3 +263,6 @@ tesseract-installer.exe
 
 # Superpowers SDD scratch (ledger, briefs, review packages)
 .superpowers/
+
+# Git worktrees
+.worktrees/
