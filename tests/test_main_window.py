@@ -34,19 +34,8 @@ from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 
 
-@pytest.fixture(scope="module")
-def app() -> QApplication:
-    """The process-wide QApplication.
-
-    QApplication is a singleton per process, so this reuses whatever
-    instance already exists (from another GUI test module) instead of
-    constructing a second one, which Qt does not allow.
-    """
-    return QApplication.instance() or QApplication([])
-
-
 @pytest.fixture
-def window(app):
+def window(qapp):
     """A fresh MainWindow, torn down after each test so state from one test
     cannot leak into the next."""
     win = MainWindow()

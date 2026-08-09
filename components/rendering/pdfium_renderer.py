@@ -23,6 +23,10 @@ class PdfiumRenderer:
         path = Path(pdf_path)
         if not path.exists():
             raise FileNotFoundError(f"PDF file not found: {path}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Path is not a file: {path}")
+        if path.suffix.lower() != ".pdf":
+            raise ValueError(f"Path does not have .pdf extension: {path}")
         self._path = path
         self._doc = pdfium.PdfDocument(str(path))
 

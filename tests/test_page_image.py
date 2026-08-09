@@ -1,5 +1,7 @@
 """Tests for the PageImage boundary type."""
 
+import dataclasses
+
 import pytest
 
 from components.page_image import PageImage
@@ -39,7 +41,7 @@ def test_rejects_unsupported_mode():
 def test_is_immutable():
     page = PageImage(width=2, height=2, stride=8, buffer=b"\x00" * 16, mode="RGBX")
 
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         page.width = 5
 
 

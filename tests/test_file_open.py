@@ -64,88 +64,63 @@ class FakeFileOpenEvent(QEvent):
         return self._path
 
 
-@pytest.fixture(scope="module")
-def app() -> QuickPdfOcrApplication:
-    """The process-wide QApplication.
-
-    QApplication is a singleton per process, so this reuses whatever
-    instance already exists (from another GUI test module) instead of
-    constructing a second one, which Qt does not allow. If some other
-    module got there first with a plain QApplication instead of
-    QuickPdfOcrApplication, fail loudly here rather than let every test in
-    this module die with a bare AttributeError on ._window/._pending_file
-    that gives no hint why.
-    """
-    instance = QApplication.instance()
-    if instance is None:
-        return QuickPdfOcrApplication([])
-    if not isinstance(instance, QuickPdfOcrApplication):
-        pytest.fail(
-            "QApplication.instance() is a plain QApplication, not "
-            "QuickPdfOcrApplication -- some other test module must have "
-            "constructed it first. tests/test_file_open.py needs the "
-            "QuickPdfOcrApplication subclass to exercise set_window()/event()."
-        )
-    return instance
-
-
 @pytest.fixture
-def window(app):
+def window(qapp):
     """A fresh MainWindow, detached from the shared app after each test so
     state from one test cannot leak into the next."""
     win = MainWindow()
     yield win
-    app._window = None
-    app._pending_file = None
+    qapp._window = None
+    qapp._pending_file = None
     win.deleteLater()
 
 
-def test_file_open_before_window_is_queued_then_replayed(app, window, sample_pdf):
+def test_file_open_before_window_is_queued_then_replayed(qapp, window, sample_pdf):
     """An event arriving before the window is attached must be queued, not
     dropped, and replayed onto the window once set_window() runs."""
-    app._window = None
-    app._pending_file = None
+    qapp._window = None
+    qapp._pending_file = None
     path = str(sample_pdf)
 
-    result = app.event(FakeFileOpenEvent(path))
+    result = qapp.event(FakeFileOpenEvent(path))
     assert result is True, "FileOpen event must be reported as handled"
-    assert app._pending_file == path, "early FileOpen event was lost"
+    assert qapp._pending_file == path, "early FileOpen event was lost"
 
-    app.set_window(window)
+    qapp.set_window(window)
 
     assert window.current_file == path, "queued file was not replayed onto the window"
-    assert app._pending_file is None
+    assert qapp._pending_file is None
 
 
-def test_file_open_after_window_goes_straight_through(app, window, sample_pdf):
+def test_file_open_after_window_goes_straight_through(qapp, window, sample_pdf):
     """An event arriving once the window is already attached must be
     delivered immediately, bypassing the pending-file queue entirely."""
-    app.set_window(window)
-    app._pending_file = None
+    qapp.set_window(window)
+    qapp._pending_file = None
     path = str(sample_pdf)
 
-    result = app.event(FakeFileOpenEvent(path))
+    result = qapp.event(FakeFileOpenEvent(path))
 
     assert result is True, "FileOpen event must be reported as handled"
     assert window.current_file == path
-    assert app._pending_file is None
+    assert qapp._pending_file is None
 
 
-def test_non_pdf_file_open_is_ignored(app, window):
+def test_non_pdf_file_open_is_ignored(qapp, window):
     """A FileOpen event for a non-PDF path must be neither queued nor
     opened -- only .pdf paths are meaningful to this app."""
-    app.set_window(window)
+    qapp.set_window(window)
     window.current_file = None
-    app._pending_file = None
+    qapp._pending_file = None
 
-    result = app.event(FakeFileOpenEvent("/some/document.txt"))
+    result = qapp.event(FakeFileOpenEvent("/some/document.txt"))
 
     assert result is True, "FileOpen event must be reported as handled even when ignored"
     assert window.current_file is None, "non-PDF path was opened"
-    assert app._pending_file is None, "non-PDF path was queued"
+    assert qapp._pending_file is None, "non-PDF path was queued"
 
 
-def test_file_open_is_refused_while_ocr_is_running(app, window, sample_pdf, multipage_pdf):
+def test_file_open_is_refused_while_ocr_is_running(qapp, window, sample_pdf, multipage_pdf):
     """Regression test: before this task, MainWindow.open_file()'s only entry
     points (drop zone, file-picker button) were disabled during an OCR run
     via _set_controls_enabled(False). QuickPdfOcrApplication.event() calls
@@ -153,7 +128,7 @@ def test_file_open_is_refused_while_ocr_is_running(app, window, sample_pdf, mult
     arriving mid-run must be refused by open_file() itself, or it would
     silently swap current_file out from under the in-flight OCRWorker.
     """
-    app.set_window(window)
+    qapp.set_window(window)
     window.open_file(str(sample_pdf))
     assert window.current_file == str(sample_pdf)
 
@@ -166,7 +141,7 @@ def test_file_open_is_refused_while_ocr_is_running(app, window, sample_pdf, mult
 
     window.ocr_thread = _StubRunningThread()
 
-    result = app.event(FakeFileOpenEvent(str(multipage_pdf)))
+    result = qapp.event(FakeFileOpenEvent(str(multipage_pdf)))
 
     assert result is True, "FileOpen event must be reported as handled even when refused"
     assert window.current_file == str(sample_pdf), (
@@ -203,14 +178,14 @@ class FakePasteboard:
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="NSServices provider is macOS-only")
-def test_services_provider_opens_a_pdf_from_the_pasteboard(app, window, sample_pdf):
+def test_services_provider_opens_a_pdf_from_the_pasteboard(qapp, window, sample_pdf):
     """The common case: Finder puts an NSURL for the selected PDF on the
     pasteboard. The provider must resolve it and open it exactly like a
     FileOpen event would."""
-    app.set_window(window)
+    qapp.set_window(window)
     window.current_file = None
 
-    provider = app._build_services_provider()
+    provider = qapp._build_services_provider()
     pasteboard = FakePasteboard(urls=[FakeNSURL(str(sample_pdf))])
 
     provider.openFile_userData_error_(pasteboard, None, None)
@@ -219,15 +194,15 @@ def test_services_provider_opens_a_pdf_from_the_pasteboard(app, window, sample_p
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="NSServices provider is macOS-only")
-def test_services_provider_ignores_a_non_pdf(app, window):
+def test_services_provider_ignores_a_non_pdf(qapp, window):
     """NSSendFileTypes in packaging/quickpdfocr.spec should already keep
     Finder from offering this Service for non-PDFs, but the provider must
     not trust that blindly -- a non-PDF path on the pasteboard must be
     ignored, leaving current_file untouched."""
-    app.set_window(window)
+    qapp.set_window(window)
     window.current_file = None
 
-    provider = app._build_services_provider()
+    provider = qapp._build_services_provider()
     pasteboard = FakePasteboard(urls=[FakeNSURL("/some/document.txt")])
 
     provider.openFile_userData_error_(pasteboard, None, None)
@@ -236,14 +211,14 @@ def test_services_provider_ignores_a_non_pdf(app, window):
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="NSServices provider is macOS-only")
-def test_services_provider_falls_back_to_a_pasteboard_string(app, window, sample_pdf):
+def test_services_provider_falls_back_to_a_pasteboard_string(qapp, window, sample_pdf):
     """Some callers put a bare path string on the pasteboard instead of an
     NSURL. When readObjectsForClasses_options_ comes back empty, the
     provider must fall back to stringForType_."""
-    app.set_window(window)
+    qapp.set_window(window)
     window.current_file = None
 
-    provider = app._build_services_provider()
+    provider = qapp._build_services_provider()
     pasteboard = FakePasteboard(urls=[], string=str(sample_pdf))
 
     provider.openFile_userData_error_(pasteboard, None, None)

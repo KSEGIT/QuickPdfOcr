@@ -33,9 +33,15 @@ def initialize_application(loading_screen):
     # loading screen rather than on the first OCR run.
     from components.ocr import get_engine
 
-    engine = get_engine()
-    loading_screen.set_progress(f"Using {engine.name}...")
-    QApplication.processEvents()
+    try:
+        engine = get_engine()
+        loading_screen.set_progress(f"Using {engine.name}...")
+        QApplication.processEvents()
+    except Exception as exc:
+        loading_screen.set_progress(f"Error: {exc}")
+        QApplication.processEvents()
+        QTimer.singleShot(3000, lambda: sys.exit(1))
+        return
 
     loading_screen.set_progress("Finalizing initialization...")
     QApplication.processEvents()
@@ -76,6 +82,12 @@ def _run_selftest(argv) -> int:
     if not stripped:
         print("self-test FAILED: no text extracted", file=sys.stderr)
         return 3
+
+    # Detect OCR error markers that PdfOcrProcessor._process_page() produces
+    # when OCR processing fails on a page.
+    if "[OCR Error:" in text:
+        print("self-test FAILED: OCR error marker present in output", file=sys.stderr)
+        return 1
 
     print(f"self-test PASSED, {len(stripped)} characters extracted")
     print(text)

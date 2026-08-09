@@ -43,7 +43,15 @@ MIN_PLAUSIBLE_MACHO_COUNT = 50
 def run(cmd, **kwargs) -> subprocess.CompletedProcess:
     """Run a command, echoing it, and raise on failure."""
     print(f"  $ {' '.join(str(part) for part in cmd)}")
-    return subprocess.run(cmd, check=True, capture_output=True, text=True, **kwargs)
+    try:
+        return subprocess.run(cmd, check=True, capture_output=True, text=True, **kwargs)
+    except subprocess.CalledProcessError as exc:
+        print(f"Command failed with exit code {exc.returncode}", file=sys.stderr)
+        if exc.stderr:
+            print(f"stderr: {exc.stderr}", file=sys.stderr)
+        if exc.stdout:
+            print(f"stdout: {exc.stdout}", file=sys.stderr)
+        raise
 
 
 def is_macho(path: Path) -> bool:

@@ -7,6 +7,7 @@ _run_selftest never touches Qt.
 """
 
 import main
+from unittest.mock import patch
 
 
 def test_selftest_passes_on_a_document_with_text(sample_pdf):
@@ -37,3 +38,18 @@ def test_selftest_reports_usage_error_without_a_path():
     argv = ["main.py", "--selftest"]
 
     assert main._run_selftest(argv) == 2
+
+
+def test_selftest_detects_ocr_error_markers(sample_pdf):
+    """When PdfOcrProcessor.process() returns text containing an OCR error
+    marker ("[OCR Error: ...]"), _run_selftest must return exit code 1
+    rather than treating it as successful non-empty output."""
+    argv = ["main.py", "--selftest", str(sample_pdf)]
+
+    with patch("main.PdfOcrProcessor") as mock_processor_class:
+        mock_instance = mock_processor_class.return_value
+        mock_instance.process.return_value = "--- Page 1 ---\n[OCR Error: something went wrong]"
+
+        result = main._run_selftest(argv)
+
+    assert result == 1

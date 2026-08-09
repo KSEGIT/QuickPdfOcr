@@ -31,7 +31,7 @@ component ships with this application.
 - Website: https://github.com/tesseract-ocr/tesseract
 - License: https://github.com/tesseract-ocr/tesseract/blob/main/LICENSE
 
-When distributed in binary form with Windows/Linux builds, Tesseract binaries and tessdata (language data files) are included. The Apache 2.0 license allows free redistribution. macOS builds do not include Tesseract; they use the Apple Vision framework instead.
+Windows and Linux users must install Tesseract and tessdata (language data files) separately; they are not bundled with the binaries. The Apache 2.0 license allows free redistribution. macOS builds do not include Tesseract; they use the Apple Vision framework instead.
 
 **Source Code:** https://github.com/tesseract-ocr/tesseract
 

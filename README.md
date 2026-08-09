@@ -287,7 +287,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 **Issue: "Tesseract not found"** (Windows/Linux only — macOS uses Vision, not Tesseract)
 - Make sure Tesseract is installed and in your system PATH
 - Linux: `sudo apt-get install tesseract-ocr`
-- Windows: `winget install --id UB-Mannheim.TesseractOCR` or download from [here](https://github.com/UB-Mannheim/tesseract/wiki)
+- Windows: `winget install --id UB-Mannheim.TesseractOCR` or download the [UB Mannheim Tesseract installer](https://github.com/UB-Mannheim/tesseract/wiki)
 
 **Issue: "Failed to open/render PDF"**
 - PDF rendering is bundled (`pypdfium2`) on every platform, so there is no
