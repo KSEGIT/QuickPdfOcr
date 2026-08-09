@@ -11,6 +11,19 @@ on:
         description: 'Release message'
         required: false
         type: string
+  # Called from release-please.yml after it tags a release. A push:tags
+  # trigger would not work there: release-please pushes the tag with
+  # GITHUB_TOKEN, and token-created refs do not start new workflow runs.
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version number (e.g. v1.0.0)'
+        required: true
+        type: string
+      message:
+        description: 'Release message'
+        required: false
+        type: string
 
 jobs:
   check-tag:
@@ -52,15 +65,21 @@ jobs:
         run: |
           TAG_NAME="${{ steps.meta.outputs.tag_name }}"
 
-          # Ensure we can see tags (and fail if the tag already exists on origin).
+          # Ensure we can see tags. On manual dispatch the tag must NOT
+          # already exist; when called from release-please the tag is
+          # expected to exist because release-please just created it.
           git fetch --tags --force
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
-            echo "ERROR: Tag already exists on origin: $TAG_NAME"
-            echo "Use a new version (recommended), or delete the existing tag + release manually."
-            exit 1
+            if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+              echo "Tag $TAG_NAME already exists on origin (expected: created by release-please)."
+            else
+              echo "ERROR: Tag already exists on origin: $TAG_NAME"
+              echo "Use a new version (recommended), or delete the existing tag + release manually."
+              exit 1
+            fi
+          else
+            echo "Tag $TAG_NAME is available."
           fi
-          
-          echo "Tag $TAG_NAME is available."
 
   build-windows:
     needs: check-tag
