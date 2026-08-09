@@ -370,4 +370,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.check-tag.outputs.tag_name }}
-        run: gh release edit "$TAG_NAME" --draft=false
+        # --repo is required: this job never checks out the repository,
+        # and bare `gh release edit` fails outside a git work tree.
+        run: gh release edit "$TAG_NAME" --repo ${{ github.repository }} --draft=false --latest
