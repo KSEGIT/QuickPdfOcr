@@ -24,10 +24,12 @@ jobs:
         with:
           python-version: '3.12'
       
-      - name: Install Tesseract
+      - name: Install Tesseract and Qt runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y tesseract-ocr
+          # libegl1/libgl1 & friends are not preinstalled on ubuntu-latest;
+          # PySide6 fails to import without them (libEGL.so.1 missing).
+          sudo apt-get install -y tesseract-ocr libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1
 
       - name: Install dependencies
         run: |
@@ -35,6 +37,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run tests
+        # Headless runner: no X display, so Qt must use the offscreen platform.
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests/ -v
 
       - name: Build executable
