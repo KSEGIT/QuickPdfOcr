@@ -10,7 +10,8 @@ The website is accessible at: https://ksegit.github.io/QuickPdfOcr/
 
 - `index.html` - Main landing page with modern design
 - Embedded CSS for styling and responsive design
-- Uses emojis for icons and visual elements
+- Uses inline SVG icons in brand colors for visual elements
+- Hero background (`quick_pdf_hero_small.jpg`, rendered from `hero.svg`) and app icon live in `../resources/` (rendered from the SVG master `icon.svg`; see `design/brand-refresh-prompts.md`)
 
 ## Features
 

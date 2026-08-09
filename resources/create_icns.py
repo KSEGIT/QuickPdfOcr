@@ -116,7 +116,7 @@ def main():
     
     if not png_path.exists():
         print(f"Error: Source PNG not found: {png_path}")
-        print("Please run generate_icon.py first")
+        print("Please render icon_512.png from icon.svg first (see resources/README.md)")
         return 1
     
     create_icns_from_png(str(png_path), str(icns_path))
