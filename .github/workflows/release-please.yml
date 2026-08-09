@@ -38,3 +38,4 @@ jobs:
     with:
       version: ${{ needs.release-please.outputs.tag_name }}
       message: ${{ needs.release-please.outputs.body }}
+      expect-existing-tag: true
