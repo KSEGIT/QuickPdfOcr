@@ -11,6 +11,7 @@ Do not import Pillow or pytesseract here -- neither is installed on macOS.
 import Quartz
 import Vision
 
+from components.ocr.base import OcrEngineUnavailable
 from components.page_image import PageImage
 
 # Preferred when the caller expresses no preference. Vision accepts several
@@ -90,6 +91,17 @@ class VisionOcrEngine:
     def recognize(self, page: PageImage, languages: list[str] | None = None) -> str:
         """Extract text from one page, in top-to-bottom reading order."""
         codes = languages or self.default_languages()
+
+        # Validate requested language codes against supported_languages(),
+        # matching the pattern used in TesseractOcrEngine.recognize.
+        missing = [code for code in codes if code not in self.supported_languages()]
+        if missing:
+            raise OcrEngineUnavailable(
+                "Vision has no language data installed for: "
+                + ", ".join(missing)
+                + ". Upgrade macOS or choose different languages."
+            )
+
         cgimage = page_image_to_cgimage(page)
 
         handler = Vision.VNImageRequestHandler.alloc().initWithCGImage_options_(

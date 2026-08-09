@@ -90,8 +90,8 @@ if IS_MACOS:
         info_plist={
             "CFBundleName": "QuickPdfOcr",
             "CFBundleDisplayName": "QuickPdfOcr",
-            "CFBundleShortVersionString": "2.0.0",
-            "CFBundleVersion": "2.0.0",
+            "CFBundleShortVersionString": os.environ.get("QUICKPDFOCR_VERSION", "0.0.0"),
+            "CFBundleVersion": os.environ.get("QUICKPDFOCR_VERSION", "0.0.0"),
             "LSMinimumSystemVersion": "13.0",
             "NSHighResolutionCapable": True,
             "NSHumanReadableCopyright": "See THIRD_PARTY_LICENSES.md",

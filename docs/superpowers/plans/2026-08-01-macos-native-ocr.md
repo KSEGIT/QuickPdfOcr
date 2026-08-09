@@ -38,7 +38,8 @@
 | `tests/fixtures/make_fixture.py` | how that PDF was generated (documentation, not run in CI) |
 | `tests/test_page_image.py`, `tests/test_pdfium_renderer.py`, `tests/test_ocr_engines.py`, `tests/test_pdf_ocr.py` | test suites |
 | `packaging/quickpdfocr.spec` | PyInstaller spec file (replaces CLI-flag build) |
-| `packaging/make_universal.py` | lipo-merges pdfium, then re-signs |
+| `packaging/prepare_universal_deps.py` | lipo-merges pdfium and other universal2 dependencies |
+| `packaging/verify_universal.py` | checks universal2 binary architecture and ad-hoc signs the app |
 
 **Modified:** `components/pdf_ocr.py`, `components/ocr_worker.py`, `ui/main_window.py`, `main.py`, `build.py`, `requirements.txt`, `.github/workflows/build-macos.yml`, `README.md`, `THIRD_PARTY_LICENSES.md`
 

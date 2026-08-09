@@ -72,9 +72,8 @@ def _run_worker(pdf_path, engine, monkeypatch):
 
 
 def test_a_page_level_failure_is_contained_and_the_run_still_succeeds(
-    multipage_pdf, monkeypatch
+    multipage_pdf, monkeypatch, qapp
 ):
-    QApplication.instance() or QApplication([])
 
     results = _run_worker(multipage_pdf, _PageFailureThenOkEngine(), monkeypatch)
 
@@ -84,8 +83,7 @@ def test_a_page_level_failure_is_contained_and_the_run_still_succeeds(
     assert "recovered text" in results["finished"]
 
 
-def test_engine_unavailable_aborts_the_run_and_reports_an_error(sample_pdf, monkeypatch):
-    QApplication.instance() or QApplication([])
+def test_engine_unavailable_aborts_the_run_and_reports_an_error(sample_pdf, monkeypatch, qapp):
 
     results = _run_worker(sample_pdf, _UnavailableEngine(), monkeypatch)
 
