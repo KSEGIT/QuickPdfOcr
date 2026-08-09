@@ -13,14 +13,14 @@
     <meta property="og:url" content="https://ksegit.github.io/QuickPdfOcr/">
     <meta property="og:title" content="QuickPdfOcr - OCR Scanned PDFs Locally">
     <meta property="og:description" content="Simple, cross-platform PDF OCR desktop app. Drag & drop PDFs, extract text with Apple Vision (macOS) or Tesseract (Windows/Linux), fully offline and privacy-friendly.">
-    <meta property="og:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon_512.png">
+    <meta property="og:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg">
 
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="QuickPdfOcr - OCR Scanned PDFs Locally">
     <meta name="twitter:description" content="Simple, cross-platform PDF OCR desktop app. Drag & drop PDFs, extract text with Apple Vision (macOS) or Tesseract (Windows/Linux), fully offline and privacy-friendly.">
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon_512.png">
-    
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg">
+
     <title>QuickPdfOcr - OCR Scanned PDFs Locally</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon.png">
     <style>
@@ -31,42 +31,44 @@
         }
 
         :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --secondary-color: #64748b;
-            --bg-light: #f8fafc;
-            --bg-white: #ffffff;
-            --text-dark: #0f172a;
+            --indigo: #4F46E5;
+            --indigo-hover: #4338CA;
+            --violet: #7C3AED;
+            --cyan: #22D3EE;
+            --slate-dark: #0F172A;
+            --slate-light: #F8FAFC;
             --text-gray: #475569;
-            --border-color: #e2e8f0;
-            --success-color: #10b981;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --bg-white: #ffffff;
+            --border-color: #E2E8F0;
+            --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08);
+            --shadow-lg: 0 12px 28px -6px rgb(15 23 42 / 0.14);
+            --radius: 14px;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             line-height: 1.6;
-            color: var(--text-dark);
+            color: var(--slate-dark);
             background: var(--bg-white);
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 0 24px;
         }
 
         /* Header */
         header {
-            background: var(--bg-white);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border-color);
-            padding: 1rem 0;
+            padding: 0.85rem 0;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: var(--shadow-sm);
         }
 
         .header-content {
@@ -79,20 +81,22 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-dark);
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--slate-dark);
             text-decoration: none;
+            letter-spacing: -0.02em;
         }
 
         .logo img {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
         }
 
         .header-links {
             display: flex;
-            gap: 1.5rem;
+            gap: 1.75rem;
             align-items: center;
         }
 
@@ -100,101 +104,130 @@
             color: var(--text-gray);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
             transition: color 0.2s;
         }
 
         .header-links a:hover {
-            color: var(--primary-color);
+            color: var(--indigo);
+        }
+
+        .header-links .nav-github {
+            color: var(--indigo);
+            font-weight: 600;
         }
 
         /* Hero Section */
         .hero {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%), 
-                        url('https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg') center/cover no-repeat;
+            position: relative;
+            background:
+                linear-gradient(105deg, rgba(15, 23, 42, 0.88) 0%, rgba(49, 46, 129, 0.78) 45%, rgba(76, 29, 149, 0.55) 100%),
+                url('https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg') center/cover no-repeat,
+                linear-gradient(135deg, #312E81 0%, #4C1D95 100%);
             color: white;
-            padding: 5rem 0;
-            text-align: center;
+            padding: 7rem 0;
+        }
+
+        .hero .container {
+            display: flex;
+        }
+
+        .hero-content {
+            max-width: 620px;
+        }
+
+        .hero .badge {
+            display: inline-block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--cyan);
+            border: 1px solid rgba(34, 211, 238, 0.4);
+            background: rgba(34, 211, 238, 0.1);
+            border-radius: 999px;
+            padding: 0.3rem 0.9rem;
+            margin-bottom: 1.25rem;
         }
 
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: 3.75rem;
             font-weight: 800;
-            margin-bottom: 1rem;
-            line-height: 1.2;
+            margin-bottom: 0.75rem;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
         }
 
         .hero .tagline {
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            opacity: 0.95;
+            color: rgba(255, 255, 255, 0.95);
+            line-height: 1.35;
         }
 
         .hero .description {
             font-size: 1.125rem;
-            max-width: 800px;
-            margin: 0 auto 2.5rem;
-            opacity: 0.9;
+            margin-bottom: 2.5rem;
+            color: rgba(255, 255, 255, 0.82);
             line-height: 1.7;
         }
 
         .cta-buttons {
             display: flex;
             gap: 1rem;
-            justify-content: center;
             flex-wrap: wrap;
         }
 
         .btn {
             display: inline-block;
             padding: 0.875rem 2rem;
-            border-radius: 0.5rem;
+            border-radius: 10px;
             font-weight: 600;
             text-decoration: none;
-            transition: all 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s, border-color 0.2s;
             font-size: 1rem;
         }
 
         .btn-primary {
             background: var(--bg-white);
-            color: var(--primary-color);
+            color: var(--indigo);
             box-shadow: var(--shadow-lg);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.2);
+            box-shadow: 0 20px 30px -8px rgb(0 0 0 / 0.3);
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.12);
             color: white;
-            border: 2px solid white;
+            border: 1.5px solid rgba(255, 255, 255, 0.65);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.22);
+            border-color: white;
         }
 
         /* Section Styles */
         section {
-            padding: 4rem 0;
-        }
-
-        section:nth-child(even):not(.hero):not(.privacy-section):not(.developer-section) {
-            background: var(--bg-light);
+            padding: 4.5rem 0;
         }
 
         .section-title {
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 2.4rem;
+            font-weight: 800;
             text-align: center;
             margin-bottom: 1rem;
-            color: var(--text-dark);
+            color: var(--slate-dark);
+            letter-spacing: -0.02em;
         }
 
         .section-subtitle {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             text-align: center;
             color: var(--text-gray);
             max-width: 800px;
@@ -202,69 +235,104 @@
             line-height: 1.7;
         }
 
+        #features {
+            background: var(--slate-light);
+        }
+
         /* Features Grid */
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
             margin-top: 3rem;
         }
 
         .feature-card {
             background: var(--bg-white);
-            padding: 2rem;
-            border-radius: 0.75rem;
+            padding: 1.75rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
 
         .feature-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-lg);
+            border-color: rgba(79, 70, 229, 0.35);
         }
 
         .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            margin-bottom: 1.1rem;
         }
 
+        .feature-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .icon-indigo { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
+        .icon-violet { background: rgba(124, 58, 237, 0.1); color: var(--violet); }
+        .icon-cyan   { background: rgba(34, 211, 238, 0.12); color: #0891B2; }
+
         .feature-card h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
+            font-size: 1.2rem;
+            font-weight: 700;
             margin-bottom: 0.5rem;
-            color: var(--text-dark);
+            color: var(--slate-dark);
         }
 
         .feature-card p {
             color: var(--text-gray);
             line-height: 1.6;
+            font-size: 0.97rem;
         }
 
         /* Privacy Section */
         .privacy-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--indigo) 0%, var(--violet) 100%);
             color: white;
-            padding: 4rem 0;
+            padding: 4.5rem 0;
             text-align: center;
         }
 
         .privacy-section h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 2.4rem;
+            font-weight: 800;
             margin-bottom: 1rem;
+            letter-spacing: -0.02em;
         }
 
         .privacy-section p {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             max-width: 800px;
             margin: 0 auto;
             line-height: 1.7;
-            opacity: 0.95;
+            color: rgba(255, 255, 255, 0.92);
         }
 
         .privacy-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+
+        .privacy-icon svg {
+            width: 36px;
+            height: 36px;
         }
 
         /* Download Section */
@@ -275,94 +343,148 @@
         .download-options {
             display: flex;
             justify-content: center;
-            gap: 2rem;
+            gap: 1.5rem;
             flex-wrap: wrap;
             margin-top: 2rem;
         }
 
         .download-card {
             background: var(--bg-white);
-            border: 2px solid var(--border-color);
-            border-radius: 0.75rem;
-            padding: 2rem;
-            min-width: 250px;
-            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 2.25rem 2rem;
+            width: 280px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
 
         .download-card:hover {
-            border-color: var(--primary-color);
+            transform: translateY(-4px);
+            border-color: var(--indigo);
             box-shadow: var(--shadow-lg);
         }
 
         .download-card .platform-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            margin-bottom: 1.25rem;
+        }
+
+        .download-card .platform-icon svg {
+            width: 32px;
+            height: 32px;
         }
 
         .download-card h3 {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.4rem;
+            font-weight: 700;
             margin-bottom: 0.5rem;
         }
 
         .download-card p {
             color: var(--text-gray);
             margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .download-card .btn-primary {
+            background: var(--indigo);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .download-card .btn-primary:hover {
+            background: var(--indigo-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
 
         /* Developer Section */
         .developer-section {
-            background: var(--text-dark);
+            background: var(--slate-dark);
             color: white;
-            padding: 4rem 0;
+            padding: 4.5rem 0;
         }
 
         .developer-section h2 {
             text-align: center;
-            font-size: 2.5rem;
+            font-size: 2.4rem;
+            font-weight: 800;
             margin-bottom: 1rem;
+            letter-spacing: -0.02em;
         }
 
         .developer-section .section-subtitle {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.75);
         }
 
         .tech-stack {
             display: flex;
             justify-content: center;
-            gap: 2rem;
+            gap: 0.75rem;
             flex-wrap: wrap;
             margin-top: 2rem;
         }
 
         .tech-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.6rem 1.25rem;
+            border-radius: 999px;
             font-weight: 600;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.92rem;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .tech-item:hover {
+            border-color: rgba(34, 211, 238, 0.5);
+            background: rgba(34, 211, 238, 0.08);
         }
 
         .code-example {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 1.5rem;
-            border-radius: 0.5rem;
-            margin-top: 2rem;
-            font-family: 'Courier New', monospace;
+            border-radius: 12px;
+            margin-top: 2.5rem;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.92rem;
             text-align: left;
             overflow-x: auto;
+            max-width: 720px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .code-example code {
-            color: #10b981;
+            color: var(--cyan);
+            line-height: 1.8;
+        }
+
+        .developer-section .btn-primary {
+            background: var(--indigo);
+            color: white;
+        }
+
+        .developer-section .btn-primary:hover {
+            background: var(--indigo-hover);
+        }
+
+        .developer-section .mt-2 {
+            text-align: center;
         }
 
         /* Footer */
         footer {
-            background: var(--text-dark);
-            color: rgba(255, 255, 255, 0.8);
+            background: var(--slate-dark);
+            color: rgba(255, 255, 255, 0.75);
             padding: 3rem 0 1.5rem;
             text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         footer .footer-content {
@@ -376,7 +498,7 @@
         }
 
         footer a {
-            color: var(--primary-color);
+            color: var(--cyan);
             text-decoration: none;
         }
 
@@ -406,6 +528,15 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            .hero {
+                padding: 4.5rem 0;
+                text-align: center;
+            }
+
+            .hero .container {
+                justify-content: center;
+            }
+
             .hero h1 {
                 font-size: 2.5rem;
             }
@@ -418,8 +549,10 @@
                 font-size: 1rem;
             }
 
-            .section-title {
-                font-size: 2rem;
+            .section-title,
+            .privacy-section h2,
+            .developer-section h2 {
+                font-size: 1.9rem;
             }
 
             .features-grid {
@@ -428,30 +561,31 @@
 
             .cta-buttons {
                 flex-direction: column;
+                align-items: stretch;
             }
 
             .btn {
-                width: 100%;
-                max-width: 300px;
+                text-align: center;
             }
 
             .header-content {
                 flex-direction: column;
-                gap: 1rem;
+                gap: 0.75rem;
+            }
+
+            .header-links {
+                gap: 1.25rem;
+            }
+
+            .download-card {
+                width: 100%;
+                max-width: 340px;
             }
         }
 
         /* Utility Classes */
-        .text-center {
-            text-align: center;
-        }
-
         .mt-2 {
             margin-top: 2rem;
-        }
-
-        .mb-2 {
-            margin-bottom: 2rem;
         }
     </style>
 </head>
@@ -468,7 +602,7 @@
                     <a href="#features">Features</a>
                     <a href="#download">Download</a>
                     <a href="#developers">Developers</a>
-                    <a href="https://github.com/KSEGIT/QuickPdfOcr" target="_blank">GitHub</a>
+                    <a href="https://github.com/KSEGIT/QuickPdfOcr" target="_blank" class="nav-github">GitHub</a>
                 </nav>
             </div>
         </div>
@@ -477,15 +611,18 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <h1>QuickPdfOcr</h1>
-            <p class="tagline">OCR scanned PDFs in seconds — locally, with a clean desktop UI.</p>
-            <p class="description">
-                Drag and drop a PDF, click Start OCR, then copy the extracted text to your clipboard.
-                Built with PySide6 (Qt6), powered by Apple Vision on macOS and Tesseract OCR on Windows/Linux.
-            </p>
-            <div class="cta-buttons">
-                <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download Latest Release</a>
-                <a href="https://github.com/KSEGIT/QuickPdfOcr" class="btn btn-secondary" target="_blank">View on GitHub</a>
+            <div class="hero-content">
+                <span class="badge">Offline-first PDF OCR</span>
+                <h1>QuickPdfOcr</h1>
+                <p class="tagline">OCR scanned PDFs in seconds — locally, with a clean desktop UI.</p>
+                <p class="description">
+                    Drag and drop a PDF, click Start OCR, then copy the extracted text to your clipboard.
+                    Built with PySide6 (Qt6), powered by Apple Vision on macOS and Tesseract OCR on Windows/Linux.
+                </p>
+                <div class="cta-buttons">
+                    <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download Latest Release</a>
+                    <a href="https://github.com/KSEGIT/QuickPdfOcr" class="btn btn-secondary" target="_blank">View on GitHub</a>
+                </div>
             </div>
         </div>
     </section>
@@ -508,42 +645,90 @@
             <h2 class="section-title">Key Features</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">📄</div>
-                    <h3>Drag & Drop</h3>
+                    <div class="feature-icon icon-indigo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                            <path d="M14 3v5h5"/>
+                            <path d="M12 11v6"/>
+                            <path d="M9.5 14.5 12 17l2.5-2.5"/>
+                        </svg>
+                    </div>
+                    <h3>Drag &amp; Drop</h3>
                     <p>Simply drag and drop PDF files directly into the application window for instant processing.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📁</div>
+                    <div class="feature-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        </svg>
+                    </div>
                     <h3>File Picker</h3>
                     <p>Browse and select PDFs using the traditional file picker if you prefer.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🔍</div>
+                    <div class="feature-icon icon-cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="10.5" cy="10.5" r="6.5"/>
+                            <path d="m21 21-5.7-5.7"/>
+                            <path d="M8 9.5h5"/>
+                            <path d="M8 12h5"/>
+                        </svg>
+                    </div>
                     <h3>Native OCR Engines</h3>
                     <p>Apple's Vision framework (built into macOS) and industry-standard Tesseract on Windows/Linux extract text accurately from scanned pages.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Progress & Status Updates</h3>
+                    <div class="feature-icon icon-indigo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 14a8 8 0 1 1 16 0"/>
+                            <path d="M12 14l3.5-3.5"/>
+                            <path d="M4 18h16"/>
+                        </svg>
+                    </div>
+                    <h3>Progress &amp; Status Updates</h3>
                     <p>Real-time feedback shows processing status while OCR is running.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📋</div>
+                    <div class="feature-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/>
+                            <path d="M8 6H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1"/>
+                            <path d="M9 12h6"/>
+                            <path d="M9 16h4"/>
+                        </svg>
+                    </div>
                     <h3>One-Click Copy to Clipboard</h3>
                     <p>Instantly copy extracted text to your clipboard on macOS, Linux, and Windows.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🔄</div>
+                    <div class="feature-icon icon-cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 12a9 9 0 1 1-2.6-6.4"/>
+                            <path d="M21 3v6h-6"/>
+                        </svg>
+                    </div>
                     <h3>Error Recovery</h3>
                     <p>Retry or start over options available if something fails during processing.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🎨</div>
+                    <div class="feature-icon icon-indigo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <path d="M3 9h18"/>
+                            <path d="M9 9v11"/>
+                        </svg>
+                    </div>
                     <h3>Modern UI</h3>
                     <p>Clean, user-friendly interface with clear visual feedback throughout the process.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📦</div>
+                    <div class="feature-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9z"/>
+                            <path d="M3.5 7.5 12 12l8.5-4.5"/>
+                            <path d="M12 12v9"/>
+                        </svg>
+                    </div>
                     <h3>Fully Standalone</h3>
                     <p>Pre-built executables bundle Python and PDF rendering (pypdfium2 — no Poppler, ever) on every platform. On macOS, OCR uses the Vision framework built into the OS, so there's nothing else to install. Windows/Linux need Tesseract installed separately.</p>
                 </div>
@@ -554,10 +739,15 @@
     <!-- Privacy Section -->
     <section class="privacy-section">
         <div class="container">
-            <div class="privacy-icon">🔒</div>
-            <h2>Offline & Privacy-Friendly</h2>
+            <div class="privacy-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3 4.5 6v5c0 4.6 3.2 8.3 7.5 10 4.3-1.7 7.5-5.4 7.5-10V6z"/>
+                    <path d="m9 11.5 2.2 2.2L15.5 9.5"/>
+                </svg>
+            </div>
+            <h2>Offline &amp; Privacy-Friendly</h2>
             <p>
-                Your documents stay on your computer. QuickPdfOcr runs locally and performs OCR on-device. 
+                Your documents stay on your computer. QuickPdfOcr runs locally and performs OCR on-device.
                 No uploads, no cloud processing, no data collection. Your privacy is guaranteed.
             </p>
         </div>
@@ -568,24 +758,43 @@
         <div class="container">
             <h2 class="section-title">Installation / Downloads</h2>
             <p class="section-subtitle">
-                <strong>Recommended:</strong> Download the pre-built executable for your OS from GitHub Releases. 
+                <strong>Recommended:</strong> Download the pre-built executable for your OS from GitHub Releases.
                 The app is intended to be "download and run." No installation required!
             </p>
             <div class="download-options">
                 <div class="download-card">
-                    <div class="platform-icon">🪟</div>
+                    <div class="platform-icon icon-indigo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <path d="M3 9h18"/>
+                            <path d="M6 6.5h.01"/>
+                            <path d="M9 6.5h.01"/>
+                        </svg>
+                    </div>
                     <h3>Windows</h3>
                     <p>Standalone .exe (Tesseract required, installed separately)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
                 <div class="download-card">
-                    <div class="platform-icon">🍎</div>
+                    <div class="platform-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="4" y="4" width="16" height="11" rx="2"/>
+                            <path d="M2 19h20"/>
+                            <path d="M9.5 19h5"/>
+                        </svg>
+                    </div>
                     <h3>macOS</h3>
                     <p>universal2 .app bundle (Apple Silicon &amp; Intel in one download, macOS 13+)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
                 <div class="download-card">
-                    <div class="platform-icon">🐧</div>
+                    <div class="platform-icon icon-cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <path d="m7 9 3 3-3 3"/>
+                            <path d="M13 15h4"/>
+                        </svg>
+                    </div>
                     <h3>Linux</h3>
                     <p>Standalone executable (Tesseract required, installed separately)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
@@ -652,7 +861,7 @@ python build.py
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/blob/main/LICENSE" target="_blank">License</a>
                 </div>
                 <p>
-                    Open source under the <a href="https://github.com/KSEGIT/QuickPdfOcr/blob/main/LICENSE" target="_blank">MIT License</a>. 
+                    Open source under the <a href="https://github.com/KSEGIT/QuickPdfOcr/blob/main/LICENSE" target="_blank">MIT License</a>.
                     Contributions welcome!
                 </p>
                 <div class="copyright">

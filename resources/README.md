@@ -5,52 +5,65 @@ This directory contains application resources, including icons and other assets.
 ## Icons
 
 The application icon represents a PDF document with OCR scanning functionality:
+- **icon.svg** - Master vector source (1024x1024 viewBox); all raster icons are rendered from this file
 - **icon.png** - Standard PNG icon (256x256) for general use
-- **icon.ico** - Windows icon file (multi-size: 16, 32, 48, 64, 128, 256, 512)
+- **icon.ico** - Windows icon file (multi-size: 16, 32, 48, 64, 128, 256)
 - **icon.icns** - macOS icon file (contains all required sizes for macOS)
 - **icon_512.png** - High-resolution PNG (512x512) for large displays
 
 ### Icon Design
 
-The icon features:
-- A white document with a blue border
-- Gray text lines representing document content
-- Blue scanning arrows showing OCR processing
-- A red "PDF" badge in the top-right corner
+The icon follows the brand design language in `docs/design/brand-refresh-prompts.md`:
+
+- A macOS/iOS-style squircle (rounded rect with ~22% continuous corner radius)
+- Background: diagonal gradient from indigo `#4F46E5` (top-left) to violet `#7C3AED`
+  (bottom-right), with a subtle radial lightening toward the top
+- Centered white document page glyph with slightly rounded corners and a folded
+  top-right corner, containing slate-gray (`#475569`) text lines
+- A glowing cyan (`#22D3EE`) horizontal scan beam across the middle of the document
+  (thin bright core + soft outer glow) with a faint translucent cyan wash above it,
+  evoking OCR scanning in progress
+- Flat vector style, crisp edges, no text or badges; reads clearly down to 16x16
 
 ### Regenerating Icons
 
-If you need to modify or regenerate the icons:
+`icon.svg` is the source of truth. To regenerate the raster icons, render the SVG at
+the required sizes with a headless browser (e.g. Playwright: set the viewport to the
+target size, load the SVG, screenshot with `omitBackground: true` to preserve corner
+transparency), then build the platform containers:
 
 ```bash
-# Navigate to the resources directory
+# Run from the resources directory
 cd resources
 
-# Generate new icons
-python3 generate_icon.py
+# Build the Windows multi-size .ico from the rendered size PNGs (Pillow)
+python3 - <<'EOF'
+from PIL import Image
+sizes = [16, 32, 48, 64, 128, 256]
+imgs = [Image.open(f'/tmp/icon_{s}.png').convert('RGBA') for s in sizes]
+imgs[-1].save('icon.ico', format='ICO', append_images=imgs[:-1],
+              sizes=[(s, s) for s in sizes])
+EOF
 
-# Create macOS .icns file
+# Create macOS .icns file (reads icon_512.png, uses iconutil)
 python3 create_icns.py
 ```
 
 #### Icon Generation Scripts
 
-- **generate_icon.py** - Creates the base icon design and generates PNG and ICO files
-- **create_icns.py** - Converts PNG to macOS .icns format
+- **icon.svg** - Master vector source of truth for the icon (new)
+- **generate_icon.py** - Legacy/deprecated PIL-drawn icon generator, kept for
+  reference only; superseded by `icon.svg`. Do not use for new icon builds.
+- **create_icns.py** - Converts `icon_512.png` to macOS .icns format (still in use)
 
 ### Customizing the Icon
 
-To customize the icon design, edit `generate_icon.py` and modify the `create_icon()` function. The icon is drawn programmatically using PIL (Pillow), so you can adjust:
-- Colors
-- Shapes and proportions
-- Text and badges
-- Special effects
-
-After making changes, run the generation scripts again to create new icon files.
+To customize the icon design, edit `icon.svg` (gradients, glyph geometry, beam
+styling are all plain SVG shapes) and re-render the raster files as described above.
 
 ### Icon Usage in Build
 
-The build process (`build.py`) automatically includes the appropriate icon for each platform:
+The PyInstaller spec (`packaging/quickpdfocr.spec`) includes the appropriate icon for each platform:
 - **Windows**: Uses `icon.ico`
 - **macOS**: Uses `icon.icns`
 - **Linux**: Uses `icon.png`
