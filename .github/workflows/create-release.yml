@@ -168,6 +168,13 @@ jobs:
             exit 1
           }
 
+          # The installer does not put Tesseract on PATH for subsequent
+          # steps, and pytesseract finds the binary purely via PATH --
+          # without this the test and build steps fail with
+          # TesseractNotFoundError / WinError 2.
+          Write-Host "Adding $tesseractPath to PATH for subsequent steps"
+          Add-Content -Path $env:GITHUB_PATH -Value $tesseractPath
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

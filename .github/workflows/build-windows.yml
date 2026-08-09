@@ -113,6 +113,12 @@ jobs:
 
           Write-Host "✓ Tesseract installation complete at: $tesseractPath"
 
+          # The installer does not put Tesseract on PATH for subsequent
+          # steps, and pytesseract finds the binary purely via PATH --
+          # without this the test and build steps fail with
+          # TesseractNotFoundError / WinError 2.
+          Add-Content -Path $env:GITHUB_PATH -Value $tesseractPath
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
