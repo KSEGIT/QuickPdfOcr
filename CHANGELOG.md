@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.7.1](https://github.com/KSEGIT/QuickPdfOcr/compare/v1.6.0...v1.7.1) (2026-08-09)
+
+Re-release of 1.7.0 with working release automation. The v1.6.0/v1.7.0
+tag names are permanently retired: they belonged to immutable releases
+that were deleted while the pipeline was being repaired, and GitHub
+never allows such tag names to be reused.
+
+### Bug Fixes
+
+* repair the test suite so release builds go green on all platforms ([0223c53](https://github.com/KSEGIT/QuickPdfOcr/commit/0223c53))
+
+### CI
+
+* run the test suite on PRs and pushes to main so a broken suite can no longer block a release at build time
+* publish the release automatically once binaries are attached ([1c9a0d0](https://github.com/KSEGIT/QuickPdfOcr/commit/1c9a0d0))
+* create release-please releases as drafts so binaries can be attached under immutable releases ([7cb1130](https://github.com/KSEGIT/QuickPdfOcr/commit/7cb1130))
+* install Qt runtime libraries and run Linux tests offscreen ([e101a3c](https://github.com/KSEGIT/QuickPdfOcr/commit/e101a3c))
+* fix tag-exists guard for release-please-triggered builds ([4fb3133](https://github.com/KSEGIT/QuickPdfOcr/commit/4fb3133))
+
 ## [1.7.0](https://github.com/KSEGIT/QuickPdfOcr/compare/v1.6.0...v1.7.0) (2026-08-09)
 
 
