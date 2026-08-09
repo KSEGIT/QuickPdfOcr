@@ -244,6 +244,7 @@ Temporary Items
 
 # PyInstaller
 *.spec
+!packaging/quickpdfocr.spec
 build/
 dist/
 *.pyc
@@ -259,3 +260,9 @@ tesseract-installer.exe
 
 # Icon generation temporary files
 *.iconset/
+
+# Superpowers SDD scratch (ledger, briefs, review packages)
+.superpowers/
+
+# Git worktrees
+.worktrees/
