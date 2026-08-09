@@ -1,0 +1,23 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Config lives in release-please-config.json and
+      # .release-please-manifest.json at the repo root (the defaults).
+      # NOTE: GITHUB_TOKEN-created tags/PRs do not trigger other workflows,
+      # so create-release.yml stays a manual dispatch after the release PR
+      # is merged (or swap in a PAT secret to chain them).
+      - uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
