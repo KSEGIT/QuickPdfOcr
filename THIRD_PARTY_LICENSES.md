@@ -2,34 +2,36 @@
 
 This application uses several open-source components. Below are the licenses for each:
 
-## Poppler
+**Poppler is no longer distributed with any build.** Earlier releases bundled
+Poppler (GPL-2.0/GPL-3.0) binaries for PDF rendering; PDF rendering is now
+provided by the pypdfium2 wheel (BSD-3-Clause/Apache-2.0), so no GPL-licensed
+component ships with this application.
 
-**License:** GPL-2.0 or GPL-3.0 (user's choice)
+## PDFium (via pypdfium2)
 
-Poppler is a PDF rendering library based on the xpdf-3.0 code base.
-
-- Website: https://poppler.freedesktop.org/
-- Source Code: https://gitlab.freedesktop.org/poppler/poppler
-
-When distributed in binary form with this application, you may choose to comply with either GPL-2.0 or GPL-3.0 terms.
-
-**GPL-2.0 License Text:** https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-**GPL-3.0 License Text:** https://www.gnu.org/licenses/gpl-3.0.html
-
-**Important Note:** Since Poppler is licensed under GPL, and this application distributes Poppler binaries, users who redistribute this application must comply with the GPL terms. The source code for Poppler is available at the links above.
+- **License:** BSD-3-Clause (PDFium), Apache-2.0 (pypdfium2 bindings)
+- **Used for:** rendering PDF pages to bitmaps on all platforms
+- **Source:** https://github.com/pypdfium2-team/pypdfium2
 
 ---
 
-## Tesseract OCR
+## Apple Vision framework (macOS only)
+
+- **License:** part of macOS; used via public API, not redistributed
+- **Used for:** on-device text recognition on macOS
+- **Bindings:** PyObjC (MIT), https://github.com/ronaldoussoren/pyobjc
+
+---
+
+## Tesseract OCR (Windows and Linux only)
 
 **License:** Apache License 2.0
 
-Tesseract is an open-source OCR engine.
-
+- **Used for:** text recognition on non-macOS platforms
 - Website: https://github.com/tesseract-ocr/tesseract
 - License: https://github.com/tesseract-ocr/tesseract/blob/main/LICENSE
 
-When distributed in binary form with this application, Tesseract binaries and tessdata (language data files) are included. The Apache 2.0 license allows free redistribution.
+Windows and Linux users must install Tesseract and tessdata (language data files) separately; they are not bundled with the binaries. The Apache 2.0 license allows free redistribution. macOS builds do not include Tesseract; they use the Apple Vision framework instead.
 
 **Source Code:** https://github.com/tesseract-ocr/tesseract
 
@@ -51,26 +53,12 @@ When distributed in binary form with this application, Tesseract binaries and te
 - Website: https://github.com/madmaze/pytesseract
 - License: https://github.com/madmaze/pytesseract/blob/master/LICENSE
 
-### pdf2image
-
-**License:** MIT License
-
-- Website: https://github.com/Belval/pdf2image
-- License: https://github.com/Belval/pdf2image/blob/master/LICENSE
-
 ### Pillow (PIL Fork)
 
 **License:** HPND (Historical Permission Notice and Disclaimer)
 
 - Website: https://python-pillow.org/
 - License: https://github.com/python-pillow/Pillow/blob/main/LICENSE
-
-### PyPDF2
-
-**License:** BSD 3-Clause License
-
-- Website: https://github.com/py-pdf/pypdf
-- License: https://github.com/py-pdf/pypdf/blob/main/LICENSE
 
 ### PyInstaller
 
@@ -85,10 +73,9 @@ PyInstaller's license includes an exception that allows you to distribute the bo
 
 ## Compliance Notes
 
-1. **GPL Components:** This application bundles Poppler, which is licensed under GPL. This means:
-   - The complete source code must be made available (see https://github.com/KSEGIT/QuickPdfOcr)
-   - Any modifications must also be distributed under GPL terms
-   - The GPL license text must be included with distributions
+1. **No GPL Components:** This application no longer bundles any GPL-licensed
+   component. Poppler (GPL-2.0/GPL-3.0) has been removed; PDF rendering is
+   provided by pypdfium2 (BSD-3-Clause/Apache-2.0) instead.
 
 2. **LGPL Components:** PySide6 (Qt) is licensed under LGPL, which allows dynamic linking with proprietary software. Since we bundle it as a library, this is compliant.
 
@@ -100,15 +87,3 @@ PyInstaller's license includes an exception that allows you to distribute the bo
 
 The complete source code for this application is available at:
 **https://github.com/KSEGIT/QuickPdfOcr**
-
-The source code for Poppler is available at:
-**https://gitlab.freedesktop.org/poppler/poppler**
-
----
-
-## Windows Poppler Build
-
-For Windows builds, we use pre-compiled Poppler binaries from:
-**https://github.com/oschwartz10612/poppler-windows**
-
-These binaries are built from the official Poppler source code and are subject to the same GPL-2.0/GPL-3.0 license terms.

@@ -1,6 +1,21 @@
-pytesseract>=0.3.10
-pdf2image>=1.16.0
-Pillow>=10.0.0
-PyPDF2>=3.0.0
+# Core GUI
 PySide6>=6.6.0
+
+# PDF rendering — self-contained wheel, no system binaries
+pypdfium2>=5.12.0
+
+# macOS: native OCR via Apple Vision (no Tesseract, no tessdata)
+pyobjc-framework-Vision>=12.0; sys_platform == 'darwin'
+pyobjc-framework-Quartz>=12.0; sys_platform == 'darwin'
+
+# macOS: Finder Services provider (main.py imports AppKit directly for this;
+# previously only a transitive dependency of pyobjc-framework-Quartz)
+pyobjc-framework-Cocoa>=12.0; sys_platform == 'darwin'
+
+# Windows/Linux: Tesseract OCR
+pytesseract>=0.3.10; sys_platform != 'darwin'
+Pillow>=12.3.0; sys_platform != 'darwin'
+
+# Build + test
 pyinstaller>=6.0.0
+pytest>=8.0.0

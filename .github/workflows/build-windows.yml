@@ -24,76 +24,6 @@ jobs:
         with:
           python-version: '3.12'
       
-      - name: Download Poppler for Windows
-        run: |
-          # Download pre-compiled Poppler binaries from oschwartz10612
-          $POPPLER_VERSION = "24.08.0-0"
-          $POPPLER_URL = "https://github.com/oschwartz10612/poppler-windows/releases/download/v$POPPLER_VERSION/Release-$POPPLER_VERSION.zip"
-          
-          Write-Host "Downloading Poppler $POPPLER_VERSION..."
-          Invoke-WebRequest -Uri $POPPLER_URL -OutFile poppler.zip
-          
-          Write-Host "Extracting Poppler..."
-          Expand-Archive -Path poppler.zip -DestinationPath poppler_temp
-          
-          # List extracted contents to see actual structure
-          Write-Host "Contents of poppler_temp:"
-          Get-ChildItem -Path poppler_temp -Recurse -Depth 1
-          
-          # Find the actual poppler directory (it might be named differently)
-          $popplerDir = Get-ChildItem -Path poppler_temp -Directory | Select-Object -First 1
-          
-          if ($popplerDir) {
-            Write-Host "Moving $($popplerDir.FullName) to poppler_binaries..."
-            Move-Item -Path $popplerDir.FullName -Destination poppler_binaries
-          } else {
-            Write-Error "No directory found in poppler_temp"
-            exit 1
-          }
-          
-          # Verify files exist
-          if (Test-Path "poppler_binaries/Library/bin/pdfinfo.exe") {
-            Write-Host "✓ Poppler binaries downloaded successfully"
-            Get-ChildItem "poppler_binaries/Library/bin" | Select-Object -First 5
-          } else {
-            Write-Error "Failed to download Poppler binaries"
-            exit 1
-          }
-      
-      - name: Setup WSL and install packages
-        run: |
-          Write-Host "Setting up WSL and installing necessary packages..."
-          
-          # Configuration for WSL setup
-          $WSL_SETUP_WAIT_SECONDS = 15
-          
-          # Check if WSL is available on the runner
-          $wslAvailable = Get-Command wsl -ErrorAction SilentlyContinue
-          
-          if ($wslAvailable) {
-            Write-Host "WSL detected, installing packages..."
-            
-            # Try to set up default WSL distribution if needed
-            try {
-              wsl --set-default-version 2
-              wsl --install --distribution Ubuntu --no-launch
-              Start-Sleep -Seconds $WSL_SETUP_WAIT_SECONDS
-            } catch {
-              Write-Host "Note: WSL setup skipped (may already be configured)"
-            }
-            
-            # Update package lists and install tesseract and poppler in WSL
-            try {
-              wsl sudo apt-get update
-              wsl sudo apt-get install -y tesseract-ocr poppler-utils
-              Write-Host "✓ WSL packages installed successfully"
-            } catch {
-              Write-Host "Warning: Could not install packages in WSL, continuing with native Windows installation"
-            }
-          } else {
-            Write-Host "WSL not available on this runner, skipping WSL package installation"
-          }
-      
       - name: Install Tesseract via winget with fallback
         run: |
           Write-Host "Installing Tesseract..."
@@ -180,32 +110,29 @@ jobs:
             Write-Error "Failed to install Tesseract via both winget and direct download"
             exit 1
           }
-          
+
           Write-Host "✓ Tesseract installation complete at: $tesseractPath"
-          
-          Write-Host "Copying Tesseract to project directory..."
-          New-Item -ItemType Directory -Force -Path tesseract_binaries
-          Copy-Item -Path "$tesseractPath\*" -Destination tesseract_binaries -Recurse
-          
-          # Verify files exist
-          if (Test-Path "tesseract_binaries/tesseract.exe") {
-            Write-Host "✓ Tesseract binaries copied successfully"
-            Get-ChildItem "tesseract_binaries" | Select-Object -First 5
-          } else {
-            Write-Error "Failed to copy Tesseract binaries"
-            exit 1
-          }
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
       - name: Build executable
         run: python build.py
-      
+
+      # build.py now produces an onedir bundle (dist/QuickPdfOcr/QuickPdfOcr.exe
+      # plus dist/QuickPdfOcr/_internal/), not a single dist/QuickPdfOcr.exe --
+      # archive the whole directory so the release asset is one runnable unit.
+      - name: Create ZIP archive
+        run: Compress-Archive -Path dist\QuickPdfOcr -DestinationPath dist\QuickPdfOcr-Windows-x64.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QuickPdfOcr-Windows
-          path: dist/QuickPdfOcr.exe
+          name: QuickPdfOcr-Windows-x64
+          path: dist/QuickPdfOcr-Windows-x64.zip
+          if-no-files-found: error
