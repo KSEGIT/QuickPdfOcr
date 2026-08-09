@@ -24,6 +24,11 @@ on:
         description: 'Release message'
         required: false
         type: string
+      expect-existing-tag:
+        description: 'Tag is expected to already exist on origin (release-please created it)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check-tag:
@@ -67,10 +72,13 @@ jobs:
 
           # Ensure we can see tags. On manual dispatch the tag must NOT
           # already exist; when called from release-please the tag is
-          # expected to exist because release-please just created it.
+          # expected to exist because release-please just created it
+          # (signalled via the expect-existing-tag input -- github.event_name
+          # is the caller's event, not workflow_call, so it cannot be used
+          # to distinguish this case).
           git fetch --tags --force
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
-            if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            if [[ "${{ inputs.expect-existing-tag }}" == "true" ]]; then
               echo "Tag $TAG_NAME already exists on origin (expected: created by release-please)."
             else
               echo "ERROR: Tag already exists on origin: $TAG_NAME"
