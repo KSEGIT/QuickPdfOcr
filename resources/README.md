@@ -33,6 +33,9 @@ target size, load the SVG, screenshot with `omitBackground: true` to preserve co
 transparency), then build the platform containers:
 
 ```bash
+# Run from the resources directory
+cd resources
+
 # Build the Windows multi-size .ico from the rendered size PNGs (Pillow)
 python3 - <<'EOF'
 from PIL import Image

@@ -9,7 +9,7 @@ old PIL-drawn placeholder icon is retired.
 
 - **Mood**: fast, precise, trustworthy, offline-first. Desktop-utility professionalism,
   not startup-playful.
-- **Primary gradient**: indigo `#4F46E5` → violet `#7C3AED` (matches the existing site
+- **Primary gradient**: indigo `#4F46E5` → violet `#7C3AED` (replaces the previous site
   accent gradient `#667eea` → `#764ba2`).
 - **Scan accent**: cyan `#22D3EE` — used only for the OCR "scan beam" motif and small
   highlights.
