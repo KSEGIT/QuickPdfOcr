@@ -353,6 +353,9 @@ jobs:
           body: ${{ inputs.message }}
           artifacts: "dist_assets/*"
           commit: ${{ github.sha }}
+          # draft is transient here: the repo enforces immutable releases,
+          # and only a mutable draft can receive the asset uploads. The
+          # next step publishes once everything is attached.
           draft: true
           prerelease: false
           generateReleaseNotes: true
@@ -360,3 +363,11 @@ jobs:
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Assets are in, so flip the draft to published. Immutability starts
+      # at publish -- exactly the point where nothing needs to change anymore.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.check-tag.outputs.tag_name }}
+        run: gh release edit "$TAG_NAME" --draft=false
