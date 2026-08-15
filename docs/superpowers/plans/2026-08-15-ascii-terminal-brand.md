@@ -560,6 +560,10 @@ In the `/* Hero Section */` block at `docs/index.html:120-214`: delete every `ba
 
 ```css
         .hero-terminal {
+            /* .ascii-art is color:inherit so the per-card .icon-* classes can
+               tint each icon; the hero has no such wrapper, so it states its
+               own ink here. */
+            color: var(--frame);
             font-size: clamp(6px, 1.55vw, 15px);
             margin: 2rem auto 0;
             width: max-content;
