@@ -254,6 +254,42 @@
             padding: 4.5rem 0;
         }
 
+        /* Reflow-safe faked box-drawing: CSS borders + corner glyphs.
+           True character frames are reserved for fixed-size .ascii-art blocks. */
+        .boxed {
+            position: relative;
+            border: 1px solid var(--frame);
+            background: var(--surface);
+            padding: 1.5rem;
+        }
+
+        .boxed::before,
+        .boxed::after {
+            position: absolute;
+            color: var(--frame);
+            font-family: var(--mono);
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        .boxed::before { content: "┌"; top: -1px; left: -1px; }
+        .boxed::after  { content: "┘"; bottom: -1px; right: -1px; }
+
+        /* Section titles as shell commands */
+        .cmd::before {
+            content: "$ ";
+            color: var(--accent);
+        }
+
+        /* Buttons as bracketed terminal affordances.
+           The brackets inherit the button's own colour rather than taking
+           --dim: on a filled .btn-primary (background --frame #818CF8) dim
+           grey measures 1.16:1 and is invisible. Inheriting tracks whatever
+           the button's label contrast already is — 5.98:1 on filled,
+           and the ghost buttons' own colour elsewhere. */
+        .btn::before { content: "[ "; }
+        .btn::after  { content: " ]"; }
+
         .section-title {
             font-size: 2.4rem;
             font-weight: 800;
@@ -308,11 +344,12 @@
             margin-top: 3rem;
         }
 
+        /* border and background come from .boxed (applied alongside this
+           class in the markup) so the card ends with one border and one
+           background instead of two competing declarations. */
         .feature-card {
-            background: var(--surface);
             padding: 1.75rem;
             border-radius: var(--radius);
-            border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
@@ -388,9 +425,10 @@
             margin-top: 2rem;
         }
 
+        /* border and background come from .boxed (applied alongside this
+           class in the markup) so the card ends with one border and one
+           background instead of two competing declarations. */
         .download-card {
-            background: var(--surface);
-            border: 1px solid var(--border-color);
             border-radius: var(--radius);
             padding: 2.25rem 2rem;
             width: 280px;
@@ -607,6 +645,8 @@
 
             .header-links {
                 gap: 1.25rem;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .download-card {
@@ -631,6 +671,7 @@
                     <span>QuickPdfOcr</span>
                 </a>
                 <nav class="header-links">
+                    <span class="hero-prompt" aria-hidden="true">~/quickpdfocr $</span>
                     <a href="#features">Features</a>
                     <a href="#download">Download</a>
                     <a href="#developers">Developers</a>
@@ -674,7 +715,7 @@
     <!-- What It Does Section -->
     <section id="about">
         <div class="container">
-            <h2 class="section-title">What It Does</h2>
+            <h2 class="section-title cmd">What It Does</h2>
             <p class="section-subtitle">
                 QuickPdfOcr is a lightweight PDF OCR application that helps you extract text from image-based
                 or scanned PDFs using Apple Vision on macOS and Tesseract on Windows/Linux. It's designed to be
@@ -686,9 +727,9 @@
     <!-- Key Features Section -->
     <section id="features">
         <div class="container">
-            <h2 class="section-title">Key Features</h2>
+            <h2 class="section-title cmd">Key Features</h2>
             <div class="features-grid">
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-indigo">
                         <pre class="ascii-art ascii-icon" aria-hidden="true"> ┌─────┐
  │ ░░░ │
@@ -699,7 +740,7 @@
                     <h3>Drag &amp; Drop</h3>
                     <p>Simply drag and drop PDF files directly into the application window for instant processing.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-violet">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
 │ ▶ a.pdf │
@@ -710,7 +751,7 @@
                     <h3>File Picker</h3>
                     <p>Browse and select PDFs using the traditional file picker if you prefer.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-cyan">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
 │ ░░░░░░░ │
@@ -721,7 +762,7 @@
                     <h3>Native OCR Engines</h3>
                     <p>Apple's Vision framework (built into macOS) and industry-standard Tesseract on Windows/Linux extract text accurately from scanned pages.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-indigo">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
 │ scan... │
@@ -732,7 +773,7 @@
                     <h3>Progress &amp; Status Updates</h3>
                     <p>Real-time feedback shows processing status while OCR is running.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-violet">
                         <pre class="ascii-art ascii-icon" aria-hidden="true"> ┌──────┐
 ┌┴─────┐│
@@ -743,7 +784,7 @@
                     <h3>One-Click Copy to Clipboard</h3>
                     <p>Instantly copy extracted text to your clipboard on macOS, Linux, and Windows.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-cyan">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
 │  ! err  │
@@ -754,7 +795,7 @@
                     <h3>Error Recovery</h3>
                     <p>Retry or start over options available if something fails during processing.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-indigo">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌─┬───────┐
 │●│ ░░░░░ │
@@ -765,7 +806,7 @@
                     <h3>Modern UI</h3>
                     <p>Clean, user-friendly interface with clear visual feedback throughout the process.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-violet">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">  ┌─────┐
  ┌┴────┐│
@@ -801,13 +842,13 @@
     <!-- Download Section -->
     <section id="download" class="download-section">
         <div class="container">
-            <h2 class="section-title">Installation / Downloads</h2>
+            <h2 class="section-title cmd">Installation / Downloads</h2>
             <p class="section-subtitle">
                 <strong>Recommended:</strong> Download the pre-built executable for your OS from GitHub Releases.
                 The app is intended to be "download and run." No installation required!
             </p>
             <div class="download-options">
-                <div class="download-card">
+                <div class="download-card boxed">
                     <div class="platform-icon icon-indigo">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌───┬───┐
 │░░░│░░░│
@@ -819,7 +860,7 @@
                     <p>Standalone .exe (Tesseract required, installed separately)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
-                <div class="download-card">
+                <div class="download-card boxed">
                     <div class="platform-icon icon-violet">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌───────┐
 │ ░░░░░ │
@@ -831,7 +872,7 @@
                     <p>universal2 .app bundle (Apple Silicon &amp; Intel in one download, macOS 13+)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
-                <div class="download-card">
+                <div class="download-card boxed">
                     <div class="platform-icon icon-cyan">
                         <pre class="ascii-art ascii-icon" aria-hidden="true">┌───────┐
 │ <span class="beam">&gt; _</span>   │
@@ -855,7 +896,7 @@
     <!-- Developer Section -->
     <section id="developers" class="developer-section">
         <div class="container">
-            <h2>For Developers</h2>
+            <h2 class="cmd">For Developers</h2>
             <p class="section-subtitle">
                 Run from source (Python) or build your own standalone binary. The project uses PySide6,
                 pypdfium2 for PDF rendering on every platform, Apple's Vision framework for OCR on macOS,
