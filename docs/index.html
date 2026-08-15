@@ -34,8 +34,10 @@
             /* Terminal palette — docs/superpowers/specs/2026-08-15-ascii-terminal-brand-design.md */
             --bg: #0F172A;
             --surface: #1E293B;
-            --frame: #818CF8;
-            --bar: #7C3AED;
+            --frame:      #818CF8; /* indigo ink  — 5.98:1 on bg; draw with this        */
+            --frame-fill: #4F46E5; /* indigo fill — 2.84:1 on bg; white-on-it is 6.29:1 */
+            --bar-ink:    #A78BFA; /* violet ink  — 6.56:1 on bg; draw with this        */
+            --bar:        #7C3AED; /* violet fill — 3.13:1 on bg; white-on-it is 5.70:1 */
             --accent: #22D3EE;
             --text: #E2E8F0;
             --dim: #94A3B8;
@@ -51,7 +53,7 @@
             --slate-light: var(--surface);
             --text-gray: var(--dim);
             --bg-white: var(--bg);
-            --border-color: #475569;
+            --border-color: #64748B;
             --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
             --shadow-lg: 0 12px 28px -6px rgb(0 0 0 / 0.6);
             --radius: 0;
@@ -137,7 +139,7 @@
                 linear-gradient(105deg, rgba(15, 23, 42, 0.88) 0%, rgba(49, 46, 129, 0.78) 45%, rgba(76, 29, 149, 0.55) 100%),
                 url('https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg') center/cover no-repeat,
                 linear-gradient(135deg, #312E81 0%, #4C1D95 100%);
-            color: white;
+            color: var(--text);
             padding: 7rem 0;
         }
 
@@ -176,14 +178,14 @@
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            color: rgba(255, 255, 255, 0.95);
+            color: rgba(226, 232, 240, 0.95);
             line-height: 1.35;
         }
 
         .hero .description {
             font-size: 1.125rem;
             margin-bottom: 2.5rem;
-            color: rgba(255, 255, 255, 0.82);
+            color: rgba(226, 232, 240, 0.82);
             line-height: 1.7;
         }
 
@@ -216,13 +218,13 @@
 
         .btn-secondary {
             background: rgba(226, 232, 240, 0.12);
-            color: white;
-            border: 1.5px solid rgba(255, 255, 255, 0.65);
+            color: var(--text);
+            border: 1.5px solid rgba(226, 232, 240, 0.65);
         }
 
         .btn-secondary:hover {
             background: rgba(226, 232, 240, 0.22);
-            border-color: white;
+            border-color: var(--text);
         }
 
         /* Section Styles */
@@ -291,7 +293,7 @@
         }
 
         .icon-indigo { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
-        .icon-violet { background: rgba(124, 58, 237, 0.1); color: #A78BFA; }
+        .icon-violet { background: rgba(124, 58, 237, 0.1); color: var(--bar-ink); }
         .icon-cyan   { background: rgba(34, 211, 238, 0.12); color: #0891B2; }
 
         .feature-card h3 {
@@ -309,8 +311,8 @@
 
         /* Privacy Section */
         .privacy-section {
-            background: linear-gradient(135deg, #4F46E5 0%, var(--violet) 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--frame-fill) 0%, var(--violet) 100%);
+            color: var(--text);
             padding: 4.5rem 0;
             text-align: center;
         }
@@ -327,7 +329,7 @@
             max-width: 800px;
             margin: 0 auto;
             line-height: 1.7;
-            color: rgba(255, 255, 255, 0.92);
+            color: rgba(226, 232, 240, 0.92);
         }
 
         .privacy-icon {
@@ -338,9 +340,9 @@
             height: 72px;
             border-radius: 18px;
             background: rgba(226, 232, 240, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(226, 232, 240, 0.25);
             margin-bottom: 1.5rem;
-            color: white;
+            color: var(--text);
         }
 
         .privacy-icon svg {
@@ -419,7 +421,7 @@
         /* Developer Section */
         .developer-section {
             background: var(--surface);
-            color: white;
+            color: var(--text);
             padding: 4.5rem 0;
         }
 
@@ -432,7 +434,7 @@
         }
 
         .developer-section .section-subtitle {
-            color: rgba(255, 255, 255, 0.75);
+            color: rgba(226, 232, 240, 0.75);
         }
 
         .tech-stack {
@@ -449,7 +451,7 @@
             border-radius: 999px;
             font-weight: 600;
             font-size: 0.92rem;
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(226, 232, 240, 0.18);
             transition: border-color 0.2s, background 0.2s;
         }
 
@@ -460,7 +462,7 @@
 
         .code-example {
             background: rgba(0, 0, 0, 0.35);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(226, 232, 240, 0.1);
             padding: 1.5rem;
             border-radius: 12px;
             margin-top: 2.5rem;
@@ -494,10 +496,10 @@
         /* Footer */
         footer {
             background: var(--surface);
-            color: rgba(255, 255, 255, 0.75);
+            color: rgba(226, 232, 240, 0.75);
             padding: 3rem 0 1.5rem;
             text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(226, 232, 240, 0.08);
         }
 
         footer .footer-content {
@@ -528,14 +530,14 @@
         }
 
         .footer-links a {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(226, 232, 240, 0.8);
             font-weight: 500;
         }
 
         .copyright {
             margin-top: 2rem;
             padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(226, 232, 240, 0.1);
             font-size: 0.875rem;
         }
 

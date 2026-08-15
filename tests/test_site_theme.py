@@ -10,7 +10,9 @@ TERMINAL_PALETTE = {
     "--bg": "#0F172A",
     "--surface": "#1E293B",
     "--frame": "#818CF8",
+    "--frame-fill": "#4F46E5",
     "--bar": "#7C3AED",
+    "--bar-ink": "#A78BFA",
     "--accent": "#22D3EE",
     "--text": "#E2E8F0",
     "--dim": "#94A3B8",
@@ -188,7 +190,12 @@ FILLED_BUTTON_SELECTORS = [
 
 
 def _resolve_token(tokens: dict[str, str], value: str) -> str:
-    """Resolve a declared value down to a literal hex, one var() hop at a time."""
+    """Resolve a declared value down to a literal hex, walking var() chains.
+
+    Follows however many var() hops it takes to bottom out at a literal
+    value (e.g. --indigo -> var(--frame) -> #818CF8), raising if a name
+    isn't declared in :root or a chain loops back on itself.
+    """
     value = value.strip()
     seen = set()
     while value.startswith("var(") and value.endswith(")"):
@@ -229,3 +236,42 @@ def test_filled_btn_primary_pairing_clears_text_contrast(selector):
         f"{selector}: {color.group(1).strip()} on {background.group(1).strip()} "
         f"({fg_hex} on {bg_hex}) is only {ratio:.2f}:1, needs >= {TEXT_CONTRAST_MIN}:1"
     )
+
+
+def test_privacy_gradient_stops_clear_text_contrast():
+    """Every colour stop in .privacy-section's gradient background must
+    stay legible under its own text.
+
+    --frame-fill and --bar are the *fill* tier of their hue (dark enough
+    to hold light text) as opposed to --frame/--bar-ink (the *ink* tier,
+    drawable on the dark ground). Before this token split, the gradient's
+    first stop reused --indigo/--frame directly; once that token was
+    lifted to the ink value, the stop silently went from a dark fill to a
+    light one and the text on top of it failed contrast. This is the test
+    that would have caught that drift.
+
+    Resolves the section's own declared `color` from :root rather than
+    assuming it's literally "white", so the assertion tracks whatever ink
+    the rule actually declares, not a hardcoded expectation.
+    """
+    html = read_index()
+    css = html.split("<style>", 1)[1].split("</style>", 1)[0]
+    tokens = _declared_tokens(html)
+    rule = re.search(r"\.privacy-section\s*\{(.*?)\}", css, re.S)
+    assert rule, ".privacy-section rule not found"
+    body = rule.group(1)
+    background = re.search(r"background\s*:\s*([^;]+);", body)
+    assert background, ".privacy-section must declare a background"
+    assert "linear-gradient" in background.group(1), ".privacy-section must declare a linear-gradient background"
+    stops = re.findall(r"(var\(--[\w-]+\)|#[0-9A-Fa-f]{6})", background.group(1))
+    assert len(stops) >= 2, f".privacy-section gradient needs at least 2 colour stops, found {stops}"
+    color = re.search(r"(?<!-)\bcolor\s*:\s*([^;]+);", body)
+    assert color, ".privacy-section must declare a color"
+    ink_hex = _resolve_token(tokens, color.group(1))
+    for stop in stops:
+        stop_hex = _resolve_token(tokens, stop)
+        ratio = _contrast_ratio(stop_hex, ink_hex)
+        assert ratio >= TEXT_CONTRAST_MIN, (
+            f".privacy-section: {color.group(1).strip()} ({ink_hex}) on gradient stop "
+            f"{stop} ({stop_hex}) is only {ratio:.2f}:1, needs >= {TEXT_CONTRAST_MIN}:1"
+        )
