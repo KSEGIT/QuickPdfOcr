@@ -15,8 +15,22 @@
 - **Character set.** Non-ASCII characters are restricted to exactly this set. Any other non-ASCII character is a defect:
   `┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ─ │ ╔ ╗ ╚ ╝ ═ ║ ░ ▒ ▓ █ ▀ ▄ ▶ ▼ ▲ ● ○ ·`
   7-bit printable ASCII is always permitted. Rounded box-drawing (`╭ ╮ ╰ ╯`), braille, and emoji are forbidden.
-- **Palette.** `--bg: #0F172A`, `--surface: #1E293B`, `--frame: #818CF8`, `--bar: #7C3AED`, `--accent: #22D3EE`, `--text: #E2E8F0`, `--dim: #94A3B8`. Exact hex values, lowercase `#` prefix, uppercase digits.
-- **Contrast.** Every token carrying text or ASCII art clears 4.5:1 on `--bg`. `--bar` (3.13:1) is fills only — solid `█` runs and progress bars — and must never be the computed `color` of a text-bearing element, directly or through a legacy alias.
+- **Palette.** Each brand hue has an *ink* value you draw with and a *fill* value you put white text on. Exact hex, uppercase digits:
+
+  | Token | Hex | On `--bg` | Role |
+  |---|---|---|---|
+  | `--bg` | `#0F172A` | — | page ground |
+  | `--surface` | `#1E293B` | 1.22:1 vs bg | card fill |
+  | `--frame` | `#818CF8` | 5.98:1 | indigo **ink** — frames, ASCII art |
+  | `--frame-fill` | `#4F46E5` | 2.84:1 | indigo **fill** — background only; white on it is 6.29:1 |
+  | `--bar-ink` | `#A78BFA` | 6.56:1 | violet **ink** — art strokes, `█` runs |
+  | `--bar` | `#7C3AED` | 3.13:1 | violet **fill** — background only; white on it is 5.70:1 |
+  | `--accent` | `#22D3EE` | 9.88:1 | scan beam, prompts, links, cursor |
+  | `--text` | `#E2E8F0` | 14.48:1 | body text |
+  | `--dim` | `#94A3B8` | 6.96:1 | secondary text, `░` shading |
+  | `--border-color` | `#64748B` | 3.75:1 (3.07:1 vs surface) | rules, card borders |
+
+- **Contrast.** Every token carrying text or ASCII art clears 4.5:1 on `--bg`. The two `*-fill` tokens are background-only and must never be the computed `color` of a text-bearing element, directly or through a legacy alias. Never hardcode a hex to route around a token's contrast — add or use the correct ink/fill token instead.
 - **Monospace stack** (verbatim, everywhere): `ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace`
 - **Reflow rule.** Fixed-width box-drawing frames only inside fixed-size blocks. Section frames, cards, and buttons use CSS borders plus `::before`/`::after` corner glyphs.
 - **Copy is frozen.** No headline, paragraph, feature name, or link may be reworded. Existing `id` attributes (`#about`, `#features`, `#download`, `#developers`) and all `href`s are preserved.
@@ -314,7 +328,7 @@ Insert immediately after the `/* Features Grid */` comment at `docs/index.html:2
         }
 
         .ascii-art .beam { color: var(--accent); }
-        .ascii-art .fill { color: var(--bar); }
+        .ascii-art .fill { color: var(--bar-ink); }
         .ascii-art .dim  { color: var(--dim); }
 
         .ascii-icon {
@@ -324,7 +338,7 @@ Insert immediately after the `/* Features Grid */` comment at `docs/index.html:2
         }
 
         .icon-indigo { color: var(--frame); }
-        .icon-violet { color: var(--bar); }
+        .icon-violet { color: var(--bar-ink); }
         .icon-cyan   { color: var(--accent); }
 ```
 
