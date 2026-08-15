@@ -254,6 +254,30 @@
             background: var(--slate-light);
         }
 
+        /* Shared character-grid ASCII blocks (icons + hero) */
+        .ascii-art {
+            font-family: var(--mono);
+            line-height: 1.15;
+            white-space: pre;
+            margin: 0;
+            color: var(--frame);
+            -webkit-font-smoothing: none;
+        }
+
+        .ascii-art .beam { color: var(--accent); }
+        .ascii-art .fill { color: var(--bar-ink); }
+        .ascii-art .dim  { color: var(--dim); }
+
+        .ascii-icon {
+            font-size: 15px;
+            letter-spacing: 0;
+            display: inline-block;
+        }
+
+        .icon-indigo { color: var(--frame); }
+        .icon-violet { color: var(--bar-ink); }
+        .icon-cyan   { color: var(--accent); }
+
         /* Features Grid */
         .features-grid {
             display: grid;
@@ -281,20 +305,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 52px;
-            height: 52px;
-            border-radius: 12px;
             margin-bottom: 1.1rem;
         }
-
-        .feature-icon svg {
-            width: 28px;
-            height: 28px;
-        }
-
-        .icon-indigo { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
-        .icon-violet { background: rgba(124, 58, 237, 0.1); color: var(--bar-ink); }
-        .icon-cyan   { background: rgba(34, 211, 238, 0.12); color: #0891B2; }
 
         .feature-card h3 {
             font-size: 1.2rem;
@@ -336,18 +348,9 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 72px;
-            height: 72px;
-            border-radius: 18px;
-            background: rgba(226, 232, 240, 0.14);
             border: 1px solid rgba(226, 232, 240, 0.25);
             margin-bottom: 1.5rem;
             color: var(--text);
-        }
-
-        .privacy-icon svg {
-            width: 36px;
-            height: 36px;
         }
 
         /* Download Section */
@@ -383,15 +386,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 60px;
-            height: 60px;
-            border-radius: 14px;
             margin-bottom: 1.25rem;
-        }
-
-        .download-card .platform-icon svg {
-            width: 32px;
-            height: 32px;
         }
 
         .download-card h3 {
@@ -661,88 +656,88 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
-                            <path d="M14 3v5h5"/>
-                            <path d="M12 11v6"/>
-                            <path d="M9.5 14.5 12 17l2.5-2.5"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true"> ┌─────┐
+ │ ░░░ │
+ └──┬──┘
+    ▼
+┌ ─ ─ ─ ┐</pre>
                     </div>
                     <h3>Drag &amp; Drop</h3>
                     <p>Simply drag and drop PDF files directly into the application window for instant processing.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│ ▶ a.pdf │
+│   b.pdf │
+│   c.pdf │
+└─────────┘</pre>
                     </div>
                     <h3>File Picker</h3>
                     <p>Browse and select PDFs using the traditional file picker if you prefer.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="10.5" cy="10.5" r="6.5"/>
-                            <path d="m21 21-5.7-5.7"/>
-                            <path d="M8 9.5h5"/>
-                            <path d="M8 12h5"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│ ░░░░░░░ │
+│<span class="beam">═════════</span>│
+│ ▓▓▓▓▓▓▓ │
+└─────────┘</pre>
                     </div>
                     <h3>Native OCR Engines</h3>
                     <p>Apple's Vision framework (built into macOS) and industry-standard Tesseract on Windows/Linux extract text accurately from scanned pages.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M4 14a8 8 0 1 1 16 0"/>
-                            <path d="M12 14l3.5-3.5"/>
-                            <path d="M4 18h16"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│ scan... │
+│ <span class="fill">████</span>░░░ │
+│   57%   │
+└─────────┘</pre>
                     </div>
                     <h3>Progress &amp; Status Updates</h3>
                     <p>Real-time feedback shows processing status while OCR is running.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/>
-                            <path d="M8 6H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1"/>
-                            <path d="M9 12h6"/>
-                            <path d="M9 16h4"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true"> ┌──────┐
+┌┴─────┐│
+│ ░░░░ ├┘
+│ ░░░░ │
+└──────┘</pre>
                     </div>
                     <h3>One-Click Copy to Clipboard</h3>
                     <p>Instantly copy extracted text to your clipboard on macOS, Linux, and Windows.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M21 12a9 9 0 1 1-2.6-6.4"/>
-                            <path d="M21 3v6h-6"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│  ! err  │
+│ ──────▶ │
+│ [retry] │
+└─────────┘</pre>
                     </div>
                     <h3>Error Recovery</h3>
                     <p>Retry or start over options available if something fails during processing.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="16" rx="2"/>
-                            <path d="M3 9h18"/>
-                            <path d="M9 9v11"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─┬───────┐
+│●│ ░░░░░ │
+│░│ ░░░░░ │
+│░│ ░░░░░ │
+└─┴───────┘</pre>
                     </div>
                     <h3>Modern UI</h3>
                     <p>Clean, user-friendly interface with clear visual feedback throughout the process.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9z"/>
-                            <path d="M3.5 7.5 12 12l8.5-4.5"/>
-                            <path d="M12 12v9"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">  ┌─────┐
+ ┌┴────┐│
+ │ ▓▓▓ ││
+ │ ▓▓▓ ├┘
+ └─────┘</pre>
                     </div>
                     <h3>Fully Standalone</h3>
                     <p>Pre-built executables bundle Python and PDF rendering (pypdfium2 — no Poppler, ever) on every platform. On macOS, OCR uses the Vision framework built into the OS, so there's nothing else to install. Windows/Linux need Tesseract installed separately.</p>
@@ -755,10 +750,11 @@
     <section class="privacy-section">
         <div class="container">
             <div class="privacy-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 3 4.5 6v5c0 4.6 3.2 8.3 7.5 10 4.3-1.7 7.5-5.4 7.5-10V6z"/>
-                    <path d="m9 11.5 2.2 2.2L15.5 9.5"/>
-                </svg>
+                <pre class="ascii-art ascii-icon" aria-hidden="true">  ┌───┐
+ ┌┴───┴┐
+ │ ███ │
+ │ █▀█ │
+ └─────┘</pre>
             </div>
             <h2>Offline &amp; Privacy-Friendly</h2>
             <p>
@@ -779,12 +775,11 @@
             <div class="download-options">
                 <div class="download-card">
                     <div class="platform-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="16" rx="2"/>
-                            <path d="M3 9h18"/>
-                            <path d="M6 6.5h.01"/>
-                            <path d="M9 6.5h.01"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌───┬───┐
+│░░░│░░░│
+├───┼───┤
+│░░░│░░░│
+└───┴───┘</pre>
                     </div>
                     <h3>Windows</h3>
                     <p>Standalone .exe (Tesseract required, installed separately)</p>
@@ -792,11 +787,11 @@
                 </div>
                 <div class="download-card">
                     <div class="platform-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="4" y="4" width="16" height="11" rx="2"/>
-                            <path d="M2 19h20"/>
-                            <path d="M9.5 19h5"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌───────┐
+│ ░░░░░ │
+│ ░░░░░ │
+└───────┘
+ ▀▀▀▀▀▀▀</pre>
                     </div>
                     <h3>macOS</h3>
                     <p>universal2 .app bundle (Apple Silicon &amp; Intel in one download, macOS 13+)</p>
@@ -804,11 +799,11 @@
                 </div>
                 <div class="download-card">
                     <div class="platform-icon icon-cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="16" rx="2"/>
-                            <path d="m7 9 3 3-3 3"/>
-                            <path d="M13 15h4"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌───────┐
+│ <span class="beam">&gt; _</span>   │
+│ ░░░░  │
+│ ░░    │
+└───────┘</pre>
                     </div>
                     <h3>Linux</h3>
                     <p>Standalone executable (Tesseract required, installed separately)</p>
