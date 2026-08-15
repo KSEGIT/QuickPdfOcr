@@ -135,10 +135,6 @@
         /* Hero Section */
         .hero {
             position: relative;
-            background:
-                linear-gradient(105deg, rgba(15, 23, 42, 0.88) 0%, rgba(49, 46, 129, 0.78) 45%, rgba(76, 29, 149, 0.55) 100%),
-                url('https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg') center/cover no-repeat,
-                linear-gradient(135deg, #312E81 0%, #4C1D95 100%);
             color: var(--text);
             padding: 7rem 0;
         }
@@ -225,6 +221,32 @@
         .btn-secondary:hover {
             background: rgba(226, 232, 240, 0.22);
             border-color: var(--text);
+        }
+
+        .hero-terminal {
+            /* .ascii-art is color:inherit so the per-card .icon-* classes can
+               tint each icon; the hero has no such wrapper, so it states its
+               own ink here. */
+            color: var(--frame);
+            font-size: clamp(6px, 1.55vw, 15px);
+            margin: 2rem auto 0;
+            width: max-content;
+            max-width: 100%;
+        }
+
+        .hero-prompt { color: var(--dim); }
+
+        .cursor {
+            color: var(--accent);
+            animation: blink 1.1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cursor { animation: none; }
         }
 
         /* Section Styles */
@@ -633,6 +655,18 @@
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download Latest Release</a>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr" class="btn btn-secondary" target="_blank">View on GitHub</a>
                 </div>
+                <pre class="ascii-art hero-terminal" aria-hidden="true"><span class="hero-prompt">~/Documents $</span> quickpdfocr scan report.pdf
+
+┌─ QuickPdfOcr ──────────────────────────────┐
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  <span class="beam">════════════════════════════════════════</span>  │
+│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │
+│                                            │
+│  [<span class="fill">████████████████</span>░░░░░░] 71%              │
+│  page 12/17  ·  vision.framework           │
+└────────────────────────────────────────────┘
+
+<span class="beam">&gt;</span> 4,812 words copied to clipboard<span class="cursor">_</span></pre>
             </div>
         </div>
     </section>

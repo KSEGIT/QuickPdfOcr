@@ -136,3 +136,50 @@ def test_icon_color_classes_map_to_their_tokens():
     assert actual == expected, (
         f"icon colour classes did not map to their tokens: {actual} != {expected}"
     )
+
+
+HERO_RE = re.compile(
+    r'<pre[^>]*class="[^"]*\bhero-terminal\b[^"]*"[^>]*>(.*?)</pre>', re.S
+)
+
+
+def _hero_text() -> str:
+    match = HERO_RE.search(read_index())
+    assert match, "no .hero-terminal block found"
+    return re.sub(r"<[^>]+>", "", match.group(1)).strip("\n")
+
+
+def test_hero_terminal_is_fixed_46_columns():
+    """Every framed row is exactly 46 columns, or the box will not close."""
+    framed = [ln for ln in _hero_text().split("\n")
+              if ln.startswith(("┌", "│", "└"))]
+    assert framed, "hero has no framed rows"
+    widths = {len(ln) for ln in framed}
+    assert widths == {46}, f"hero framed rows must all be 46 cols, got {widths}"
+
+
+def test_hero_uses_clamped_font_size():
+    """clamp() keeps the fixed grid inside narrow viewports."""
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    rule = re.search(r"\.hero-terminal\s*\{(.*?)\}", css, re.S)
+    assert rule, ".hero-terminal rule not found"
+    assert "clamp(" in rule.group(1), "hero font-size must use clamp()"
+
+
+def test_hero_background_image_removed():
+    """The hero no longer paints quick_pdf_hero_small.jpg; it is og:image only."""
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    assert "quick_pdf_hero_small" not in css
+
+
+def test_cursor_blink_respects_reduced_motion():
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    assert "prefers-reduced-motion" in css
+    reduced = re.search(
+        r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{(.*?)\n\s{8}\}",
+        css, re.S,
+    )
+    assert reduced, "no prefers-reduced-motion block"
+    assert "animation" in reduced.group(1), (
+        "reduced-motion block must disable the cursor animation"
+    )
