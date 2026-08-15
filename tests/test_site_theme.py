@@ -61,8 +61,36 @@ def test_no_hardcoded_white_backgrounds():
     assert offenders == [], f"hardcoded light backgrounds remain: {offenders}"
 
 
+def _frame_aliases(html: str) -> set[str]:
+    """Custom properties declared in :root whose value is exactly var(--frame).
+
+    A legacy alias like ``--indigo: var(--frame);`` resolves to the same
+    colour as --frame, so using the alias as a text colour is exactly as
+    much of a contrast violation as using var(--frame) directly. Deriving
+    the alias list from :root (rather than hardcoding "--indigo") means a
+    future alias of --frame is caught automatically instead of reopening
+    this hole.
+    """
+    root = re.search(r":root\s*\{(.*?)\}", html, re.S)
+    assert root, ":root block not found"
+    return {
+        name
+        for name, value in re.findall(r"(--[\w-]+)\s*:\s*([^;]+);", root.group(1))
+        if value.strip() == "var(--frame)"
+    }
+
+
 def test_frame_token_never_carries_text():
-    """--frame is ~3:1 on --bg: decoration only, never a text colour."""
-    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
-    offenders = re.findall(r"(?<!-)\bcolor\s*:\s*var\(--frame\)", css)
-    assert offenders == [], "--frame must never be used as a text colour"
+    """--frame is ~3:1 on --bg: decoration only, never a text colour.
+
+    Covers direct use of var(--frame) as well as any legacy alias declared
+    in :root that resolves straight to it (e.g. --indigo).
+    """
+    html = read_index()
+    css = html.split("<style>", 1)[1].split("</style>", 1)[0]
+    tokens = _frame_aliases(html) | {"--frame"}
+    alternation = "|".join(re.escape(token) for token in sorted(tokens))
+    offenders = re.findall(rf"(?<!-)\bcolor\s*:\s*var\(({alternation})\)", css)
+    assert offenders == [], (
+        f"--frame must never be used as a text colour, directly or via an alias: {offenders}"
+    )
