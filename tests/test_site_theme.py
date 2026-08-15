@@ -166,3 +166,66 @@ def test_bar_token_clears_fill_contrast_floor_against_bg():
         f"{FILLS_ONLY_TOKEN} ({tokens[FILLS_ONLY_TOKEN]}) is only {ratio:.2f}:1 against --bg "
         f"({tokens['--bg']}), needs >= {FILL_CONTRAST_MIN}:1 even as a fill"
     )
+
+
+# Rules whose background AND foreground are both declared together in a
+# single CSS rule, so a rule-local regex can resolve the pairing without
+# guessing which background a colour actually renders on. --frame flipped
+# from a dark fill (white-on-it read at 6.29:1) to a light one (5.98:1
+# against --bg) when the palette was corrected, so these two "filled"
+# .btn-primary variants were inverted to dark ink on the light fill.
+#
+# Their :hover variants (`.download-card .btn-primary:hover`,
+# `.developer-section .btn-primary:hover`) only swap `background` and rely
+# on the cascade to keep the `color` declared here — that inheritance
+# across two separate rules isn't something a rule-local regex can see
+# without effectively reimplementing CSS cascade resolution, so it is
+# deliberately not asserted here (see docstring below).
+FILLED_BUTTON_SELECTORS = [
+    ".download-card .btn-primary",
+    ".developer-section .btn-primary",
+]
+
+
+def _resolve_token(tokens: dict[str, str], value: str) -> str:
+    """Resolve a declared value down to a literal hex, one var() hop at a time."""
+    value = value.strip()
+    seen = set()
+    while value.startswith("var(") and value.endswith(")"):
+        name = value[4:-1].strip()
+        assert name not in seen, f"circular alias resolving {value!r}"
+        assert name in tokens, f"{name!r} is not declared in :root"
+        seen.add(name)
+        value = tokens[name].strip()
+    return value
+
+
+@pytest.mark.parametrize("selector", FILLED_BUTTON_SELECTORS)
+def test_filled_btn_primary_pairing_clears_text_contrast(selector):
+    """The declared background/foreground pair on each filled .btn-primary
+    variant's rest state must clear 4.5:1, resolved from :root rather than
+    hardcoded.
+
+    Deliberately does not cover the :hover state: it only overrides
+    `background`, and its `color` comes from the cascade (the plain,
+    non-hover rule above it) rather than anything declared in the hover
+    rule itself. A rule-local regex has no principled way to resolve that
+    without reimplementing CSS's cascade — a later task adds a
+    browser-level check that reads the real computed style instead.
+    """
+    html = read_index()
+    css = html.split("<style>", 1)[1].split("</style>", 1)[0]
+    tokens = _declared_tokens(html)
+    rule = re.search(rf"{re.escape(selector)}\s*\{{(.*?)\}}", css, re.S)
+    assert rule, f"{selector} rule not found"
+    body = rule.group(1)
+    background = re.search(r"background\s*:\s*([^;]+);", body)
+    color = re.search(r"(?<!-)\bcolor\s*:\s*([^;]+);", body)
+    assert background and color, f"{selector} must declare both background and color together"
+    bg_hex = _resolve_token(tokens, background.group(1))
+    fg_hex = _resolve_token(tokens, color.group(1))
+    ratio = _contrast_ratio(bg_hex, fg_hex)
+    assert ratio >= TEXT_CONTRAST_MIN, (
+        f"{selector}: {color.group(1).strip()} on {background.group(1).strip()} "
+        f"({fg_hex} on {bg_hex}) is only {ratio:.2f}:1, needs >= {TEXT_CONTRAST_MIN}:1"
+    )
