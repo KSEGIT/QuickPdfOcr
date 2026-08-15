@@ -275,3 +275,33 @@ def test_privacy_gradient_stops_clear_text_contrast():
             f".privacy-section: {color.group(1).strip()} ({ink_hex}) on gradient stop "
             f"{stop} ({stop_hex}) is only {ratio:.2f}:1, needs >= {TEXT_CONTRAST_MIN}:1"
         )
+
+
+def test_section_titles_render_as_commands():
+    """Section titles carry a shell-prompt prefix via .cmd::before."""
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    rule = re.search(r"\.cmd::before\s*\{(.*?)\}", css, re.S)
+    assert rule, ".cmd::before rule not found"
+    assert "content:" in rule.group(1)
+
+
+def test_reflowing_frames_use_css_borders_not_characters():
+    """The reflow rule: cards/sections are CSS-framed, never character-framed."""
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    rule = re.search(r"\.boxed\s*\{(.*?)\}", css, re.S)
+    assert rule, ".boxed rule not found"
+    assert "border:" in rule.group(1)
+    assert "var(--frame)" in rule.group(1)
+
+
+def test_buttons_are_bracketed():
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    before = re.search(r"\.btn::before\s*\{(.*?)\}", css, re.S)
+    after = re.search(r"\.btn::after\s*\{(.*?)\}", css, re.S)
+    assert before and after, "btn bracket pseudo-elements not found"
+    assert '"[' in before.group(1) or "'[" in before.group(1)
+    assert ']"' in after.group(1) or "]'" in after.group(1)
+
+
+def test_nav_has_shell_prompt():
+    assert "~/quickpdfocr" in read_index()
