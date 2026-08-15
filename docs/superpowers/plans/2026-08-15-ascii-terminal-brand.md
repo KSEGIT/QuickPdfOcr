@@ -606,19 +606,19 @@ Inside `<div class="hero-content">` at `docs/index.html:614`, keep the existing 
 ```html
 <pre class="ascii-art hero-terminal" aria-hidden="true"><span class="hero-prompt">~/Documents $</span> quickpdfocr scan report.pdf
 
-┌─ QuickPdfOcr ────────────────────────────┐
-│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
-│  <span class="beam">══════════════════════════════════════</span>  │
-│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │
-│                                          │
-│  [<span class="fill">████████████████</span>░░░░░░] 71%            │
-│  page 12/17  ·  vision.framework         │
-└──────────────────────────────────────────┘
+┌─ QuickPdfOcr ──────────────────────────────┐
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  <span class="beam">════════════════════════════════════════</span>  │
+│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │
+│                                            │
+│  [<span class="fill">████████████████</span>░░░░░░] 71%              │
+│  page 12/17  ·  vision.framework           │
+└────────────────────────────────────────────┘
 
 <span class="beam">&gt;</span> 4,812 words copied to clipboard<span class="cursor">_</span></pre>
 ```
 
-Count the framed rows before saving: `┌`, four `│` rows, the blank `│` row, two `│` rows, `└` — each must be exactly 46 characters wide once tags are stripped. The test enforces this.
+Every framed row is exactly 46 rendered columns once tags are stripped and entities resolved. The art above is the shipped version, measured — an earlier draft of this plan was uniformly 44 columns while the test asserted 46, so verify by measuring, not by eye.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
