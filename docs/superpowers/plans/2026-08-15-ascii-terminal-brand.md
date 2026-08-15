@@ -37,6 +37,19 @@
 - **Accessibility.** Every ASCII art block carries `aria-hidden="true"`. No text content is replaced by art.
 - **Output filenames are frozen:** `resources/icon.png`, `icon_512.png`, `icon.ico`, `icon.icns`, `quick_pdf_hero_small.jpg`. Consumers at `main.py:296`, `packaging/quickpdfocr.spec:71,88`, `docs/index.html:598` must keep working untouched.
 - **Single file.** `docs/index.html` stays self-contained: no external CSS, JS, or font requests.
+- **Playwright is asset tooling, never a test dependency.** All four CI workflows (`.github/workflows/build-{linux,macos,windows}.yml`, `create-release.yml`) run `pip install -r requirements.txt` then `python -m pytest tests/ -v`, and `requirements.txt` does not and must not contain Playwright or Pillow. Any test module importing them **must** guard the import, or its `ImportError` fails collection for the whole module — taking every unrelated static test in that file down with it and breaking the release pipeline:
+
+  ```python
+  sync_playwright = pytest.importorskip(
+      "playwright.sync_api", reason="asset tooling not installed"
+  ).sync_playwright
+  ```
+
+  **Scope the guard to match the module.** Put it at module level only when *every* test in the file needs a browser (`tests/test_site_rendering.py`). When a module mixes static and browser tests (`tests/test_ascii_art.py`), put the `importorskip` inside the browser test's own body — a module-level guard skips the whole file as one unit, silently taking the static tests with it.
+
+  **Verifying the guard:** this repo runs pytest 9.1.1, where `importorskip`'s `exc_type` defaults to `ModuleNotFoundError`, not `ImportError`. A simulated-absence harness must raise `ModuleNotFoundError` or the guard will not catch it and you will conclude the guard is broken when it isn't.
+
+  Verified empirically at `2c18704`: an unguarded import turns 7 passing tests into `1 error during collection`. At `0c9bd10` with the guard: 7/7 with Playwright present, 6 passed + 1 skipped with it absent.
 - **Commit style:** Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
 
 ---
