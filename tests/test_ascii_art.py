@@ -1,7 +1,12 @@
 """Guards for the character-grid ASCII blocks on docs/index.html."""
 import re
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
 
 from tests.test_site_theme import read_index
+
+INDEX = Path(__file__).resolve().parent.parent / "docs" / "index.html"
 
 # The cp437/DEC-derived subset every mainstream monospace font carries.
 # Rounded box-drawing is deliberately excluded — it is the least supported set.
@@ -67,3 +72,37 @@ def test_every_icon_is_five_lines():
         text = re.sub(r"<[^>]+>", "", raw).strip("\n")
         lines = text.split("\n")
         assert len(lines) == 5, f"icon has {len(lines)} lines, expected 5:\n{text}"
+
+
+def test_icon_color_classes_render_three_distinct_colours():
+    """.icon-indigo / .icon-violet / .icon-cyan must cascade a distinct
+    computed `color` onto their .ascii-art <pre> child.
+
+    Regression guard for a real cascade bug, not a hypothetical one:
+    .ascii-art originally declared `color: var(--frame)` directly on the
+    <pre> itself. A specified value on the element always beats an
+    *inherited* value from an ancestor, no matter the ancestor's
+    specificity — so the wrapping div's .icon-indigo/.icon-violet/.icon-cyan
+    colour never reached the art, and all 12 icons rendered identically in
+    --frame. Source inspection cannot see this; it only shows up in the
+    browser's resolved cascade, so this test renders the real page with a
+    headless engine and reads getComputedStyle() rather than parsing CSS.
+    """
+    url = INDEX.resolve().as_uri()
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.goto(url)
+            colors = {}
+            for cls in ("icon-indigo", "icon-violet", "icon-cyan"):
+                el = page.query_selector(f".{cls} .ascii-art")
+                assert el is not None, f"no .ascii-art found under .{cls}"
+                colors[cls] = el.evaluate("e => getComputedStyle(e).color")
+        finally:
+            browser.close()
+
+    assert len(set(colors.values())) == 3, (
+        f"expected 3 distinct computed colours across .icon-indigo/.icon-violet/"
+        f".icon-cyan, got {colors}"
+    )
