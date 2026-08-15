@@ -1659,7 +1659,29 @@ If `test_every_text_element_clears_aa_against_its_real_background` fails, fix th
 
 If `test_no_tofu_glyphs` fails, the mitigation is stated in the spec's risk table: escalate to an inlined base64 subset webfont in `docs/index.html`. Do not silence the test.
 
-If `test_no_horizontal_overflow` fails at 375px, the hero `clamp()` lower bound is too high — lower the `6px` floor or the `1.55vw` slope. Do not add `overflow-x: hidden`; that hides the defect rather than fixing it.
+If `test_no_horizontal_overflow` fails at 375px, lower the hero `clamp()` slope. Do not add `overflow-x: hidden`; that hides the defect rather than fixing it.
+
+**Required fix carried into this task — hero legibility at mobile.** Task 3 shipped `font-size: clamp(6px, 1.55vw, 15px)`, which does not overflow at 375px (measured 0px) but renders the hero terminal at the 6px floor, where it is visually unreadable — a smudge under the CTAs. Overflow was the only thing tested, so the defect passed.
+
+Available width at a 375px viewport is 327px after the container's 24px padding. Monospace advance is ≈0.6em, so a 46-column block fits when `font-size ≤ 327 / (46 × 0.6) = 11.8px`. Change it to:
+
+```css
+font-size: clamp(11px, 3vw, 15px);
+```
+
+At 375px that yields 11.25px (≈310px wide, fits) and stays legible; it reaches the 15px cap at ~500px and above. Then add a test asserting the hero's *computed* font-size at 375px is at least 10px — overflow alone is not sufficient evidence that a block is readable:
+
+```python
+@pytest.mark.parametrize("width", [375, 768, 1440])
+def test_hero_terminal_is_legible_at_every_viewport(page, width):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(INDEX.as_uri())
+    size = page.evaluate(
+        "() => parseFloat(getComputedStyle("
+        "document.querySelector('.hero-terminal')).fontSize)"
+    )
+    assert size >= 10, f"hero terminal is {size}px at {width}px — unreadable"
+```
 
 - [ ] **Step 3: Review the screenshots**
 
