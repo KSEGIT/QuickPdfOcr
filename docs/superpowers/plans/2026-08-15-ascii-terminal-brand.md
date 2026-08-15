@@ -716,9 +716,14 @@ Insert after the `/* Section Styles */` comment at `docs/index.html:215`:
             color: var(--accent);
         }
 
-        /* Buttons as bracketed terminal affordances */
-        .btn::before { content: "[ "; color: var(--dim); }
-        .btn::after  { content: " ]"; color: var(--dim); }
+        /* Buttons as bracketed terminal affordances.
+           The brackets inherit the button's own colour rather than taking
+           --dim: on a filled .btn-primary (background --frame #818CF8) dim
+           grey measures 1.16:1 and is invisible. Inheriting tracks whatever
+           the button's label contrast already is — 5.98:1 on filled,
+           and the ghost buttons' own colour elsewhere. */
+        .btn::before { content: "[ "; }
+        .btn::after  { content: " ]"; }
 ```
 
 - [ ] **Step 4: Apply the classes**
