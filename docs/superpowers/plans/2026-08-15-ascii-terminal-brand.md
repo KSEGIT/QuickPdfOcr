@@ -15,8 +15,8 @@
 - **Character set.** Non-ASCII characters are restricted to exactly this set. Any other non-ASCII character is a defect:
   `┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ─ │ ╔ ╗ ╚ ╝ ═ ║ ░ ▒ ▓ █ ▀ ▄ ▶ ▼ ▲ ● ○ ·`
   7-bit printable ASCII is always permitted. Rounded box-drawing (`╭ ╮ ╰ ╯`), braille, and emoji are forbidden.
-- **Palette.** `--bg: #0F172A`, `--surface: #111C33`, `--frame: #4F46E5`, `--bar: #7C3AED`, `--accent: #22D3EE`, `--text: #E2E8F0`, `--dim: #64748B`. Exact hex values, lowercase `#` prefix, uppercase digits.
-- **Contrast.** `--frame` is decoration only — it must never be the computed `color` of a text-bearing element.
+- **Palette.** `--bg: #0F172A`, `--surface: #1E293B`, `--frame: #818CF8`, `--bar: #7C3AED`, `--accent: #22D3EE`, `--text: #E2E8F0`, `--dim: #94A3B8`. Exact hex values, lowercase `#` prefix, uppercase digits.
+- **Contrast.** Every token carrying text or ASCII art clears 4.5:1 on `--bg`. `--bar` (3.13:1) is fills only — solid `█` runs and progress bars — and must never be the computed `color` of a text-bearing element, directly or through a legacy alias.
 - **Monospace stack** (verbatim, everywhere): `ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace`
 - **Reflow rule.** Fixed-width box-drawing frames only inside fixed-size blocks. Section frames, cards, and buttons use CSS borders plus `::before`/`::after` corner glyphs.
 - **Copy is frozen.** No headline, paragraph, feature name, or link may be reworded. Existing `id` attributes (`#about`, `#features`, `#download`, `#developers`) and all `href`s are preserved.
@@ -55,12 +55,12 @@ INDEX = Path(__file__).resolve().parent.parent / "docs" / "index.html"
 
 TERMINAL_PALETTE = {
     "--bg": "#0F172A",
-    "--surface": "#111C33",
-    "--frame": "#4F46E5",
+    "--surface": "#1E293B",
+    "--frame": "#818CF8",
     "--bar": "#7C3AED",
     "--accent": "#22D3EE",
     "--text": "#E2E8F0",
-    "--dim": "#64748B",
+    "--dim": "#94A3B8",
 }
 
 MONO_STACK = (
@@ -128,12 +128,12 @@ Replace `docs/index.html:33-46` with:
         :root {
             /* Terminal palette — docs/superpowers/specs/2026-08-15-ascii-terminal-brand-design.md */
             --bg: #0F172A;
-            --surface: #111C33;
-            --frame: #4F46E5;
+            --surface: #1E293B;
+            --frame: #818CF8;
             --bar: #7C3AED;
             --accent: #22D3EE;
             --text: #E2E8F0;
-            --dim: #64748B;
+            --dim: #94A3B8;
             --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
 
             /* Legacy token names remapped onto the terminal palette, so the
@@ -1535,19 +1535,71 @@ def test_no_tofu_glyphs(page):
     assert bad == [], f"non-monospaced or tofu glyphs in: {bad}"
 
 
-def test_frame_token_is_not_a_text_colour(page):
-    """--frame is ~3:1 on --bg; assert no text element computed to it."""
+def test_every_text_element_clears_aa_against_its_real_background(page):
+    """The general guard: computed foreground vs computed background, AA 4.5:1.
+
+    Static CSS tests cannot resolve which background a rule actually pairs
+    with — that is why the palette shipped with a 2.84:1 frame token and a
+    2.98:1 button. This walks the rendered tree and checks real pairings.
+    Elements inside .ascii-art are checked at the 3:1 non-text threshold:
+    the art is aria-hidden decoration, but it still has to be visible.
+    """
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
     offenders = page.evaluate(
         """() => {
-            const frame = getComputedStyle(document.documentElement)
-                .getPropertyValue('--frame').trim();
+            const lum = (rgb) => {
+                const [r, g, b] = rgb.match(/\\d+/g).slice(0, 3).map(Number)
+                    .map(v => v / 255)
+                    .map(v => v <= 0.04045 ? v / 12.92
+                                           : Math.pow((v + 0.055) / 1.055, 2.4));
+                return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            };
+            const ratio = (a, b) => {
+                const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+                return (x + 0.05) / (y + 0.05);
+            };
+            const bgOf = (el) => {
+                for (let n = el; n; n = n.parentElement) {
+                    const bg = getComputedStyle(n).backgroundColor;
+                    if (bg && !/rgba?\\(0,\\s*0,\\s*0,\\s*0\\)/.test(bg)) return bg;
+                }
+                return 'rgb(255, 255, 255)';
+            };
+            const bad = [];
+            for (const el of document.querySelectorAll(
+                    'h1,h2,h3,h4,p,a,li,span,button,pre,strong,em')) {
+                if (!el.textContent.trim()) continue;
+                if ([...el.children].some(c => c.textContent.trim())) continue;
+                const style = getComputedStyle(el);
+                const art = el.closest('.ascii-art');
+                const need = art ? 3.0 : 4.5;
+                const got = ratio(style.color, bgOf(el));
+                if (got < need) {
+                    bad.push(`${el.tagName}${art ? '(art)' : ''} ` +
+                             `${got.toFixed(2)}:1 < ${need} — ` +
+                             `"${el.textContent.trim().slice(0, 30)}"`);
+                }
+            }
+            return bad;
+        }"""
+    )
+    assert offenders == [], "contrast failures:\n  " + "\n  ".join(offenders)
+
+
+def test_fills_only_token_is_not_a_text_colour(page):
+    """--bar is 3.13:1 on --bg; assert no text element computed to it."""
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(INDEX.as_uri())
+    offenders = page.evaluate(
+        """() => {
+            const bar = getComputedStyle(document.documentElement)
+                .getPropertyValue('--bar').trim();
             const toRgb = (hex) => {
                 const n = parseInt(hex.slice(1), 16);
                 return `rgb(${n >> 16 & 255}, ${n >> 8 & 255}, ${n & 255})`;
             };
-            const target = toRgb(frame);
+            const target = toRgb(bar);
             const bad = [];
             for (const el of document.querySelectorAll('h1,h2,h3,p,a,li,span')) {
                 if (el.closest('.ascii-art')) continue;
@@ -1559,13 +1611,15 @@ def test_frame_token_is_not_a_text_colour(page):
             return bad;
         }"""
     )
-    assert offenders == [], f"--frame used as text colour on: {offenders}"
+    assert offenders == [], f"--bar used as text colour on: {offenders}"
 ```
 
 - [ ] **Step 2: Run it**
 
 Run: `.venv/bin/python -m pytest tests/test_site_rendering.py -v`
-Expected: PASS (8 tests).
+Expected: every test PASSES.
+
+If `test_every_text_element_clears_aa_against_its_real_background` fails, fix the colour pairing — do not raise the threshold or add elements to the skip list. This test exists precisely because the earlier static guards could not see real foreground/background pairings and let a 2.84:1 token and a 2.98:1 button through.
 
 If `test_no_tofu_glyphs` fails, the mitigation is stated in the spec's risk table: escalate to an inlined base64 subset webfont in `docs/index.html`. Do not silence the test.
 
@@ -1577,8 +1631,16 @@ Open all three of `docs/design/screenshots/*.png`. Confirm by eye: icon frames c
 
 - [ ] **Step 4: Run the full suite**
 
-Run: `.venv/bin/python -m pytest -v`
-Expected: PASS across all modules, including the pre-existing `test_ocr_engines.py`, `test_pdf_ocr.py`, and the rest — this change touches no application code, so any failure there is a regression to investigate, not to accept.
+Run: `.venv/bin/python -m pytest -q`
+
+**Known baseline, measured at `69bc25e` before any of this work landed:**
+`1 failed, 67 passed, 8 skipped, 2 errors`
+
+- FAILED `tests/test_selftest.py::test_selftest_detects_ocr_error_markers` — `main` has no attribute `PdfOcrProcessor`
+- ERROR `tests/test_main_window.py::test_open_file_works_after_a_thread_is_destroyed`
+- ERROR `tests/test_main_window.py::test_is_ocr_running_treats_a_deleted_thread_as_not_running`
+
+These three are pre-existing application-code failures, unrelated to the brand work. **Do not fix them — they are outside this plan's scope.** Expected after this plan: the same three, plus every new site/icon test passing. Any *additional* failure is a regression from this branch and must be investigated.
 
 - [ ] **Step 5: Confirm the app still loads its icon**
 
