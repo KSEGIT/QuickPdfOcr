@@ -2,9 +2,9 @@
 import re
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+import pytest
 
-from tests.test_site_theme import read_index
+from tests.test_site_theme import _declared_tokens, _resolve_token, read_index
 
 INDEX = Path(__file__).resolve().parent.parent / "docs" / "index.html"
 
@@ -74,9 +74,20 @@ def test_every_icon_is_five_lines():
         assert len(lines) == 5, f"icon has {len(lines)} lines, expected 5:\n{text}"
 
 
-def test_icon_color_classes_render_three_distinct_colours():
-    """.icon-indigo / .icon-violet / .icon-cyan must cascade a distinct
-    computed `color` onto their .ascii-art <pre> child.
+def _rgb_string_to_hex(rgb: str) -> str:
+    """Convert a browser-computed 'rgb(r, g, b)' string to '#RRGGBB'."""
+    match = re.match(r"rgb\((\d+),\s*(\d+),\s*(\d+)\)", rgb)
+    assert match, f"unexpected computed colour format: {rgb!r}"
+    r, g, b = (int(x) for x in match.groups())
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def test_icon_color_classes_map_to_their_tokens():
+    """.icon-indigo / .icon-violet / .icon-cyan must each cascade their
+    *own* token onto their .ascii-art <pre> child — not merely three
+    distinct colours, but the exact indigo/violet/cyan assignment, so a
+    bug that swaps two classes (e.g. violet and cyan transposed) is
+    caught rather than passing as "still 3 distinct colours".
 
     Regression guard for a real cascade bug, not a hypothetical one:
     .ascii-art originally declared `color: var(--frame)` directly on the
@@ -87,22 +98,41 @@ def test_icon_color_classes_render_three_distinct_colours():
     --frame. Source inspection cannot see this; it only shows up in the
     browser's resolved cascade, so this test renders the real page with a
     headless engine and reads getComputedStyle() rather than parsing CSS.
+
+    Playwright is asset-authoring tooling, not a runtime or test
+    dependency — it is deliberately absent from requirements.txt and CI.
+    The importorskip is scoped to this function (not module level) so a
+    missing Playwright skips only this one browser-backed test, leaving
+    the other six pure source/regex guards in this module to run and pass
+    normally rather than taking the whole module down at collection time.
     """
+    sync_playwright = pytest.importorskip(
+        "playwright.sync_api", reason="asset tooling not installed"
+    ).sync_playwright
+
+    html = read_index()
+    tokens = _declared_tokens(html)
+    expected = {
+        "icon-indigo": _resolve_token(tokens, "var(--frame)"),
+        "icon-violet": _resolve_token(tokens, "var(--bar-ink)"),
+        "icon-cyan": _resolve_token(tokens, "var(--accent)"),
+    }
+
     url = INDEX.resolve().as_uri()
     with sync_playwright() as p:
         browser = p.chromium.launch()
         try:
             page = browser.new_page()
             page.goto(url)
-            colors = {}
-            for cls in ("icon-indigo", "icon-violet", "icon-cyan"):
+            actual = {}
+            for cls in expected:
                 el = page.query_selector(f".{cls} .ascii-art")
                 assert el is not None, f"no .ascii-art found under .{cls}"
-                colors[cls] = el.evaluate("e => getComputedStyle(e).color")
+                computed = el.evaluate("e => getComputedStyle(e).color")
+                actual[cls] = _rgb_string_to_hex(computed)
         finally:
             browser.close()
 
-    assert len(set(colors.values())) == 3, (
-        f"expected 3 distinct computed colours across .icon-indigo/.icon-violet/"
-        f".icon-cyan, got {colors}"
+    assert actual == expected, (
+        f"icon colour classes did not map to their tokens: {actual} != {expected}"
     )
