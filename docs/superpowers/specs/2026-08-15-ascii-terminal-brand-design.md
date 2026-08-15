@@ -57,20 +57,30 @@ source of tofu; sharp corners are used everywhere instead.
 
 ### Palette
 
-| Token | Hex | Use |
-|---|---|---|
-| `--bg` | `#0F172A` | page background |
-| `--surface` | `#111C33` | card fill |
-| `--frame` | `#4F46E5` | box-drawing frames **only** |
-| `--bar` | `#7C3AED` | progress fill, dividers |
-| `--accent` | `#22D3EE` | scan beam, prompts, links, cursor |
-| `--text` | `#E2E8F0` | body text |
-| `--dim` | `#64748B` | secondary text, `░` shading |
+| Token | Hex | Contrast on `--bg` | Use |
+|---|---|---|---|
+| `--bg` | `#0F172A` | — | page background |
+| `--surface` | `#1E293B` | 1.22:1 vs bg | card fill (a visible lift, not a text pairing) |
+| `--frame` | `#818CF8` | 5.98:1 | box-drawing frames, ASCII art strokes |
+| `--bar` | `#7C3AED` | 3.13:1 | progress fill, `█` blocks, dividers — **fills only** |
+| `--accent` | `#22D3EE` | 9.88:1 | scan beam, prompts, links, cursor |
+| `--text` | `#E2E8F0` | 14.48:1 | body text |
+| `--dim` | `#94A3B8` | 6.96:1 | secondary text, `░` shading |
 
-**Contrast rule:** `--frame` (`#4F46E5`) against `--bg` is approximately 3:1 and is
-therefore restricted to decoration — frames, rules, dividers. It must never carry body
-text. `--text` and `--accent` against `--bg` both clear 8:1 and carry all readable
-content.
+**Contrast rule.** Every token that carries text *or ASCII art* must clear WCAG AA
+4.5:1 against `--bg`. `--bar` is the sole exception at 3.13:1: it is used only as a
+solid fill (progress bars, `█` runs), which is a non-text UI component and needs only
+3:1. `--bar` must never be a text colour.
+
+**Palette correction, 2026-08-15.** The first draft of this table used
+`--frame: #4F46E5` and `--dim: #64748B`, carried over unchanged from the light-theme
+brand. Measured against `#0F172A` those are **2.84:1** and **3.75:1** — `--frame` fails
+even the 3:1 non-text floor, which would have made the ASCII icon frames barely visible,
+and `--dim` fails the 4.5:1 text floor while being assigned to secondary text. Both were
+moved one step lighter within the same hue family (indigo-400, slate-400). The hues and
+the brand reading are unchanged; only the shades lift enough to survive the dark ground.
+`--surface` moved from `#111C33` to `#1E293B` for the same reason — at 1.05:1 against
+`--bg` the card fill was invisible.
 
 ### Typography
 
