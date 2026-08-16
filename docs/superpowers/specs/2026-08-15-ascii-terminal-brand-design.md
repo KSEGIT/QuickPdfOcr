@@ -197,7 +197,7 @@ The hero becomes **live ASCII in the HTML**, not an image:
 > 4,812 words copied to clipboard_
 ```
 
-Fixed at 46 columns, sized with `font-size: clamp(6px, 1.55vw, 15px)` so the block always
+Fixed at 46 columns, sized with `font-size: clamp(11px, 3vw, 15px)` so the block always
 fits without horizontal scroll. One variant only — no per-breakpoint markup duplicates.
 
 `resources/hero.svg` is re-authored to depict this same scene and rendered to

@@ -141,5 +141,5 @@ page's structure or wording changed, only its visual language:
 - The favicon points at `resources/favicon.png` (32px, rendered from the small
   master); the header logo `<img>` still points at `resources/icon.png` — at the 36px
   it renders on the page, the detailed master still reads clearly.
-- The page remains one self-contained HTML file: no external CSS, JS, font, or image
+- The page remains one self-contained HTML file: no external CSS, JS, or font
   requests.
