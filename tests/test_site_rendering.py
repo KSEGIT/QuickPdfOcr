@@ -16,6 +16,59 @@ INDEX = ROOT / "docs" / "index.html"
 SHOTS = ROOT / "docs" / "design" / "screenshots"
 VIEWPORTS = [(375, "mobile"), (768, "tablet"), (1440, "desktop")]
 
+# Shared verbatim between test_every_text_element_clears_aa_against_its_real_background
+# and test_contrast_helper_composites_translucent_backgrounds below, so the
+# regression guard exercises the real code path rather than a copy that can
+# silently drift from it. If this ever regresses to reading a translucent
+# background's raw rgba() string with its alpha discarded — the bug that
+# produced a false 1:1 reading on this site's own badge and secondary
+# button — the synthetic test below fails.
+CONTRAST_HELPERS_JS = """
+    const lum = (rgb) => {
+        const [r, g, b] = rgb.match(/\\d+/g).slice(0, 3).map(Number)
+            .map(v => v / 255)
+            .map(v => v <= 0.04045 ? v / 12.92
+                                   : Math.pow((v + 0.055) / 1.055, 2.4));
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a, b) => {
+        const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+        return (x + 0.05) / (y + 0.05);
+    };
+    // Composites the real ancestor background stack (not just the
+    // nearest non-transparent layer) so a translucent tint — e.g.
+    // an accent-coloured badge fill at 10% alpha over the dark page
+    // background — resolves to what the browser actually paints,
+    // rather than a bare rgba() string with its alpha stripped.
+    const parseColor = (str) => {
+        const m = str.match(/rgba?\\(([^)]+)\\)/);
+        const parts = m[1].split(',').map(Number);
+        return {
+            r: parts[0], g: parts[1], b: parts[2],
+            a: parts.length > 3 ? parts[3] : 1,
+        };
+    };
+    const over = (fg, bg) => ({
+        r: fg.r * fg.a + bg.r * (1 - fg.a),
+        g: fg.g * fg.a + bg.g * (1 - fg.a),
+        b: fg.b * fg.a + bg.b * (1 - fg.a),
+    });
+    const bgOf = (el) => {
+        const layers = [];
+        for (let n = el; n; n = n.parentElement) {
+            const c = parseColor(getComputedStyle(n).backgroundColor);
+            if (c.a > 0) layers.push(c);
+            if (c.a >= 0.999) break;
+        }
+        let result = { r: 255, g: 255, b: 255 };
+        for (let i = layers.length - 1; i >= 0; i--) {
+            result = over(layers[i], result);
+        }
+        return `rgb(${Math.round(result.r)}, ${Math.round(result.g)}, ` +
+               `${Math.round(result.b)})`;
+    };
+"""
+
 
 @pytest.fixture(scope="module")
 def page():
@@ -104,50 +157,7 @@ def test_every_text_element_clears_aa_against_its_real_background(page):
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
     offenders = page.evaluate(
-        """() => {
-            const lum = (rgb) => {
-                const [r, g, b] = rgb.match(/\\d+/g).slice(0, 3).map(Number)
-                    .map(v => v / 255)
-                    .map(v => v <= 0.04045 ? v / 12.92
-                                           : Math.pow((v + 0.055) / 1.055, 2.4));
-                return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            };
-            const ratio = (a, b) => {
-                const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
-                return (x + 0.05) / (y + 0.05);
-            };
-            // Composites the real ancestor background stack (not just the
-            // nearest non-transparent layer) so a translucent tint — e.g.
-            // an accent-coloured badge fill at 10% alpha over the dark page
-            // background — resolves to what the browser actually paints,
-            // rather than a bare rgba() string with its alpha stripped.
-            const parseColor = (str) => {
-                const m = str.match(/rgba?\\(([^)]+)\\)/);
-                const parts = m[1].split(',').map(Number);
-                return {
-                    r: parts[0], g: parts[1], b: parts[2],
-                    a: parts.length > 3 ? parts[3] : 1,
-                };
-            };
-            const over = (fg, bg) => ({
-                r: fg.r * fg.a + bg.r * (1 - fg.a),
-                g: fg.g * fg.a + bg.g * (1 - fg.a),
-                b: fg.b * fg.a + bg.b * (1 - fg.a),
-            });
-            const bgOf = (el) => {
-                const layers = [];
-                for (let n = el; n; n = n.parentElement) {
-                    const c = parseColor(getComputedStyle(n).backgroundColor);
-                    if (c.a > 0) layers.push(c);
-                    if (c.a >= 0.999) break;
-                }
-                let result = { r: 255, g: 255, b: 255 };
-                for (let i = layers.length - 1; i >= 0; i--) {
-                    result = over(layers[i], result);
-                }
-                return `rgb(${Math.round(result.r)}, ${Math.round(result.g)}, ` +
-                       `${Math.round(result.b)})`;
-            };
+        "() => {\n" + CONTRAST_HELPERS_JS + """
             const bad = [];
             for (const el of document.querySelectorAll(
                     'h1,h2,h3,h4,p,a,li,span,button,pre,strong,em')) {
@@ -167,6 +177,64 @@ def test_every_text_element_clears_aa_against_its_real_background(page):
         }"""
     )
     assert offenders == [], "contrast failures:\n  " + "\n  ".join(offenders)
+
+
+def test_contrast_helper_composites_translucent_backgrounds(page):
+    """Regression guard for the bgOf() alpha-compositing bug.
+
+    Feeds the exact helper used by
+    test_every_text_element_clears_aa_against_its_real_background (imported
+    via CONTRAST_HELPERS_JS, not copied) two synthetic pairings on a
+    minimal page:
+
+    - "opaque": a plain, fully-opaque low-contrast pairing. Sanity check
+      that the underlying WCAG relative-luminance math still works.
+    - "translucent": a pairing that is genuinely low-contrast once its
+      translucent background is composited over its opaque ancestor
+      (rgba(0,0,0,0.05) over rgb(240,240,240) composites to rgb(228,228,228),
+      barely distinguishable from the rgb(230,230,230) text) — but whose
+      *raw* rgba() string, alpha discarded, reads as flat black, a totally
+      different colour. A helper that reads that raw string — the exact bug
+      this task's contrast test surfaced and fixed on the site's own badge
+      and secondary button — scores this ~16.8:1 and silently passes a real
+      failure. Only a helper that actually composites the ancestor stack
+      catches it, at ~1.02:1.
+    """
+    page.set_content(
+        """
+        <!doctype html><html><body style="background:#0F172A;margin:0">
+          <p id="opaque" style="color:#334155;background:#0F172A">
+            opaque low-contrast text
+          </p>
+          <div style="background:rgb(240,240,240)">
+            <span id="translucent"
+                  style="color:rgb(230,230,230);
+                         background:rgba(0,0,0,0.05)">
+              translucent low-contrast text
+            </span>
+          </div>
+        </body></html>
+        """
+    )
+    results = page.evaluate(
+        "() => {\n" + CONTRAST_HELPERS_JS + """
+            const out = {};
+            for (const id of ['opaque', 'translucent']) {
+                const el = document.getElementById(id);
+                const style = getComputedStyle(el);
+                out[id] = ratio(style.color, bgOf(el));
+            }
+            return out;
+        }"""
+    )
+    assert results["opaque"] < 4.5, (
+        f"opaque sanity pairing should read low contrast: {results}"
+    )
+    assert results["translucent"] < 4.5, (
+        "translucent pairing should read low contrast once composited "
+        f"over its ancestor — a helper reading the raw rgba() string "
+        f"would score this ~16.8:1 and miss it: {results}"
+    )
 
 
 def test_fills_only_token_is_not_a_text_colour(page):
