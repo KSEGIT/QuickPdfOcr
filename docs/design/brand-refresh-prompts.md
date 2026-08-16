@@ -42,6 +42,7 @@ ink-weight indigo is too light for white text on top of it to stay readable.
 |---|---|---|---|
 | `--bg` | `#0F172A` | — | page ground |
 | `--surface` | `#1E293B` | 1.22:1 vs bg | card fill |
+| `--border-color` | `#64748B` | 3.75:1 on `--bg`, 3.07:1 vs `--surface` | header rule (border-bottom) |
 | `--frame` | `#818CF8` | 5.98:1 | indigo ink — frames, ASCII art |
 | `--frame-fill` | `#4F46E5` | 2.84:1 | indigo fill — background only |
 | `--bar-ink` | `#A78BFA` | 6.56:1 | violet ink |
@@ -54,6 +55,12 @@ Every token used for text or art clears WCAG AA (4.5:1 for text, 3:1 for non-tex
 The two fill tokens (`--frame-fill`, `--bar-ink`'s counterpart `--bar`) fall below 4.5:1
 against `--bg` and must never be used to draw text or ASCII art directly on the page
 background — they exist only as solid fills with white content on top of them.
+
+`--border-color` sits at `#64748B` rather than a value closer to `--surface` because an
+earlier value collided with `--surface` byte-for-byte, making the header rule
+invisible, and the next candidate (`#475569`) still only reached 1.93:1 against
+`--surface` — under the 3:1 non-text floor. It was lifted to `#64748B` to clear both
+floors at once.
 
 ### Typography
 
