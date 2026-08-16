@@ -219,7 +219,14 @@ rather than two.
 
 `create_icns.py` currently opens one 512px PNG and downscales it into all 11 iconset
 slots — precisely the mush this spec exists to avoid. It changes to consume a
-pre-rendered `{size: png_path}` map. Its non-macOS PIL fallback is retained.
+pre-rendered `{size: png_path}` map.
+
+Its non-macOS PIL fallback is **removed**, not retained. That fallback wrote a
+single-resolution `.icns` whenever `iconutil` was missing — producing exactly the
+smeared-at-small-sizes artefact this spec exists to eliminate, silently and while
+appearing to succeed. `create_icns_from_pngs` now raises instead. This is safe:
+`.icns` is consumed only under `IS_MACOS` (`packaging/quickpdfocr.spec:71,88`) and
+built only on `macos-14` runners, so nothing off-macOS ever needed the fallback.
 
 `resources/render_icons.py` becomes the single entry point:
 
