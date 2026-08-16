@@ -1,0 +1,5 @@
+# Asset-authoring tooling only. NOT a runtime dependency of QuickPdfOcr —
+# do not merge into requirements.txt (Pillow is deliberately excluded on
+# macOS there, and Playwright must never enter the shipped bundle).
+playwright>=1.49.0
+Pillow>=12.3.0

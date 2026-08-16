@@ -266,3 +266,6 @@ tesseract-installer.exe
 
 # Git worktrees
 .worktrees/
+
+# Icon render pipeline intermediates
+resources/_render/
