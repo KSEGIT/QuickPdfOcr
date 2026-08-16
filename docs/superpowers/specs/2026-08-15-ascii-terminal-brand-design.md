@@ -61,8 +61,11 @@ source of tofu; sharp corners are used everywhere instead.
 |---|---|---|---|
 | `--bg` | `#0F172A` | — | page background |
 | `--surface` | `#1E293B` | 1.22:1 vs bg | card fill (a visible lift, not a text pairing) |
-| `--frame` | `#818CF8` | 5.98:1 | box-drawing frames, ASCII art strokes |
-| `--bar` | `#7C3AED` | 3.13:1 | progress fill, `█` blocks, dividers — **fills only** |
+| `--frame` | `#818CF8` | 5.98:1 | indigo **ink** — box-drawing frames, ASCII art strokes |
+| `--frame-fill` | `#4F46E5` | 2.84:1 | indigo **fill** — background only; white on it is 6.29:1 |
+| `--bar-ink` | `#A78BFA` | 6.56:1 | violet **ink** — art strokes, `█` runs |
+| `--bar` | `#7C3AED` | 3.13:1 | violet **fill** — background only; white on it is 5.70:1 |
+| `--border-color` | `#64748B` | 3.75:1 (3.07:1 vs surface) | rules, card borders |
 | `--accent` | `#22D3EE` | 9.88:1 | scan beam, prompts, links, cursor |
 | `--text` | `#E2E8F0` | 14.48:1 | body text |
 | `--dim` | `#94A3B8` | 6.96:1 | secondary text, `░` shading |
@@ -109,7 +112,7 @@ This rule is the single most important implementation constraint in this spec.
 ### Chrome
 
 - Nav renders as a prompt line: `~/quickpdfocr $ ` followed by the existing links.
-- Section titles render as commands, e.g. `$ quickpdfocr --features`.
+- Section titles gain a `$ ` prompt prefix via `.cmd::before`, so "Key Features" reads as "$ Key Features". The prefix comes from CSS; the heading text itself is never edited, because copy is frozen.
 - Buttons render as `[ Download ]`.
 - A single `_` cursor blinks in the hero, wrapped in
   `@media (prefers-reduced-motion: reduce)` to hold steady.
