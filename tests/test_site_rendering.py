@@ -254,12 +254,35 @@ def test_card_hover_border_clears_ui_contrast(page, selector):
     every other guard in this suite. Borders are non-text UI components
     (WCAG 1.4.11), so the floor here is 3:1, evaluated against the same
     real, alpha-composited background bgOf() resolves everywhere else.
+
+    Both card rules carry `transition: border-color 0.2s`, so a read taken
+    immediately after hover() lands mid-transition and reports the resting
+    colour, not the hover colour — a broken hover rule would still measure
+    as the (fine) resting value and the test would pass for the wrong
+    reason. wait_for_function polls (via requestAnimationFrame, not a
+    hardcoded sleep) until borderTopColor stops changing across several
+    consecutive frames before the ratio is read, so the assertion reflects
+    the settled hover state regardless of how long the transition actually
+    takes.
     """
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
     card = page.query_selector(selector)
     assert card is not None, f"{selector} not found on page"
     card.hover()
+    page.wait_for_function(
+        """(el) => {
+            const current = getComputedStyle(el).borderTopColor;
+            if (current === el.__lastBorderColor) {
+                el.__stableFrames = (el.__stableFrames || 0) + 1;
+            } else {
+                el.__stableFrames = 0;
+                el.__lastBorderColor = current;
+            }
+            return el.__stableFrames >= 5;
+        }""",
+        arg=card,
+    )
     got = page.evaluate(
         "(el) => {\n" + CONTRAST_HELPERS_JS + """
             const style = getComputedStyle(el);
