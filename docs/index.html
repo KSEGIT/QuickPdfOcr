@@ -52,7 +52,6 @@
             --slate-dark: var(--text);
             --slate-light: var(--surface);
             --text-gray: var(--dim);
-            --bg-white: var(--bg);
             --border-color: #64748B;
             --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
             --shadow-lg: 0 12px 28px -6px rgb(0 0 0 / 0.6);
@@ -223,7 +222,12 @@
             border-color: var(--text);
         }
 
-        .hero-terminal {
+        /* Compound selector, not bare .hero-terminal: .ascii-art (below)
+           also declares color and margin at equal specificity, and being
+           later in source it would otherwise win the cascade and silently
+           drop both of this rule's own values back to inherited text
+           colour and a flush margin. */
+        .ascii-art.hero-terminal {
             /* .ascii-art is color:inherit so the per-card .icon-* classes can
                tint each icon; the hero has no such wrapper, so it states its
                own ink here. */
@@ -324,7 +328,6 @@
 
         .ascii-art .beam { color: var(--accent); }
         .ascii-art .fill { color: var(--bar-ink); }
-        .ascii-art .dim  { color: var(--dim); }
 
         .ascii-icon {
             font-size: 15px;
@@ -357,7 +360,7 @@
         .feature-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-lg);
-            border-color: rgba(79, 70, 229, 0.35);
+            border-color: var(--accent);
         }
 
         .feature-icon {
@@ -438,7 +441,7 @@
 
         .download-card:hover {
             transform: translateY(-4px);
-            border-color: var(--indigo);
+            border-color: var(--accent);
             box-shadow: var(--shadow-lg);
         }
 
@@ -521,7 +524,7 @@
             padding: 1.5rem;
             border-radius: 12px;
             margin-top: 2.5rem;
-            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-family: var(--mono);
             font-size: 0.92rem;
             text-align: left;
             overflow-x: auto;

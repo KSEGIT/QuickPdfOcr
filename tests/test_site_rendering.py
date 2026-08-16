@@ -13,7 +13,6 @@ sync_playwright = pytest.importorskip(
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX = ROOT / "docs" / "index.html"
-SHOTS = ROOT / "docs" / "design" / "screenshots"
 VIEWPORTS = [(375, "mobile"), (768, "tablet"), (1440, "desktop")]
 
 # Shared verbatim between test_every_text_element_clears_aa_against_its_real_background
@@ -93,12 +92,17 @@ def test_no_horizontal_overflow(page, width, label):
 
 
 @pytest.mark.parametrize("width,label", VIEWPORTS, ids=[v[1] for v in VIEWPORTS])
-def test_capture_screenshot(page, width, label):
-    SHOTS.mkdir(parents=True, exist_ok=True)
+def test_capture_screenshot(page, width, label, tmp_path):
+    # Writes into pytest's tmp_path, not the tracked docs/design/screenshots/
+    # directory: those committed PNGs are review evidence, refreshed
+    # deliberately by a human, not regenerated as a side effect of running
+    # the suite (a different Chromium build or font set would otherwise
+    # produce a spurious binary diff on every run).
     page.set_viewport_size({"width": width, "height": 900})
     page.goto(INDEX.as_uri())
-    page.screenshot(path=str(SHOTS / f"{label}-{width}.png"), full_page=True)
-    assert (SHOTS / f"{label}-{width}.png").exists()
+    shot = tmp_path / f"{label}-{width}.png"
+    page.screenshot(path=str(shot), full_page=True)
+    assert shot.exists()
 
 
 def test_no_tofu_glyphs(page):
@@ -162,7 +166,9 @@ def test_every_text_element_clears_aa_against_its_real_background(page):
             for (const el of document.querySelectorAll(
                     'h1,h2,h3,h4,p,a,li,span,button,pre,strong,em')) {
                 if (!el.textContent.trim()) continue;
-                if ([...el.children].some(c => c.textContent.trim())) continue;
+                const own = [...el.childNodes].some(
+                    n => n.nodeType === 3 && n.textContent.trim());
+                if (!own) continue;
                 const style = getComputedStyle(el);
                 const art = el.closest('.ascii-art');
                 const need = art ? 3.0 : 4.5;
@@ -234,6 +240,36 @@ def test_contrast_helper_composites_translucent_backgrounds(page):
         "translucent pairing should read low contrast once composited "
         f"over its ancestor — a helper reading the raw rgba() string "
         f"would score this ~16.8:1 and miss it: {results}"
+    )
+
+
+@pytest.mark.parametrize("selector", [".feature-card", ".download-card"])
+def test_card_hover_border_clears_ui_contrast(page, selector):
+    """A card's border must stay visible — not vanish or no-op — on hover.
+
+    Neither the rest-state contrast walker above nor any static test reads
+    a :hover pseudo-class, so a hover rule that composites to near-1:1 (the
+    card dissolving into its section) or one that is a byte-for-byte no-op
+    (declaring the same colour the border already has) is invisible to
+    every other guard in this suite. Borders are non-text UI components
+    (WCAG 1.4.11), so the floor here is 3:1, evaluated against the same
+    real, alpha-composited background bgOf() resolves everywhere else.
+    """
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(INDEX.as_uri())
+    card = page.query_selector(selector)
+    assert card is not None, f"{selector} not found on page"
+    card.hover()
+    got = page.evaluate(
+        "(el) => {\n" + CONTRAST_HELPERS_JS + """
+            const style = getComputedStyle(el);
+            return ratio(style.borderTopColor, bgOf(el));
+        }""",
+        card,
+    )
+    assert got >= 3.0, (
+        f"{selector}:hover border is only {got:.2f}:1 against its "
+        "composited background, needs >= 3.0:1"
     )
 
 
