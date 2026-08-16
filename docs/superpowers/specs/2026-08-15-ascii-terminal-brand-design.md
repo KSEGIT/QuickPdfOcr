@@ -65,7 +65,7 @@ source of tofu; sharp corners are used everywhere instead.
 | `--frame-fill` | `#4F46E5` | 2.84:1 | indigo **fill** — background only; white on it is 6.29:1 |
 | `--bar-ink` | `#A78BFA` | 6.56:1 | violet **ink** — art strokes, `█` runs |
 | `--bar` | `#7C3AED` | 3.13:1 | violet **fill** — background only; white on it is 5.70:1 |
-| `--border-color` | `#64748B` | 3.75:1 (3.07:1 vs surface) | rules, card borders |
+| `--border-color` | `#64748B` | 3.75:1 (3.07:1 vs surface) | header rule (`border-bottom`) — its only consumer |
 | `--accent` | `#22D3EE` | 9.88:1 | scan beam, prompts, links, cursor |
 | `--text` | `#E2E8F0` | 14.48:1 | body text |
 | `--dim` | `#94A3B8` | 6.96:1 | secondary text, `░` shading |
