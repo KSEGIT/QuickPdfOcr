@@ -4,59 +4,61 @@ This directory contains application resources, including icons and other assets.
 
 ## Icons
 
-The application icon represents a PDF document with OCR scanning functionality:
-- **icon.svg** - Master vector source (1024x1024 viewBox); all raster icons are rendered from this file
+The application icon represents a terminal window scanning a document with OCR:
+- **icon.svg** - Detailed vector master (1024x1024 viewBox); feeds the 128/256/512/1024px outputs
+- **icon_small.svg** - Simplified vector master; feeds the 16/32/48/64px outputs
 - **icon.png** - Standard PNG icon (256x256) for general use
 - **icon.ico** - Windows icon file (multi-size: 16, 32, 48, 64, 128, 256)
 - **icon.icns** - macOS icon file (contains all required sizes for macOS)
 - **icon_512.png** - High-resolution PNG (512x512) for large displays
+- **favicon.png** - 32x32 PNG used by the website's `<link rel="icon">`
 
 ### Icon Design
 
 The icon follows the brand design language in `docs/design/brand-refresh-prompts.md`:
+a terminal window on a squircle background (~22% continuous corner radius), diagonal
+indigo `#4F46E5` → violet `#7C3AED` gradient, dim/bright text rows crossed by a cyan
+`#22D3EE` scan beam, and a `> _` prompt.
 
-- A macOS/iOS-style squircle (rounded rect with ~22% continuous corner radius)
-- Background: diagonal gradient from indigo `#4F46E5` (top-left) to violet `#7C3AED`
-  (bottom-right), with a subtle radial lightening toward the top
-- Centered white document page glyph with slightly rounded corners and a folded
-  top-right corner, containing slate-gray (`#475569`) text lines
-- A glowing cyan (`#22D3EE`) horizontal scan beam across the middle of the document
-  (thin bright core + soft outer glow) with a faint translucent cyan wash above it,
-  evoking OCR scanning in progress
-- Flat vector style, crisp edges, no text or badges; reads clearly down to 16x16
+There are two SVG masters, not one, because a single 512px render downscaled to 16px
+smeared the terminal detail into an unrecognizable blur:
+
+- **icon.svg** - detailed terminal-window master; feeds the 128, 256, 512, and 1024px
+  outputs, where the window chrome and text rows still read.
+- **icon_small.svg** - simplified master showing only the squircle and one oversized
+  cyan `> _` mark; feeds the 16, 32, 48, and 64px outputs, where the detailed master
+  would just be noise.
+- **favicon.png** - 32×32, rendered from `icon_small.svg`; used by `docs/index.html`'s
+  `<link rel="icon">`.
 
 ### Regenerating Icons
 
-`icon.svg` is the source of truth. To regenerate the raster icons, render the SVG at
-the required sizes with a headless browser (e.g. Playwright: set the viewport to the
-target size, load the SVG, screenshot with `omitBackground: true` to preserve corner
-transparency), then build the platform containers:
+`resources/render_icons.py` is the single entry point. It drives Playwright over both
+masters, rendering every required size from the correct one, then builds every
+platform container from those renders:
 
 ```bash
-# Build the Windows multi-size .ico from the rendered size PNGs (Pillow)
-python3 - <<'EOF'
-from PIL import Image
-sizes = [16, 32, 48, 64, 128, 256]
-imgs = [Image.open(f'/tmp/icon_{s}.png').convert('RGBA') for s in sizes]
-imgs[-1].save('icon.ico', format='ICO', append_images=imgs[:-1],
-              sizes=[(s, s) for s in sizes])
-EOF
-
-# Create macOS .icns file (reads icon_512.png, uses iconutil)
-python3 create_icns.py
+.venv/bin/pip install -r resources/requirements-assets.txt
+.venv/bin/playwright install chromium
+.venv/bin/python resources/render_icons.py   # icon.png, icon_512.png, favicon.png, icon.ico, icon.icns
+.venv/bin/python resources/render_hero.py    # quick_pdf_hero_small.jpg
 ```
 
-#### Icon Generation Scripts
+`requirements-assets.txt` (Playwright + Pillow) is asset-authoring tooling only and is
+deliberately not part of `requirements.txt` — Playwright must never enter the shipped
+application bundle.
 
-- **icon.svg** - Master vector source of truth for the icon (new)
-- **generate_icon.py** - Legacy/deprecated PIL-drawn icon generator, kept for
-  reference only; superseded by `icon.svg`. Do not use for new icon builds.
-- **create_icns.py** - Converts `icon_512.png` to macOS .icns format (still in use)
+`create_icns.py` copies each pre-rendered PNG straight into the macOS iconset (never
+resizing — that would reintroduce the same smearing the two-master split exists to
+avoid) and requires the macOS `iconutil` binary to assemble `icon.icns`. It has no
+fallback for when `iconutil` is missing: it raises instead of writing a degraded
+single-resolution `.icns`, which is what the old PIL fallback silently did.
 
 ### Customizing the Icon
 
-To customize the icon design, edit `icon.svg` (gradients, glyph geometry, beam
-styling are all plain SVG shapes) and re-render the raster files as described above.
+To customize the icon design, edit `icon.svg` for the 128px+ outputs and/or
+`icon_small.svg` for the 16-64px outputs (gradients, glyph geometry, beam styling are
+all plain SVG shapes), then re-render the raster files as described above.
 
 ### Icon Usage in Build
 

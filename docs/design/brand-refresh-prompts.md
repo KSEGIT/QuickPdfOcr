@@ -1,69 +1,138 @@
-# QuickPdfOcr Brand Refresh — Asset Prompts
+# QuickPdfOcr Brand — ASCII / Terminal Direction
 
-These briefs are the source of truth for the regenerated brand assets (app icon, hero
-image, website). Assets are hand-authored as vector SVG and rendered to raster with a
-headless browser, so they stay crisp at every size. No AI-image model is involved; the
-old PIL-drawn placeholder icon is retired.
+Supersedes the indigo-squircle / photographic-hero direction shipped in a642a3f.
+
+This is the brief of record for the app icon, the hero, and the marketing site. For the
+full rationale — why a terminal aesthetic, the accessibility argument, the risks
+considered and accepted — see
+`docs/superpowers/specs/2026-08-15-ascii-terminal-brand-design.md`. This document
+describes the assets as built.
+
+All three surfaces share one design language: a dark terminal skin, monospace
+typography, and hand-authored ASCII/box-drawing art rendered from vector SVG masters,
+not screenshotted or AI-generated.
 
 ## Shared design language
 
-- **Mood**: fast, precise, trustworthy, offline-first. Desktop-utility professionalism,
-  not startup-playful.
-- **Primary gradient**: indigo `#4F46E5` → violet `#7C3AED` (matches the existing site
-  accent gradient `#667eea` → `#764ba2`).
-- **Scan accent**: cyan `#22D3EE` — used only for the OCR "scan beam" motif and small
-  highlights.
-- **Neutrals**: slate `#0F172A` (dark), `#F8FAFC` (light), `#475569` (body text).
-- **Motif**: a document page with text lines being crossed by a glowing horizontal
-  scan beam — the product in one image.
-- **Typography on web**: system font stack (unchanged), headings 700–800 weight.
+### Character set
 
-## Prompt 1 — App icon (`resources/`)
+Restricted to the subset every mainstream monospace font reliably carries, plus 7-bit
+ASCII:
 
-> A modern macOS/iOS-style app icon on a squircle (continuous-corner rounded rect,
-> ~22% corner radius). Background: diagonal gradient from indigo #4F46E5 (top-left) to
-> violet #7C3AED (bottom-right), with a very subtle radial lightening toward the top.
-> Centered glyph: a clean white document page (slightly rounded corners, folded top-right
-> corner) with 4–5 slate-gray text lines. Across the middle of the document, a glowing
-> cyan #22D3EE horizontal scan beam (thin bright core + soft outer glow) with a faint
-> translucent cyan wash above it, evoking OCR scanning in progress. Flat vector style,
-> crisp edges, soft inner depth only — no skeuomorphism, no text, no red "PDF" badge.
-> Must read clearly at 16×16.
+```
+┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ─ │      box, single
+╔ ╗ ╚ ╝ ═ ║                 box, double (emphasis only)
+░ ▒ ▓ █ ▀ ▄                 shading / bars
+▶ ▼ ▲ ● ○ ·                 accents
+```
 
-Deliverables (rendered from one master `resources/icon.svg`):
+plus plain ASCII (`> _ [ ] ~ $` and so on). Rounded box-drawing (`╭ ╮ ╰ ╯`) is
+deliberately excluded — it is the least widely supported box-drawing set and the most
+likely source of tofu glyphs on an uncommon font.
+
+### Palette
+
+Each brand hue carries two values: an *ink* for drawing strokes and art directly on
+`--bg`, and a *fill* for solid backgrounds that then carry white text. A single
+light-theme value cannot do both jobs on a dark ground — a fill-weight indigo reads
+fine as a button background but is too dim to draw a legible icon frame with, and an
+ink-weight indigo is too light for white text on top of it to stay readable.
+
+| Token | Hex | On `--bg` | Role |
+|---|---|---|---|
+| `--bg` | `#0F172A` | — | page ground |
+| `--surface` | `#1E293B` | 1.22:1 vs bg | card fill |
+| `--frame` | `#818CF8` | 5.98:1 | indigo ink — frames, ASCII art |
+| `--frame-fill` | `#4F46E5` | 2.84:1 | indigo fill — background only |
+| `--bar-ink` | `#A78BFA` | 6.56:1 | violet ink |
+| `--bar` | `#7C3AED` | 3.13:1 | violet fill — background only |
+| `--accent` | `#22D3EE` | 9.88:1 | scan beam, prompts, links |
+| `--text` | `#E2E8F0` | 14.48:1 | body text |
+| `--dim` | `#94A3B8` | 6.96:1 | secondary text, `░` shading |
+
+Every token used for text or art clears WCAG AA (4.5:1 for text, 3:1 for non-text UI).
+The two fill tokens (`--frame-fill`, `--bar-ink`'s counterpart `--bar`) fall below 4.5:1
+against `--bg` and must never be used to draw text or ASCII art directly on the page
+background — they exist only as solid fills with white content on top of them.
+
+### Typography
+
+Monospace throughout, including body copy:
+
+```css
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+             "DejaVu Sans Mono", "Liberation Mono", monospace;
+```
+
+### The reflow rule
+
+A fixed-width block like `┌────┐` cannot reflow — narrow its container and the
+corners no longer line up with the sides. So:
+
+- **True character-grid ASCII** — literal box-drawing characters in a `<pre>` — is
+  used only inside fixed-size blocks: the 12 site icons and the hero terminal.
+- **Everything that must reflow** — section frames, cards, buttons — is CSS borders
+  plus `::before`/`::after` corner-glyph pseudo-elements. It reads as hand-drawn but
+  behaves like ordinary responsive CSS.
+
+This is the single most important implementation constraint in the whole direction.
+
+## App icon (`resources/`)
+
+Two SVG masters, because one 512px render downscaled into a 16px slot smears into an
+unrecognizable blur — the terminal window's title bar, text rows, and scan beam simply
+don't survive that much reduction. Each master is authored for the size band it feeds,
+not merely resized from the other.
+
+| Master | Feeds | Content |
+|---|---|---|
+| `resources/icon.svg` | 128, 256, 512, 1024 | Full terminal window: squircle body, title bar with three dots, dim unrecognized text rows, a cyan horizontal scan beam, bright recognized text rows, and a `>` prompt with cursor block |
+| `resources/icon_small.svg` | 16, 32, 48, 64 | Simplified to the squircle background and one oversized cyan `> _` mark — legible at a glance where the detailed master would just be noise |
+
+Both share the same squircle silhouette (~22% continuous corner radius) and the
+indigo `#4F46E5` → violet `#7C3AED` diagonal gradient, so the two masters read as one
+icon across the size range rather than two different marks.
+
+Deliverables, all rendered from the masters by `resources/render_icons.py`:
 
 - `resources/icon.png` — 256×256
 - `resources/icon_512.png` — 512×512
-- `resources/icon.ico` — multi-size 16/32/48/64/128/256
-- `resources/icon.icns` — via existing `resources/create_icns.py`
-- `resources/icon.svg` — master vector (new, kept for future edits)
+- `resources/favicon.png` — 32×32, rendered from `icon_small.svg`; used by the site's
+  `<link rel="icon">`
+- `resources/icon.ico` — multi-size Windows icon (16/32/48/64/128/256)
+- `resources/icon.icns` — macOS icon, assembled by `resources/create_icns.py`
 
-`generate_icon.py` is superseded by the SVG master; keep the script but note in
-`resources/README.md` that the SVG is now the source of truth.
+## Hero (`resources/quick_pdf_hero_small.jpg`)
 
-## Prompt 2 — Hero image (`resources/quick_pdf_hero_small.jpg`)
+The hero is no longer displayed on the page — `docs/index.html` renders a live ASCII
+terminal scene directly in the HTML instead. `resources/quick_pdf_hero_small.jpg` now
+serves exactly one purpose: the `og:image`/`twitter:image` social-card preview.
 
-> Wide 1920×1080 website hero background, dark premium look. Deep indigo-violet gradient
-> backdrop (#312E81 → #4C1D95 diagonal) with a faint dot-grid texture. Floating in the
-> right two-thirds: a stylized white document card, tilted slightly in 3D perspective,
-> text lines visible; a bright cyan scan beam sweeps across it with a soft glow and a
-> subtle light trail. Behind/around it, 2–3 smaller ghosted document cards at varying
-> depths and low opacity for parallax feel. Left third kept visually calm (headline text
-> overlays there). Soft cinematic lighting, gentle vignette, abstract flat-3D vector
-> style — not a photo. No words or letters anywhere in the image.
+It is rendered by `resources/render_hero.py` from `resources/hero.svg` at 1920×1080,
+depicting the same terminal-scan scene as the on-page ASCII hero (deep indigo-violet
+gradient backdrop, a document card mid-scan with the cyan beam), exported as JPEG at
+quality ~85 and kept under 350 KB.
 
-Deliverable: `resources/quick_pdf_hero_small.jpg` (quality ~85, ≤ 350 KB) replacing the
-current stock-photo hero.
+## Website (`docs/index.html`)
 
-## Prompt 3 — Website (`docs/index.html`)
+A dark terminal skin over the existing sections, copy, and links — nothing about the
+page's structure or wording changed, only its visual language:
 
-> Rebuild the single-page marketing site around the new assets. Same sections and copy
-> hierarchy as today (hero, what-it-does, features, privacy, download, developers,
-> footer), but a cleaner contemporary look: hero uses the new hero image with a dark
-> gradient overlay for text contrast; feature/platform icons become inline SVG icons in
-> brand colors instead of emoji; privacy section keeps the indigo→violet gradient;
-> favicon/logo point at the new icon. Keep it one self-contained HTML file, responsive,
-> no external CSS/JS frameworks. Preserve all existing links (GitHub, releases) and
-> meta/OG tags (update OG image to the new hero).
-
-Deliverable: updated `docs/index.html`.
+- The 12 feature/platform/privacy icons that were inline `<svg>` are now
+  `<pre class="ascii-art ascii-icon" aria-hidden="true">` blocks of literal
+  box-drawing characters, tinted per-card via `icon-indigo` / `icon-violet` /
+  `icon-cyan` classes.
+- The hero is a live `<pre class="ascii-art hero-terminal">` block — a terminal
+  session scanning a PDF, with a blinking `_` cursor (held steady under
+  `prefers-reduced-motion: reduce`) — sized with `clamp()` so the fixed-column art
+  never forces horizontal scroll.
+- Section titles get a `$ ` prompt prefix via a `.cmd::before` rule (e.g. `$ Key
+  Features`), buttons render as bracketed affordances (`[ Download ]`), and the nav
+  logo sits beside a `~/quickpdfocr $` prompt line.
+- Every ASCII art block is `aria-hidden="true"`; the information it depicts is always
+  also present as ordinary text nearby, so nothing is lost to screen readers.
+- The favicon points at `resources/favicon.png` (32px, rendered from the small
+  master); the header logo `<img>` still points at `resources/icon.png` — at the 36px
+  it renders on the page, the detailed master still reads clearly.
+- The page remains one self-contained HTML file: no external CSS, JS, font, or image
+  requests.
