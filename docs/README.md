@@ -10,8 +10,8 @@ The website is accessible at: https://ksegit.github.io/QuickPdfOcr/
 
 - `index.html` - Main landing page with modern design
 - Embedded CSS for styling and responsive design
-- Uses inline SVG icons in brand colors for visual elements
-- Hero background and app icon live in `../resources/` (rendered from the SVG masters `hero.svg` / `icon.svg`; see `design/brand-refresh-prompts.md`)
+- Dark terminal skin: monospace type, 12 hand-authored ASCII/box-drawing icons, and a live ASCII hero rendered directly in the HTML (no page-background image)
+- App icon and the social-card preview image live in `../resources/` (rendered from the SVG masters `icon.svg` / `icon_small.svg` / `hero.svg`; see `design/brand-refresh-prompts.md`)
 
 ## Features
 
@@ -57,7 +57,7 @@ Then open http://localhost:8000/index.html in your browser.
 ## Design Notes
 
 - Fully responsive design (mobile, tablet, desktop)
-- Modern gradient hero section
+- Live ASCII terminal hero
 - Clean, professional UI with good contrast
 - All external links open in new tabs where appropriate
 - SEO-friendly with proper meta tags
