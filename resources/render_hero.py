@@ -42,10 +42,12 @@ def main() -> int:
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
-        page = browser.new_page(viewport={"width": 1920, "height": 1080})
-        page.set_content(_WRAPPER % svg_markup)
-        page.screenshot(path=str(png))
-        browser.close()
+        try:
+            page = browser.new_page(viewport={"width": 1920, "height": 1080})
+            page.set_content(_WRAPPER % svg_markup)
+            page.screenshot(path=str(png))
+        finally:
+            browser.close()
 
     with Image.open(png) as image:
         image.convert("RGB").save(TARGET, "JPEG", quality=85, optimize=True)

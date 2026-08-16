@@ -24,27 +24,15 @@
     <text x="821.41" y="386" fill="#818CF8">QuickPdfOcr</text>
     <text x="1067.05" y="386" fill="#818CF8">──────────────────────────────┐</text>
     <text x="760.0" y="722" fill="#818CF8">└────────────────────────────────────────────┘</text>
-    <text x="760.0" y="434" fill="#818CF8">│</text>
-    <text x="1681.14" y="434" fill="#818CF8">│</text>
     <text x="821.41" y="434" fill="#475569">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</text>
-    <text x="760.0" y="482" fill="#818CF8">│</text>
-    <text x="1681.14" y="482" fill="#818CF8">│</text>
     <text x="821.41" y="482" fill="#22D3EE" filter="url(#glow)" opacity="0.85">════════════════════════════════════════</text>
     <text x="821.41" y="482" fill="#22D3EE">════════════════════════════════════════</text>
-    <text x="760.0" y="530" fill="#818CF8">│</text>
-    <text x="1681.14" y="530" fill="#818CF8">│</text>
     <text x="821.41" y="530" fill="#E2E8F0">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</text>
-    <text x="760.0" y="578" fill="#818CF8">│</text>
-    <text x="1681.14" y="578" fill="#818CF8">│</text>
-    <text x="760.0" y="626" fill="#818CF8">│</text>
     <text x="821.41" y="626" fill="#818CF8">[</text>
     <text x="841.88" y="626" fill="#7C3AED">████████████████</text>
     <text x="1169.4" y="626" fill="#475569">░░░░░░</text>
     <text x="1292.21" y="626" fill="#818CF8">]</text>
     <text x="1333.15" y="626" fill="#E2E8F0">71%</text>
-    <text x="1681.14" y="626" fill="#818CF8">│</text>
-    <text x="760.0" y="674" fill="#818CF8">│</text>
-    <text x="1681.14" y="674" fill="#818CF8">│</text>
     <text x="821.41" y="674" fill="#94A3B8">page</text>
     <text x="923.76" y="674" fill="#94A3B8">12/17</text>
     <text x="1067.05" y="674" fill="#94A3B8">·</text>
@@ -63,5 +51,7 @@
     <text x="1251.27" y="818" fill="#E2E8F0">clipboard</text>
     <text x="1435.5" y="818" fill="#22D3EE" filter="url(#glow)" opacity="0.85">_</text>
     <text x="1435.5" y="818" fill="#22D3EE">_</text>
+    <rect x="768.99" y="386" width="2.5" height="336" fill="#818CF8"/>
+    <rect x="1690.13" y="386" width="2.5" height="336" fill="#818CF8"/>
   </g>
 </svg>
