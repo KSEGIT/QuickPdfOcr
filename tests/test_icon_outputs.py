@@ -7,10 +7,33 @@ import pytest
 RESOURCES = Path(__file__).resolve().parent.parent / "resources"
 sys.path.insert(0, str(RESOURCES))
 
+# Pillow only at module scope. requirements.txt ships Pillow on
+# sys_platform != 'darwin', so everything guarded by this alone RUNS on the
+# build-linux and build-windows CI workflows. Importing render_icons here
+# instead would drag in Playwright and skip the entire module on all four
+# workflows — which is exactly how the two-master split ended up unprotected.
 Image = pytest.importorskip("PIL.Image", reason="Pillow is asset tooling")
-render_icons = pytest.importorskip(
-    "render_icons", reason="asset tooling not installed"
-)
+
+
+def _load_render_icons():
+    """Import the pipeline module, or skip. Playwright-dependent, so this is
+    called inside the two tests that genuinely need the source mapping —
+    never at module scope."""
+    return pytest.importorskip("render_icons", reason="asset tooling not installed")
+
+
+def _ico_frame(size):
+    """Extract one frame from the committed multi-size icon.ico."""
+    with Image.open(ICO) as im:
+        im.size = (size, size)
+        im.load()
+        return im.convert("RGBA").copy()
+
+
+def _abs_diff(a, b):
+    """Sum of absolute channel differences. Uses tobytes() rather than
+    getdata(), which Pillow deprecates and removes in 14."""
+    return sum(abs(x - y) for x, y in zip(a.tobytes(), b.tobytes()))
 
 ICO = RESOURCES / "icon.ico"
 ICNS = RESOURCES / "icon.icns"
@@ -20,11 +43,13 @@ FAVICON = RESOURCES / "favicon.png"
 
 
 def test_small_sizes_come_from_the_simple_master():
+    render_icons = _load_render_icons()
     for size in (16, 32, 48, 64):
         assert render_icons.SIZE_SOURCES[size].name == "icon_small.svg"
 
 
 def test_large_sizes_come_from_the_detailed_master():
+    render_icons = _load_render_icons()
     for size in (128, 256, 512, 1024):
         assert render_icons.SIZE_SOURCES[size].name == "icon.svg"
 
@@ -40,13 +65,20 @@ def test_png_outputs_exist_at_expected_size(path, expected):
         assert im.size == expected
 
 
+ICO_SIZES = [16, 32, 48, 64, 128, 256]
+
+
 def test_ico_carries_all_six_sizes():
     assert ICO.exists(), "icon.ico not rendered"
     with Image.open(ICO) as im:
         sizes = {s[0] for s in im.info["sizes"]}
-    assert sizes == set(render_icons.ICO_SIZES), (
-        f"icon.ico sizes {sorted(sizes)} != {render_icons.ICO_SIZES}"
-    )
+    assert sizes == set(ICO_SIZES), f"icon.ico sizes {sorted(sizes)} != {ICO_SIZES}"
+
+
+def test_ico_size_list_matches_the_pipeline():
+    """Keeps the CI-visible constant above honest against the pipeline's own."""
+    render_icons = _load_render_icons()
+    assert render_icons.ICO_SIZES == ICO_SIZES
 
 
 def test_icns_exists_and_is_non_trivial():
@@ -55,17 +87,34 @@ def test_icns_exists_and_is_non_trivial():
 
 
 def test_16px_is_not_a_downscale_of_the_detailed_art():
-    """The whole point of two masters: the 16px slot must be distinct art."""
-    small = RESOURCES / "_render" / "icon_16.png"
-    large = RESOURCES / "_render" / "icon_256.png"
-    if not (small.exists() and large.exists()):
-        pytest.skip("intermediate renders not retained; run render_icons.py")
-    with Image.open(small) as a, Image.open(large) as b:
-        a = a.convert("RGBA")
-        downscaled = b.convert("RGBA").resize((16, 16), Image.Resampling.LANCZOS)
-        diff = sum(
-            abs(p - q)
-            for pa, pb in zip(a.getdata(), downscaled.getdata())
-            for p, q in zip(pa, pb)
-        )
-    assert diff > 5000, "16px render is indistinguishable from a downscale"
+    """The whole point of two masters: the 16px slot must be distinct art.
+
+    Reads the committed icon.ico rather than resources/_render/, which is
+    gitignored and therefore absent on every machine but the one that last ran
+    the pipeline. This is the only guard against a silent regression to
+    single-master rendering, so it must run where regressions actually land.
+
+    Measured at cba1dd1: 33,560 across masters vs 3,025 for the same-master
+    control below. The 10,000 threshold sits cleanly between them.
+    """
+    assert ICO.exists(), "icon.ico not rendered"
+    actual_16 = _ico_frame(16)
+    downscaled = _ico_frame(256).resize((16, 16), Image.Resampling.LANCZOS)
+    diff = _abs_diff(actual_16, downscaled)
+    assert diff > 10_000, (
+        f"16px frame is indistinguishable from a downscale of the 256px frame "
+        f"(diff={diff:,}) — the two-master split has regressed"
+    )
+
+
+def test_same_master_sizes_are_similar_control():
+    """Control for the test above: 16 and 32 both come from icon_small.svg, so
+    downscaling 32 to 16 should land close. Without this, the threshold could
+    be passing for some unrelated reason and nobody would notice."""
+    actual_16 = _ico_frame(16)
+    downscaled = _ico_frame(32).resize((16, 16), Image.Resampling.LANCZOS)
+    diff = _abs_diff(actual_16, downscaled)
+    assert diff < 10_000, (
+        f"16px and 32px frames differ by {diff:,}; they share a master and "
+        f"should be close — the threshold in the sibling test is not meaningful"
+    )
