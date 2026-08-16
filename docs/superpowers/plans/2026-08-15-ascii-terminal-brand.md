@@ -927,7 +927,8 @@ The same squircle and gradient, carrying only a large cyan `> _` — this is wha
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `.venv/bin/python -m pytest tests/test_icon_masters.py -v`
-Expected: PASS (11 tests).
+Expected: PASS (9 tests — four parametrized functions × two masters, plus the
+non-parametrized simplicity test).
 
 - [ ] **Step 6: Commit**
 
