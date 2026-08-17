@@ -15,6 +15,15 @@ ROOT = Path(__file__).resolve().parent.parent
 INDEX = ROOT / "docs" / "index.html"
 VIEWPORTS = [(375, "mobile"), (768, "tablet"), (1440, "desktop")]
 
+# The hero terminal's clamp() font-size floor stops shrinking at 11px, so the
+# fixed 46-column frame stays 304.66px wide below that — narrower than 375 or
+# even 320px viewports can force it to shrink further. Overflow at that width
+# only shows up under ~305px, so the overflow guard needs a narrower probe
+# than the three standard breakpoints above: 280px is the Galaxy Fold's outer
+# (folded) screen width, a real, shipping device size, not a synthetic edge
+# case.
+OVERFLOW_VIEWPORTS = [(280, "fold")] + VIEWPORTS
+
 # Shared verbatim between test_every_text_element_clears_aa_against_its_real_background
 # and test_contrast_helper_composites_translucent_backgrounds below, so the
 # regression guard exercises the real code path rather than a copy that can
@@ -29,10 +38,6 @@ CONTRAST_HELPERS_JS = """
             .map(v => v <= 0.04045 ? v / 12.92
                                    : Math.pow((v + 0.055) / 1.055, 2.4));
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const ratio = (a, b) => {
-        const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
-        return (x + 0.05) / (y + 0.05);
     };
     // Composites the real ancestor background stack (not just the
     // nearest non-transparent layer) so a translucent tint — e.g.
@@ -52,19 +57,76 @@ CONTRAST_HELPERS_JS = """
         g: fg.g * fg.a + bg.g * (1 - fg.a),
         b: fg.b * fg.a + bg.b * (1 - fg.a),
     });
+    // A gradient background-image paints its own colour, invisible to
+    // backgroundColor — a walker that only reads backgroundColor sails
+    // straight past it to whatever solid colour sits further up the
+    // ancestor chain (here, body's near-black), understating how the
+    // gradient's own stops affect real text contrast. Text overlays the
+    // whole sweep, so every stop is a candidate background and the
+    // *worst* one is the one that matters, not an average or the first.
+    // A background-image this can't resolve into colour stops (e.g. a
+    // url(...)) throws rather than being silently skipped — the same
+    // silent-skip shape as the bug this replaces.
+    const gradientStops = (bgImage) => {
+        if (!bgImage || bgImage === 'none') return null;
+        if (!bgImage.includes('linear-gradient')) {
+            throw new Error(`bgOf: unparseable background-image (not a ` +
+                             `linear-gradient we can read stops from): ${bgImage}`);
+        }
+        const stops = [...bgImage.matchAll(/rgba?\\([^)]+\\)/g)]
+            .map(m => parseColor(m[0]));
+        if (stops.length === 0) {
+            throw new Error(`bgOf: linear-gradient with no parseable colour ` +
+                             `stops: ${bgImage}`);
+        }
+        return stops;
+    };
+    // Returns an array of candidate composited backgrounds (rgb strings) —
+    // normally just one, but a gradient ancestor branches it into one
+    // candidate per colour stop so callers can evaluate against the worst.
     const bgOf = (el) => {
         const layers = [];
         for (let n = el; n; n = n.parentElement) {
-            const c = parseColor(getComputedStyle(n).backgroundColor);
-            if (c.a > 0) layers.push(c);
+            const style = getComputedStyle(n);
+            const stops = gradientStops(style.backgroundImage);
+            if (stops) {
+                layers.push({ multi: stops });
+                if (stops.every(s => s.a >= 0.999)) break;
+                continue;
+            }
+            const c = parseColor(style.backgroundColor);
+            if (c.a > 0) layers.push({ color: c });
             if (c.a >= 0.999) break;
         }
-        let result = { r: 255, g: 255, b: 255 };
+        let results = [{ r: 255, g: 255, b: 255 }];
         for (let i = layers.length - 1; i >= 0; i--) {
-            result = over(layers[i], result);
+            const layer = layers[i];
+            if (layer.multi) {
+                results = layer.multi.flatMap(
+                    stop => results.map(res => over(stop, res)));
+            } else {
+                results = results.map(res => over(layer.color, res));
+            }
         }
-        return `rgb(${Math.round(result.r)}, ${Math.round(result.g)}, ` +
-               `${Math.round(result.b)})`;
+        return results.map(r => `rgb(${Math.round(r.r)}, ` +
+            `${Math.round(r.g)}, ${Math.round(r.b)})`);
+    };
+    // fg alpha (e.g. a translucent tagline colour) must be composited over
+    // each candidate background before measuring luminance, the same way
+    // bgOf() already composites the background side — otherwise translucent
+    // text is scored as if it were fully opaque. b may be a single rgb
+    // string or an array of candidates (from bgOf touching a gradient); the
+    // *worst* (lowest) ratio across candidates is the one that governs,
+    // since the text really does overlay all of them.
+    const ratio = (a, b) => {
+        const bgs = Array.isArray(b) ? b : [b];
+        return Math.min(...bgs.map(bg => {
+            const blended = over(parseColor(a), parseColor(bg));
+            const fgResolved = `rgb(${Math.round(blended.r)}, ` +
+                `${Math.round(blended.g)}, ${Math.round(blended.b)})`;
+            const [x, y] = [lum(fgResolved), lum(bg)].sort((p, q) => q - p);
+            return (x + 0.05) / (y + 0.05);
+        }));
     };
 """
 
@@ -78,7 +140,9 @@ def page():
         browser.close()
 
 
-@pytest.mark.parametrize("width,label", VIEWPORTS, ids=[v[1] for v in VIEWPORTS])
+@pytest.mark.parametrize(
+    "width,label", OVERFLOW_VIEWPORTS, ids=[v[1] for v in OVERFLOW_VIEWPORTS]
+)
 def test_no_horizontal_overflow(page, width, label):
     page.set_viewport_size({"width": width, "height": 900})
     page.goto(INDEX.as_uri())
@@ -157,6 +221,13 @@ def test_every_text_element_clears_aa_against_its_real_background(page):
     and text sharing a hue at low alpha over the dark page background — a
     valid, common pattern here) collapses to a spurious foreground-equals-
     background 1:1 reading instead of the ~8-11:1 it actually renders at.
+    An ancestor's background-image gradient (e.g. .privacy-section) is
+    resolved the same way rather than skipped in favour of whatever solid
+    colour sits further up the tree — every colour stop is a candidate and
+    the worst one governs, since the text overlays the whole sweep.
+    Foreground alpha is composited the same way, over each candidate
+    background, before its luminance is measured — a translucent colour
+    like .hero .tagline's isn't scored as if it were fully opaque.
     """
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
@@ -255,6 +326,16 @@ def test_card_hover_border_clears_ui_contrast(page, selector):
     (WCAG 1.4.11), so the floor here is 3:1, evaluated against the same
     real, alpha-composited background bgOf() resolves everywhere else.
 
+    A contrast floor alone does not guard the hover *rule*: the resting
+    --frame border already clears 3:1 on its own (4.90:1), so deleting the
+    :hover rule outright, or replacing it with a byte-for-byte no-op
+    (`border-color: var(--frame)`, i.e. the resting value spelled out
+    again), leaves the resting colour showing throughout hover, and this
+    test would still pass for the wrong reason. Capturing the resting
+    colour before hover() and asserting the settled hover colour differs
+    from it is what catches an absent or no-op rule; the contrast check
+    alone only catches a hover colour that is present but too low-contrast.
+
     Both card rules carry `transition: border-color 0.2s`, so a read taken
     immediately after hover() lands mid-transition and reports the resting
     colour, not the hover colour — a broken hover rule would still measure
@@ -269,6 +350,7 @@ def test_card_hover_border_clears_ui_contrast(page, selector):
     page.goto(INDEX.as_uri())
     card = page.query_selector(selector)
     assert card is not None, f"{selector} not found on page"
+    resting = card.evaluate("el => getComputedStyle(el).borderTopColor")
     card.hover()
     page.wait_for_function(
         """(el) => {
@@ -283,12 +365,18 @@ def test_card_hover_border_clears_ui_contrast(page, selector):
         }""",
         arg=card,
     )
+    hovered = card.evaluate("el => getComputedStyle(el).borderTopColor")
     got = page.evaluate(
         "(el) => {\n" + CONTRAST_HELPERS_JS + """
             const style = getComputedStyle(el);
             return ratio(style.borderTopColor, bgOf(el));
         }""",
         card,
+    )
+    assert hovered != resting, (
+        f"{selector}:hover settled border colour ({hovered}) is identical "
+        f"to the resting border colour ({resting}) — the hover rule is "
+        "missing, deleted, or a byte-for-byte no-op"
     )
     assert got >= 3.0, (
         f"{selector}:hover border is only {got:.2f}:1 against its "
@@ -332,3 +420,89 @@ def test_hero_terminal_is_legible_at_every_viewport(page, width):
         "document.querySelector('.hero-terminal')).fontSize)"
     )
     assert size >= 10, f"hero terminal is {size}px at {width}px — unreadable"
+
+
+@pytest.mark.parametrize("width", [375, 768, 1440])
+def test_hero_terminal_lines_share_a_left_edge(page, width):
+    """Every visible line of the hero terminal must be flush with the same
+    left edge, at every viewport.
+
+    The mobile/tablet media query centres .hero for its prose (h1, tagline,
+    description) — intentional — but that text-align: center inherits into
+    the hero terminal's <pre> too. white-space: pre turns every newline
+    into its own line box, and text-align applies per line box, so each
+    framed row shorter than the widest one centres independently instead of
+    staying flush against the frame: the "~/Documents $ ..." prompt line and
+    the trailing "> N words copied..." line are both shorter than the fixed
+    46-column frame rows, so they visibly drift right of the frame's left
+    edge while the frame itself stays put.
+
+    None of the other hero tests would catch this — they check column
+    counts in source (test_hero_terminal_is_fixed_46_columns), clamp()
+    presence, and font-size, none of which sees rendered line position.
+
+    A plain getBoundingClientRect() on the <pre> only gives one rect for
+    the whole block, and Range.getClientRects() over the *entire* element
+    yields one rect per inline fragment rather than per visual line — some
+    lines contain child <span> tags (.beam/.cursor/.fill), so a run of
+    plain text before a span, the span itself, and any plain text after it
+    each produce their own rect, most of which start mid-line and are not
+    what "left edge" means here. Instead, this walks the text nodes to find
+    each newline-delimited line's absolute start/end offset (regardless of
+    which element owns that text), builds one Range per line, and takes the
+    *leftmost* of that range's rects — text flows strictly left-to-right
+    inside a single line here, so that leftmost rect is the line's true
+    visual start.
+    """
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(INDEX.as_uri())
+    offsets = page.evaluate(
+        """() => {
+            const pre = document.querySelector('.hero-terminal');
+            const preLeft = pre.getBoundingClientRect().left;
+            const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            let text = '';
+            let node;
+            while ((node = walker.nextNode())) {
+                nodes.push({ node, start: text.length,
+                             end: text.length + node.textContent.length });
+                text += node.textContent;
+            }
+            const locate = (absIndex) => {
+                for (const entry of nodes) {
+                    if (absIndex >= entry.start && absIndex <= entry.end) {
+                        return { node: entry.node, offset: absIndex - entry.start };
+                    }
+                }
+                const last = nodes[nodes.length - 1];
+                return { node: last.node, offset: last.node.textContent.length };
+            };
+            const offsets = [];
+            let idx = 0;
+            for (const line of text.split('\\n')) {
+                if (line.length > 0) {
+                    const startPos = locate(idx);
+                    const endPos = locate(idx + line.length);
+                    const range = document.createRange();
+                    range.setStart(startPos.node, startPos.offset);
+                    range.setEnd(endPos.node, endPos.offset);
+                    const rects = [...range.getClientRects()]
+                        .filter(r => r.width > 0);
+                    if (rects.length) {
+                        const left = Math.min(...rects.map(r => r.left));
+                        offsets.push(Math.round((left - preLeft) * 10) / 10);
+                    }
+                }
+                idx += line.length + 1;
+            }
+            return offsets;
+        }"""
+    )
+    assert offsets, "no rendered line boxes found in .hero-terminal"
+    bad = [o for o in offsets if abs(o) > 1]
+    assert bad == [], (
+        f"hero terminal lines are not flush with a common left edge at "
+        f"{width}px — per-line offsets from the frame's own left edge "
+        f"(px): {offsets}"
+    )
