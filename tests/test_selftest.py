@@ -46,7 +46,7 @@ def test_selftest_detects_ocr_error_markers(sample_pdf):
     rather than treating it as successful non-empty output."""
     argv = ["main.py", "--selftest", str(sample_pdf)]
 
-    with patch("main.PdfOcrProcessor") as mock_processor_class:
+    with patch("components.pdf_ocr.PdfOcrProcessor") as mock_processor_class:
         mock_instance = mock_processor_class.return_value
         mock_instance.process.return_value = "--- Page 1 ---\n[OCR Error: something went wrong]"
 

@@ -11,6 +11,24 @@ on:
         description: 'Release message'
         required: false
         type: string
+  # Called from release-please.yml after it tags a release. A push:tags
+  # trigger would not work there: release-please pushes the tag with
+  # GITHUB_TOKEN, and token-created refs do not start new workflow runs.
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version number (e.g. v1.0.0)'
+        required: true
+        type: string
+      message:
+        description: 'Release message'
+        required: false
+        type: string
+      expect-existing-tag:
+        description: 'Tag is expected to already exist on origin (release-please created it)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check-tag:
@@ -52,15 +70,24 @@ jobs:
         run: |
           TAG_NAME="${{ steps.meta.outputs.tag_name }}"
 
-          # Ensure we can see tags (and fail if the tag already exists on origin).
+          # Ensure we can see tags. On manual dispatch the tag must NOT
+          # already exist; when called from release-please the tag is
+          # expected to exist because release-please just created it
+          # (signalled via the expect-existing-tag input -- github.event_name
+          # is the caller's event, not workflow_call, so it cannot be used
+          # to distinguish this case).
           git fetch --tags --force
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
-            echo "ERROR: Tag already exists on origin: $TAG_NAME"
-            echo "Use a new version (recommended), or delete the existing tag + release manually."
-            exit 1
+            if [[ "${{ inputs.expect-existing-tag }}" == "true" ]]; then
+              echo "Tag $TAG_NAME already exists on origin (expected: created by release-please)."
+            else
+              echo "ERROR: Tag already exists on origin: $TAG_NAME"
+              echo "Use a new version (recommended), or delete the existing tag + release manually."
+              exit 1
+            fi
+          else
+            echo "Tag $TAG_NAME is available."
           fi
-          
-          echo "Tag $TAG_NAME is available."
 
   build-windows:
     needs: check-tag
@@ -141,6 +168,13 @@ jobs:
             exit 1
           }
 
+          # The installer does not put Tesseract on PATH for subsequent
+          # steps, and pytesseract finds the binary purely via PATH --
+          # without this the test and build steps fail with
+          # TesseractNotFoundError / WinError 2.
+          Write-Host "Adding $tesseractPath to PATH for subsequent steps"
+          Add-Content -Path $env:GITHUB_PATH -Value $tesseractPath
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -178,10 +212,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Tesseract
+      - name: Install Tesseract and Qt runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y tesseract-ocr
+          # libegl1/libgl1 & friends are not preinstalled on ubuntu-latest;
+          # PySide6 fails to import without them (libEGL.so.1 missing).
+          sudo apt-get install -y tesseract-ocr libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1
 
       - name: Install dependencies
         run: |
@@ -189,6 +225,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run tests
+        # Headless runner: no X display, so Qt must use the offscreen platform.
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests/ -v
 
       - name: Build executable
@@ -314,6 +353,9 @@ jobs:
           body: ${{ inputs.message }}
           artifacts: "dist_assets/*"
           commit: ${{ github.sha }}
+          # draft is transient here: the repo enforces immutable releases,
+          # and only a mutable draft can receive the asset uploads. The
+          # next step publishes once everything is attached.
           draft: true
           prerelease: false
           generateReleaseNotes: true
@@ -321,3 +363,13 @@ jobs:
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Assets are in, so flip the draft to published. Immutability starts
+      # at publish -- exactly the point where nothing needs to change anymore.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.check-tag.outputs.tag_name }}
+        # --repo is required: this job never checks out the repository,
+        # and bare `gh release edit` fails outside a git work tree.
+        run: gh release edit "$TAG_NAME" --repo ${{ github.repository }} --draft=false --latest

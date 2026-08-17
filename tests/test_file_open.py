@@ -47,6 +47,13 @@ from PySide6.QtWidgets import QApplication
 from main import QuickPdfOcrApplication
 from ui.main_window import MainWindow
 
+# FileOpen events (and the Services pasteboard path) are macOS delivery
+# mechanisms; on Windows/Linux conftest's qapp is a plain QApplication with
+# no set_window()/event() override, so none of these tests can run there.
+pytestmark = pytest.mark.skipif(
+    sys.platform != "darwin", reason="FileOpen/Services delivery is macOS-only"
+)
+
 
 class FakeFileOpenEvent(QEvent):
     """A stand-in for the QFileOpenEvent macOS sends on file-open.
