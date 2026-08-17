@@ -180,6 +180,17 @@
             line-height: 1.1;
             letter-spacing: -0.02em;
             text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+            /* "QuickPdfOcr" is one unbreakable word. .hero-content's
+               min-width: 0 (added for the hero terminal fix above) lets
+               its flex box shrink freely with the viewport, which also
+               removed the incidental floor that used to keep this box
+               wider than the word needed — below ~305px wide the word no
+               longer fits and, without this, overflows its own box rather
+               than reflowing, reopening the very horizontal-scroll problem
+               that fix targeted, just via a different element. This does
+               not change the headline text, only how it breaks if it ever
+               truly runs out of room. */
+            overflow-wrap: break-word;
         }
 
         .hero .tagline {
@@ -737,7 +748,7 @@
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download Latest Release</a>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr" class="btn btn-secondary" target="_blank">View on GitHub</a>
                 </div>
-                <pre class="ascii-art hero-terminal" aria-hidden="true"><span class="hero-prompt">~/Documents $</span> quickpdfocr scan report.pdf
+                <pre class="ascii-art hero-terminal" aria-hidden="true" tabindex="-1"><span class="hero-prompt">~/Documents $</span> quickpdfocr scan report.pdf
 
 ┌─ QuickPdfOcr ──────────────────────────────┐
 │  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
