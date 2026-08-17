@@ -100,11 +100,11 @@ def _destroyed_thread(app: QApplication) -> QThread:
     return thread
 
 
-def test_open_file_works_after_a_thread_is_destroyed(app, window, sample_pdf):
+def test_open_file_works_after_a_thread_is_destroyed(qapp, window, sample_pdf):
     """Regression test for the CRITICAL bug described above: open_file()
     must succeed even when self.ocr_thread references a QThread wrapper
     whose underlying C++ object has already been deleted."""
-    window.ocr_thread = _destroyed_thread(app)
+    window.ocr_thread = _destroyed_thread(qapp)
     window.ocr_worker = None
 
     window.open_file(str(sample_pdf))
@@ -112,10 +112,10 @@ def test_open_file_works_after_a_thread_is_destroyed(app, window, sample_pdf):
     assert window.current_file == str(sample_pdf)
 
 
-def test_is_ocr_running_treats_a_deleted_thread_as_not_running(app, window):
+def test_is_ocr_running_treats_a_deleted_thread_as_not_running(qapp, window):
     """Direct unit test of the defensive catch in _is_ocr_running(), so the
     behavior is pinned independently of open_file()'s other side effects."""
-    window.ocr_thread = _destroyed_thread(app)
+    window.ocr_thread = _destroyed_thread(qapp)
 
     assert window._is_ocr_running() is False
 
