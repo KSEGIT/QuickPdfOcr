@@ -28,8 +28,20 @@ smeared the terminal detail into an unrecognizable blur:
 - **icon_small.svg** - simplified master showing only the squircle and one oversized
   cyan `> _` mark; feeds the 16, 32, 48, and 64px outputs, where the detailed master
   would just be noise.
-- **favicon.png** - 32×32, rendered from `icon_small.svg`; used by `docs/index.html`'s
-  `<link rel="icon">`.
+- **favicon.png** - 32×32, rendered from `icon_small.svg`.
+
+### `docs/assets/`
+
+GitHub Pages publishes from `main:/docs`, so `resources/` sits outside the published
+root and a relative path from `docs/index.html` cannot reach it. `docs/assets/` holds
+the subset of renders the page itself needs, copied by the same pipeline run so they
+cannot drift from `resources/*.png`:
+
+- **docs/assets/favicon.png** - 32×32, same render as `resources/favicon.png`; used by
+  `docs/index.html`'s `<link rel="icon">`.
+- **docs/assets/logo.png** - 64×64, rendered from `icon_small.svg`; used by the header
+  `.logo img`, which displays it at 36×36 — far closer to native size than the old
+  256px `icon.png` it used to pull cross-origin from `main`.
 
 ### Regenerating Icons
 
@@ -40,7 +52,7 @@ platform container from those renders:
 ```bash
 .venv/bin/pip install -r resources/requirements-assets.txt
 .venv/bin/playwright install chromium
-.venv/bin/python resources/render_icons.py   # icon.png, icon_512.png, favicon.png, icon.ico, icon.icns
+.venv/bin/python resources/render_icons.py   # icon.png, icon_512.png, favicon.png, icon.ico, icon.icns, docs/assets/*.png
 .venv/bin/python resources/render_hero.py    # quick_pdf_hero_small.jpg
 ```
 

@@ -25,6 +25,13 @@ DETAILED = RESOURCES / "icon.svg"
 SIMPLE = RESOURCES / "icon_small.svg"
 RENDER_DIR = RESOURCES / "_render"
 
+# GitHub Pages publishes from main:/docs, so resources/ (outside that root)
+# is unreachable from the published site with a relative path. docs/assets/
+# holds the subset of rendered artefacts the page actually references,
+# copied straight from the same masters so they cannot drift from
+# resources/*.png. This is the single place those copies are produced.
+DOCS_ASSETS = RESOURCES.parent / "docs" / "assets"
+
 SIZE_SOURCES = {
     16: SIMPLE,
     32: SIMPLE,
@@ -82,6 +89,15 @@ def main() -> int:
     shutil.copyfile(pngs[512], RESOURCES / "icon_512.png")
     shutil.copyfile(pngs[32], RESOURCES / "favicon.png")
     print("Wrote icon.png, icon_512.png, favicon.png")
+
+    # docs/index.html's <link rel="icon"> wants the same 32px favicon; its
+    # header <img class="logo"> renders into a 36px box, so the 64px slot
+    # (still from the simple master — see the two-master rationale above)
+    # is the closest fit rather than pulling the 256px detailed render.
+    DOCS_ASSETS.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(pngs[32], DOCS_ASSETS / "favicon.png")
+    shutil.copyfile(pngs[64], DOCS_ASSETS / "logo.png")
+    print(f"Wrote {DOCS_ASSETS / 'favicon.png'}, {DOCS_ASSETS / 'logo.png'}")
 
     images = [Image.open(pngs[s]).convert("RGBA") for s in ICO_SIZES]
     images[-1].save(

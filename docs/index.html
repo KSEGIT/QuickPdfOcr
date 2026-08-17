@@ -22,7 +22,7 @@
     <meta name="twitter:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg">
 
     <title>QuickPdfOcr - OCR Scanned PDFs Locally</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
     <style>
         * {
             margin: 0;
@@ -144,6 +144,19 @@
 
         .hero-content {
             max-width: 620px;
+            /* .hero .container is a flex row with .hero-content as its only
+               item; a flex item's automatic minimum width defaults to its
+               content's min-content size, not 0. white-space: pre gives the
+               hero terminal a min-content width equal to its max-content
+               width (304.66px — it has no soft-wrap point to shrink at), so
+               without this the flex item — and the page along with it — is
+               forced at least that wide no matter how narrow the viewport
+               gets, which is what actually caused the horizontal scroll
+               .ascii-art's own overflow-x: auto (below) does not by itself
+               prevent: that rule lets the terminal scroll *within* its own
+               box, but only once this box is allowed to become smaller than
+               its content in the first place. */
+            min-width: 0;
         }
 
         .hero .badge {
@@ -324,6 +337,23 @@
             margin: 0;
             color: inherit;
             -webkit-font-smoothing: none;
+            /* The mobile/tablet media query below sets text-align: center on
+               .hero, which inherits into these <pre> blocks; white-space: pre
+               makes every newline its own line box, so each frame row
+               shorter than the widest one would center independently and
+               drift out from under the frame instead of staying flush left
+               with it. A specified value on the element itself always wins
+               over an inherited one, so this holds regardless of .hero's
+               alignment. */
+            text-align: left;
+            /* clamp()'s 11px floor stops shrinking before the fixed
+               46-column hero frame (304.66px) fits inside very narrow
+               viewports (~<305px); white-space: pre has no wrap to fall
+               back on, so without this the content overflows the block
+               and drags the whole page into horizontal scroll. overflow-x
+               lets the block itself scroll instead — auto, never hidden,
+               so the content stays reachable rather than being clipped. */
+            overflow-x: auto;
         }
 
         .ascii-art .beam { color: var(--accent); }
@@ -403,7 +433,15 @@
             max-width: 800px;
             margin: 0 auto;
             line-height: 1.7;
-            color: rgba(226, 232, 240, 0.92);
+            /* Opaque slate-100, not --text at reduced alpha: the gradient
+               behind this paragraph sweeps from --frame-fill to --bar, and
+               the translucent --text this used to be (0.92 alpha) composited
+               to only 4.14:1 against the violet stop — under the 4.5:1 AA
+               floor. #F1F5F9 at full alpha clears both stops (5.74:1 /
+               5.20:1); the violet stop is the binding one and governs the
+               choice over a merely-opaque --text (4.62:1 — technically
+               passing, but with far less margin). */
+            color: #F1F5F9;
         }
 
         .privacy-icon {
@@ -670,7 +708,7 @@
         <div class="container">
             <div class="header-content">
                 <a href="#" class="logo">
-                    <img src="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon.png" alt="QuickPdfOcr Logo">
+                    <img src="assets/logo.png" alt="QuickPdfOcr Logo">
                     <span>QuickPdfOcr</span>
                 </a>
                 <nav class="header-links">
