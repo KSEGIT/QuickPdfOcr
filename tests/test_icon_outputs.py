@@ -41,6 +41,17 @@ PNG_256 = RESOURCES / "icon.png"
 PNG_512 = RESOURCES / "icon_512.png"
 FAVICON = RESOURCES / "favicon.png"
 
+# The copies docs/index.html actually loads (relative paths, so GitHub Pages
+# — which publishes from main:/docs, outside resources/ — can reach them).
+# render_icons.py writes these from the same pipeline run as the
+# resources/*.png above, but nothing before this enforced that the commit
+# in the tree actually reflects that: this is the same
+# exists-at-expected-size pattern as test_png_outputs_exist_at_expected_size,
+# extended to catch a docs/assets/*.png left stale after a master SVG edit.
+DOCS_ASSETS = RESOURCES.parent / "docs" / "assets"
+DOCS_FAVICON = DOCS_ASSETS / "favicon.png"
+DOCS_LOGO = DOCS_ASSETS / "logo.png"
+
 
 def test_small_sizes_come_from_the_simple_master():
     render_icons = _load_render_icons()
@@ -56,8 +67,15 @@ def test_large_sizes_come_from_the_detailed_master():
 
 @pytest.mark.parametrize(
     "path,expected",
-    [(PNG_256, (256, 256)), (PNG_512, (512, 512)), (FAVICON, (32, 32))],
-    ids=["icon.png", "icon_512.png", "favicon.png"],
+    [
+        (PNG_256, (256, 256)),
+        (PNG_512, (512, 512)),
+        (FAVICON, (32, 32)),
+        (DOCS_FAVICON, (32, 32)),
+        (DOCS_LOGO, (64, 64)),
+    ],
+    ids=["icon.png", "icon_512.png", "favicon.png", "docs/assets/favicon.png",
+         "docs/assets/logo.png"],
 )
 def test_png_outputs_exist_at_expected_size(path, expected):
     assert path.exists(), f"{path.name} not rendered"

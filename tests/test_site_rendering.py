@@ -24,6 +24,71 @@ VIEWPORTS = [(375, "mobile"), (768, "tablet"), (1440, "desktop")]
 # case.
 OVERFLOW_VIEWPORTS = [(280, "fold")] + VIEWPORTS
 
+# Shared between test_hero_terminal_lines_share_a_left_edge and
+# test_ascii_icon_blocks_are_left_aligned_in_their_own_box: for a given
+# .ascii-art <pre>, returns the left offset of every rendered line relative
+# to the element's own left edge.
+#
+# A plain getBoundingClientRect() on the <pre> only gives one rect for the
+# whole block, and Range.getClientRects() over the *entire* element yields
+# one rect per inline fragment rather than per visual line — several of
+# these blocks contain child <span> tags (.beam/.cursor/.fill), so a run of
+# plain text before a span, the span itself, and any plain text after it
+# each produce their own rect, most of which start mid-line and are not
+# what "left edge" means here. Instead, this walks the text nodes to find
+# each newline-delimited line's absolute start/end offset (regardless of
+# which element owns that text), builds one Range per line, and takes the
+# *leftmost* of that range's rects — text flows strictly left-to-right
+# inside a single line here, so that leftmost rect is the line's true
+# visual start.
+LINE_LEFT_OFFSETS_JS = """
+    const lineLeftOffsets = (pre) => {
+        const preLeft = pre.getBoundingClientRect().left;
+        const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let text = '';
+        let node;
+        while ((node = walker.nextNode())) {
+            nodes.push({ node, start: text.length,
+                         end: text.length + node.textContent.length });
+            text += node.textContent;
+        }
+        // Throws rather than guessing a nearby position: a wrong-but-
+        // plausible fallback here could silently mask a real alignment
+        // regression instead of failing the assertion loudly.
+        const locate = (absIndex) => {
+            for (const entry of nodes) {
+                if (absIndex >= entry.start && absIndex <= entry.end) {
+                    return { node: entry.node, offset: absIndex - entry.start };
+                }
+            }
+            throw new Error(
+                `lineLeftOffsets: index ${absIndex} falls outside the ` +
+                `walked text nodes (0..${text.length}) for ` +
+                `${pre.className || pre.tagName}`);
+        };
+        const offsets = [];
+        let idx = 0;
+        for (const line of text.split('\\n')) {
+            if (line.length > 0) {
+                const startPos = locate(idx);
+                const endPos = locate(idx + line.length);
+                const range = document.createRange();
+                range.setStart(startPos.node, startPos.offset);
+                range.setEnd(endPos.node, endPos.offset);
+                const rects = [...range.getClientRects()]
+                    .filter(r => r.width > 0);
+                if (rects.length) {
+                    const left = Math.min(...rects.map(r => r.left));
+                    offsets.push(Math.round((left - preLeft) * 10) / 10);
+                }
+            }
+            idx += line.length + 1;
+        }
+        return offsets;
+    };
+"""
+
 # Shared verbatim between test_every_text_element_clears_aa_against_its_real_background
 # and test_contrast_helper_composites_translucent_backgrounds below, so the
 # regression guard exercises the real code path rather than a copy that can
@@ -47,6 +112,16 @@ CONTRAST_HELPERS_JS = """
     const parseColor = (str) => {
         const m = str.match(/rgba?\\(([^)]+)\\)/);
         const parts = m[1].split(',').map(Number);
+        // Every browser this suite has run against serializes computed
+        // colour as legacy comma-separated rgb()/rgba(). If that ever
+        // changes (e.g. to space-separated CSS Color 4 syntax), splitting
+        // on ',' silently yields NaN channels rather than an error — and a
+        // NaN contrast ratio makes every "< need" comparison downstream
+        // false, dropping a real failure instead of flagging it. Fail
+        // loud here instead.
+        if (parts.some(Number.isNaN)) {
+            throw new Error(`parseColor: could not parse channels from ${str}`);
+        }
         return {
             r: parts[0], g: parts[1], b: parts[2],
             a: parts.length > 3 ? parts[3] : 1,
@@ -89,12 +164,20 @@ CONTRAST_HELPERS_JS = """
         for (let n = el; n; n = n.parentElement) {
             const style = getComputedStyle(n);
             const stops = gradientStops(style.backgroundImage);
+            const c = parseColor(style.backgroundColor);
             if (stops) {
+                // CSS paints background-color at the bottom and
+                // background-image on top of it, for the *same* element —
+                // both are real, simultaneous layers here, not a either/or
+                // choice. Push the gradient first (it ends up on top) and
+                // this same node's own colour second (underneath it),
+                // rather than treating the gradient as if it were the
+                // node's only background and skipping its solid colour.
                 layers.push({ multi: stops });
-                if (stops.every(s => s.a >= 0.999)) break;
+                if (c.a > 0) layers.push({ color: c });
+                if (stops.every(s => s.a >= 0.999) || c.a >= 0.999) break;
                 continue;
             }
-            const c = parseColor(style.backgroundColor);
             if (c.a > 0) layers.push({ color: c });
             if (c.a >= 0.999) break;
         }
@@ -114,10 +197,12 @@ CONTRAST_HELPERS_JS = """
     // fg alpha (e.g. a translucent tagline colour) must be composited over
     // each candidate background before measuring luminance, the same way
     // bgOf() already composites the background side — otherwise translucent
-    // text is scored as if it were fully opaque. b may be a single rgb
-    // string or an array of candidates (from bgOf touching a gradient); the
-    // *worst* (lowest) ratio across candidates is the one that governs,
-    // since the text really does overlay all of them.
+    // text is scored as if it were fully opaque. bgOf() always returns an
+    // array (one entry normally, one per gradient stop when it touches a
+    // gradient); the Array.isArray guard just means ratio()'s second
+    // argument also works if ever called with a bare rgb string directly.
+    // The *worst* (lowest) ratio across candidates is the one that
+    // governs, since the text really does overlay all of them.
     const ratio = (a, b) => {
         const bgs = Array.isArray(b) ? b : [b];
         return Math.min(...bgs.map(bg => {
@@ -314,6 +399,52 @@ def test_contrast_helper_composites_translucent_backgrounds(page):
     )
 
 
+def test_bg_of_composites_gradient_over_its_own_background_color(page):
+    """Regression guard: an element's own background-color must be
+    composited *beneath* its own background-image gradient, not skipped in
+    favour of whatever colour sits on the next ancestor out.
+
+    CSS paints a single element's background-color at the bottom and its
+    background-image on top of it — both are real, simultaneous layers on
+    that one element, not a choice between them. A walker that treats
+    "this node has a gradient" as reason to stop looking at that same
+    node's own backgroundColor reintroduces the exact "sails past a real
+    background layer" bug this file's bgOf() rewrite exists to fix, just
+    one property over. Uses two identical gradient stops so the gradient
+    behaves as one flat translucent overlay, giving a single deterministic
+    expected colour rather than the worst-of-N-stops branching already
+    covered by the real .privacy-section walk in the test above.
+    """
+    page.set_content(
+        """
+        <!doctype html><html><body style="background:#ffffff;margin:0">
+          <div id="target" style="background-color: rgb(255, 0, 0);
+                                   background-image: linear-gradient(
+                                       rgba(0, 0, 255, 0.5), rgba(0, 0, 255, 0.5));">
+            content
+          </div>
+        </body></html>
+        """
+    )
+    result = page.evaluate(
+        "() => {\n" + CONTRAST_HELPERS_JS + """
+            return bgOf(document.getElementById('target'));
+        }"""
+    )
+    # bgOf() branches into one candidate per literal colour stop it finds
+    # (two here, since the gradient has two identical stops) — the *set* of
+    # resulting values is what matters, not how many duplicate candidates
+    # a two-stop-but-one-colour gradient happens to produce.
+    assert set(result) == {"rgb(128, 0, 128)"}, (
+        "an element's own background-color must be composited beneath its "
+        f"own gradient (expected translucent blue over opaque red = "
+        f"rgb(128, 0, 128) for every candidate); got {result} — "
+        "rgb(128, 128, 255) would mean the walker skipped this node's own "
+        "red and composited the gradient straight over the white ancestor "
+        "instead"
+    )
+
+
 @pytest.mark.parametrize("selector", [".feature-card", ".download-card"])
 def test_card_hover_border_clears_ui_contrast(page, selector):
     """A card's border must stay visible — not vanish or no-op — on hover.
@@ -411,7 +542,7 @@ def test_fills_only_token_is_not_a_text_colour(page):
     assert offenders == [], f"--bar used as text colour on: {offenders}"
 
 
-@pytest.mark.parametrize("width", [375, 768, 1440])
+@pytest.mark.parametrize("width", [v[0] for v in VIEWPORTS])
 def test_hero_terminal_is_legible_at_every_viewport(page, width):
     page.set_viewport_size({"width": width, "height": 900})
     page.goto(INDEX.as_uri())
@@ -422,7 +553,7 @@ def test_hero_terminal_is_legible_at_every_viewport(page, width):
     assert size >= 10, f"hero terminal is {size}px at {width}px — unreadable"
 
 
-@pytest.mark.parametrize("width", [375, 768, 1440])
+@pytest.mark.parametrize("width", [v[0] for v in VIEWPORTS])
 def test_hero_terminal_lines_share_a_left_edge(page, width):
     """Every visible line of the hero terminal must be flush with the same
     left edge, at every viewport.
@@ -440,63 +571,14 @@ def test_hero_terminal_lines_share_a_left_edge(page, width):
     None of the other hero tests would catch this — they check column
     counts in source (test_hero_terminal_is_fixed_46_columns), clamp()
     presence, and font-size, none of which sees rendered line position.
-
-    A plain getBoundingClientRect() on the <pre> only gives one rect for
-    the whole block, and Range.getClientRects() over the *entire* element
-    yields one rect per inline fragment rather than per visual line — some
-    lines contain child <span> tags (.beam/.cursor/.fill), so a run of
-    plain text before a span, the span itself, and any plain text after it
-    each produce their own rect, most of which start mid-line and are not
-    what "left edge" means here. Instead, this walks the text nodes to find
-    each newline-delimited line's absolute start/end offset (regardless of
-    which element owns that text), builds one Range per line, and takes the
-    *leftmost* of that range's rects — text flows strictly left-to-right
-    inside a single line here, so that leftmost rect is the line's true
-    visual start.
+    See LINE_LEFT_OFFSETS_JS above for why a plain getBoundingClientRect()
+    or a single whole-element Range can't measure this correctly.
     """
     page.set_viewport_size({"width": width, "height": 900})
     page.goto(INDEX.as_uri())
     offsets = page.evaluate(
-        """() => {
-            const pre = document.querySelector('.hero-terminal');
-            const preLeft = pre.getBoundingClientRect().left;
-            const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
-            const nodes = [];
-            let text = '';
-            let node;
-            while ((node = walker.nextNode())) {
-                nodes.push({ node, start: text.length,
-                             end: text.length + node.textContent.length });
-                text += node.textContent;
-            }
-            const locate = (absIndex) => {
-                for (const entry of nodes) {
-                    if (absIndex >= entry.start && absIndex <= entry.end) {
-                        return { node: entry.node, offset: absIndex - entry.start };
-                    }
-                }
-                const last = nodes[nodes.length - 1];
-                return { node: last.node, offset: last.node.textContent.length };
-            };
-            const offsets = [];
-            let idx = 0;
-            for (const line of text.split('\\n')) {
-                if (line.length > 0) {
-                    const startPos = locate(idx);
-                    const endPos = locate(idx + line.length);
-                    const range = document.createRange();
-                    range.setStart(startPos.node, startPos.offset);
-                    range.setEnd(endPos.node, endPos.offset);
-                    const rects = [...range.getClientRects()]
-                        .filter(r => r.width > 0);
-                    if (rects.length) {
-                        const left = Math.min(...rects.map(r => r.left));
-                        offsets.push(Math.round((left - preLeft) * 10) / 10);
-                    }
-                }
-                idx += line.length + 1;
-            }
-            return offsets;
+        "() => {\n" + LINE_LEFT_OFFSETS_JS + """
+            return lineLeftOffsets(document.querySelector('.hero-terminal'));
         }"""
     )
     assert offsets, "no rendered line boxes found in .hero-terminal"
@@ -505,4 +587,41 @@ def test_hero_terminal_lines_share_a_left_edge(page, width):
         f"hero terminal lines are not flush with a common left edge at "
         f"{width}px — per-line offsets from the frame's own left edge "
         f"(px): {offsets}"
+    )
+
+
+def test_ascii_icon_blocks_are_left_aligned_in_their_own_box(page):
+    """Every .ascii-art icon block (feature/privacy/platform icons) must
+    also have its lines flush with its own left edge, not just the hero
+    terminal.
+
+    .ascii-art's text-align: left (added for the hero terminal fix above)
+    also reaches these 12 icon blocks, since .privacy-section and
+    .download-section both set text-align: center on themselves
+    *unconditionally* — unlike .hero's centring, which only applies in the
+    mobile/tablet media query. Before that fix, the privacy icon and the
+    macOS download icon's multi-width rows centred independently at every
+    viewport, not just mobile/tablet; nothing in this suite checked
+    rendered icon line position, so it went unnoticed. This runs at a
+    single viewport (desktop) since these are small, non-fluid, five-line
+    fixed-width blocks whose alignment doesn't depend on viewport width the
+    way the hero terminal's does.
+    """
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(INDEX.as_uri())
+    offenders = page.evaluate(
+        "() => {\n" + LINE_LEFT_OFFSETS_JS + """
+            const bad = [];
+            for (const pre of document.querySelectorAll('.ascii-art.ascii-icon')) {
+                const offsets = lineLeftOffsets(pre);
+                if (offsets.some(o => Math.abs(o) > 1)) {
+                    bad.push({ icon: pre.closest('[class*="-icon"]').className,
+                               offsets });
+                }
+            }
+            return bad;
+        }"""
+    )
+    assert offenders == [], (
+        f"icon blocks not flush with their own left edge: {offenders}"
     )

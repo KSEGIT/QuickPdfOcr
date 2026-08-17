@@ -11,7 +11,8 @@ The application icon represents a terminal window scanning a document with OCR:
 - **icon.ico** - Windows icon file (multi-size: 16, 32, 48, 64, 128, 256)
 - **icon.icns** - macOS icon file (contains all required sizes for macOS)
 - **icon_512.png** - High-resolution PNG (512x512) for large displays
-- **favicon.png** - 32x32 PNG used by the website's `<link rel="icon">`
+- **favicon.png** - 32x32 PNG, source render for the website's favicon (the live copy
+  the site actually loads is `docs/assets/favicon.png` — see "docs/assets/" below)
 
 ### Icon Design
 

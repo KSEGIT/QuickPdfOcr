@@ -91,13 +91,16 @@ def main() -> int:
     print("Wrote icon.png, icon_512.png, favicon.png")
 
     # docs/index.html's <link rel="icon"> wants the same 32px favicon; its
-    # header <img class="logo"> renders into a 36px box, so the 64px slot
-    # (still from the simple master — see the two-master rationale above)
-    # is the closest fit rather than pulling the 256px detailed render.
+    # header ".logo img" (the <a class="logo"> wrapper's child <img>)
+    # renders into a 36px box, so the 64px slot (still from the simple
+    # master — see the two-master rationale above) is the closest fit
+    # rather than pulling the 256px detailed render.
     DOCS_ASSETS.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(pngs[32], DOCS_ASSETS / "favicon.png")
-    shutil.copyfile(pngs[64], DOCS_ASSETS / "logo.png")
-    print(f"Wrote {DOCS_ASSETS / 'favicon.png'}, {DOCS_ASSETS / 'logo.png'}")
+    docs_favicon = DOCS_ASSETS / "favicon.png"
+    docs_logo = DOCS_ASSETS / "logo.png"
+    shutil.copyfile(pngs[32], docs_favicon)
+    shutil.copyfile(pngs[64], docs_logo)
+    print(f"Wrote {docs_favicon}, {docs_logo}")
 
     images = [Image.open(pngs[s]).convert("RGBA") for s in ICO_SIZES]
     images[-1].save(
