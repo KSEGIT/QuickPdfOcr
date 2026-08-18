@@ -135,11 +135,17 @@ def test_no_hardcoded_white_backgrounds():
     assert offenders == [], f"hardcoded light backgrounds remain: {offenders}"
 
 
-def test_frame_token_never_carries_text():
-    """--frame is ~3:1 on --bg: decoration only, never a text colour."""
+def test_bar_token_never_carries_text():
+    """--bar is ~3:1 on --bg: fills only, never a text colour.
+
+    --frame is the *ink* token (5.98:1) and is meant to carry text and
+    ASCII art; --bar (#7C3AED, 3.13:1) is the fills-only token that fails
+    the 4.5:1 text floor and must never be the computed `color` of a
+    text-bearing element.
+    """
     css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
-    offenders = re.findall(r"(?<!-)\bcolor\s*:\s*var\(--frame\)", css)
-    assert offenders == [], "--frame must never be used as a text colour"
+    offenders = re.findall(r"(?<!-)\bcolor\s*:\s*var\(--bar\)", css)
+    assert offenders == [], "--bar must never be used as a text colour"
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -173,7 +179,7 @@ Replace `docs/index.html:33-46` with:
             --slate-light: var(--surface);
             --text-gray: var(--dim);
             --bg-white: var(--bg);
-            --border-color: #1E293B;
+            --border-color: #64748B;
             --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
             --shadow-lg: 0 12px 28px -6px rgb(0 0 0 / 0.6);
             --radius: 0;
@@ -1641,8 +1647,32 @@ def test_every_text_element_clears_aa_against_its_real_background(page):
                                            : Math.pow((v + 0.055) / 1.055, 2.4));
                 return 0.2126 * r + 0.7152 * g + 0.0722 * b;
             };
+            const parseColor = (str) => {
+                const m = str.match(/rgba?\\(([^)]+)\\)/);
+                const parts = m[1].split(',').map(Number);
+                return {
+                    r: parts[0], g: parts[1], b: parts[2],
+                    a: parts.length > 3 ? parts[3] : 1,
+                };
+            };
+            const over = (fg, bg) => ({
+                r: fg.r * fg.a + bg.r * (1 - fg.a),
+                g: fg.g * fg.a + bg.g * (1 - fg.a),
+                b: fg.b * fg.a + bg.b * (1 - fg.a),
+            });
+            // Foreground alpha (e.g. a translucent tagline colour) is
+            // composited over bg via over(parseColor(a), parseColor(bg))
+            // before lum() ever sees it, so slice(0, 3) above is safe — by
+            // the time lum() runs, the colour it receives is already
+            // fully opaque. A naive lum(a) on the raw rgba() string, alpha
+            // discarded, is the bug this replaced: it read a translucent
+            // colour as if it were fully opaque and could pass a real
+            // failure.
             const ratio = (a, b) => {
-                const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+                const blended = over(parseColor(a), parseColor(b));
+                const fgResolved = `rgb(${Math.round(blended.r)}, ` +
+                    `${Math.round(blended.g)}, ${Math.round(blended.b)})`;
+                const [x, y] = [lum(fgResolved), lum(b)].sort((p, q) => q - p);
                 return (x + 0.05) / (y + 0.05);
             };
             const bgOf = (el) => {
