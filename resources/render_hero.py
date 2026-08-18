@@ -50,17 +50,24 @@ def main() -> int:
             browser.close()
 
     staging = TARGET.with_suffix(".tmp.jpg")
-    with Image.open(png) as image:
-        image.convert("RGB").save(staging, "JPEG", quality=85, optimize=True)
+    try:
+        with Image.open(png) as image:
+            image.convert("RGB").save(staging, "JPEG", quality=85, optimize=True)
 
-    size = staging.stat().st_size
-    if size > MAX_BYTES:
-        staging.unlink()
-        print(f"Error: {size:,} bytes exceeds {MAX_BYTES:,} byte budget")
-        print(f"{TARGET.name} left untouched")
-        return 1
+        size = staging.stat().st_size
+        if size > MAX_BYTES:
+            print(f"Error: {size:,} bytes exceeds {MAX_BYTES:,} byte budget")
+            state = "left untouched" if TARGET.exists() else "not written"
+            print(f"{TARGET.name} {state}")
+            return 1
 
-    staging.replace(TARGET)
+        staging.replace(TARGET)
+    finally:
+        # Covers both the over-budget return above and any exception raised
+        # while opening/converting/saving: staging.replace() already moved
+        # the file away on the success path, so this is a no-op there.
+        staging.unlink(missing_ok=True)
+
     print(f"Wrote {TARGET.name}: {size:,} bytes")
     return 0
 
