@@ -49,14 +49,19 @@ def main() -> int:
         finally:
             browser.close()
 
+    staging = TARGET.with_suffix(".tmp.jpg")
     with Image.open(png) as image:
-        image.convert("RGB").save(TARGET, "JPEG", quality=85, optimize=True)
+        image.convert("RGB").save(staging, "JPEG", quality=85, optimize=True)
 
-    size = TARGET.stat().st_size
-    print(f"Wrote {TARGET.name}: {size:,} bytes")
+    size = staging.stat().st_size
     if size > MAX_BYTES:
-        print(f"Error: exceeds {MAX_BYTES:,} byte budget")
+        staging.unlink()
+        print(f"Error: {size:,} bytes exceeds {MAX_BYTES:,} byte budget")
+        print(f"{TARGET.name} left untouched")
         return 1
+
+    staging.replace(TARGET)
+    print(f"Wrote {TARGET.name}: {size:,} bytes")
     return 0
 
 

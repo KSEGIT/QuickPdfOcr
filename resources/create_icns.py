@@ -13,7 +13,6 @@ ICONSET_SLOTS = [
     (16, 2, 'icon_16x16@2x.png'),
     (32, 1, 'icon_32x32.png'),
     (32, 2, 'icon_32x32@2x.png'),
-    (64, 1, 'icon_64x64.png'),
     (128, 1, 'icon_128x128.png'),
     (128, 2, 'icon_128x128@2x.png'),
     (256, 1, 'icon_256x256.png'),
@@ -48,10 +47,17 @@ def create_icns_from_pngs(png_by_size, output_icns_path):
         shutil.copyfile(source, iconset_dir / filename)
         print(f"  - {filename} ({pixels}x{pixels}) <- {Path(source).name}")
 
-    result = subprocess.run(
-        ['iconutil', '-c', 'icns', str(iconset_dir), '-o', str(output_icns_path)],
-        capture_output=True, text=True,
-    )
+    try:
+        result = subprocess.run(
+            ['iconutil', '-c', 'icns', str(iconset_dir), '-o', str(output_icns_path)],
+            capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            "iconutil not found: it is a macOS-only tool, unavailable on this host.\n"
+            f"Iconset retained at {iconset_dir} for manual conversion on macOS."
+        ) from None
+
     if result.returncode == 0:
         shutil.rmtree(iconset_dir)
         print(f"Created: {output_icns_path}")
