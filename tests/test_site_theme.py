@@ -69,6 +69,19 @@ def test_no_hardcoded_white_backgrounds():
     assert offenders == [], f"hardcoded light backgrounds remain: {offenders}"
 
 
+def test_no_hardcoded_border_radius():
+    """--radius is 0 for the sharp-corners terminal skin.
+
+    A hardcoded px/% radius bypasses that token the same way a hardcoded
+    background colour bypasses the palette above -- it looks fine today and
+    silently drifts from --radius the next time the token changes.
+    """
+    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
+    declarations = re.findall(r"border-radius\s*:\s*([^;]+);", css)
+    offenders = [d for d in declarations if d.strip() != "var(--radius)"]
+    assert offenders == [], f"hardcoded border-radius remains: {offenders}"
+
+
 FILLS_ONLY_TOKEN = "--bar"
 
 

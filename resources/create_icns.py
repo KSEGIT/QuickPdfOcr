@@ -22,6 +22,10 @@ ICONSET_SLOTS = [
 ]
 
 
+def _retained_for_manual_conversion(iconset_dir: Path) -> str:
+    return f"Iconset retained at {iconset_dir} for manual conversion on macOS."
+
+
 def create_icns_from_pngs(png_by_size, output_icns_path):
     """Build a macOS .icns from PNGs already rendered at each exact size.
 
@@ -52,10 +56,10 @@ def create_icns_from_pngs(png_by_size, output_icns_path):
             ['iconutil', '-c', 'icns', str(iconset_dir), '-o', str(output_icns_path)],
             capture_output=True, text=True,
         )
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError) as exc:
         raise RuntimeError(
-            "iconutil not found: it is a macOS-only tool, unavailable on this host.\n"
-            f"Iconset retained at {iconset_dir} for manual conversion on macOS."
+            f"iconutil unavailable ({exc.strerror}): it is a macOS-only tool.\n"
+            f"{_retained_for_manual_conversion(iconset_dir)}"
         ) from None
 
     if result.returncode == 0:
@@ -65,5 +69,5 @@ def create_icns_from_pngs(png_by_size, output_icns_path):
 
     raise RuntimeError(
         f"iconutil failed ({result.returncode}): {result.stderr.strip()}\n"
-        f"Iconset retained at {iconset_dir} for manual conversion on macOS."
+        f"{_retained_for_manual_conversion(iconset_dir)}"
     )
