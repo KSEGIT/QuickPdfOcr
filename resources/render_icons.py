@@ -12,6 +12,7 @@ dependency of the app.
 Usage:  python3 resources/render_icons.py
 """
 
+import os
 import shutil
 from pathlib import Path
 
@@ -22,6 +23,25 @@ from create_icns import create_icns_from_pngs
 from icon_manifest import DETAILED, ICO_SIZES, RESOURCES, SIMPLE, SIZE_SOURCES
 
 RENDER_DIR = RESOURCES / "_render"
+
+
+def _atomic_copy(src: Path, dst: Path) -> None:
+    """Copy src to dst via a same-directory temp file + os.replace().
+
+    os.replace() is atomic on POSIX and, since Python 3.3, on Windows too,
+    for a rename within the same filesystem -- guaranteed here since the
+    temp file is a sibling of dst. This bounds each *individual* tracked
+    file to "either the old bytes or the new bytes, never a partial write";
+    it does not make the group of tracked-file updates below a single
+    cross-file transaction, so a crash between two calls can still leave
+    one file updated and the next stale. That residual window is far
+    smaller than the one this replaces (a mid-copyfile crash could
+    previously leave a single file half-written).
+    """
+    tmp = dst.with_name(dst.name + ".tmp")
+    shutil.copyfile(src, tmp)
+    os.replace(tmp, dst)
+
 
 # GitHub Pages publishes from main:/docs, so resources/ (outside that root)
 # is unreachable from the published site with a relative path. docs/assets/
@@ -85,20 +105,28 @@ def main() -> int:
     pngs = render_all(RENDER_DIR)
 
     # Build icon.ico and icon.icns entirely inside the gitignored render
-    # directory first. Only after *both* containers succeed do we copy
-    # anything into a tracked location -- so a failure partway through
-    # (e.g. a corrupt iconset, a permissions error) can never leave some
-    # tracked artefacts updated and others stale. All-or-nothing.
+    # directory first. Only after *both* containers succeed do we start
+    # copying anything into a tracked location -- so a failure in
+    # rendering or assembly (e.g. a corrupt iconset, a permissions error)
+    # can never leave some tracked artefacts updated and others stale. The
+    # five _atomic_copy() calls below are each individually atomic (temp
+    # file + os.replace()), but are not one cross-file transaction: a crash
+    # between two of those calls can still leave one updated and the next
+    # stale. That is a much smaller window than rendering/assembly failing
+    # (which is what this section guards against), not a claim that the
+    # whole run is transactional end to end.
     render_ico = RENDER_DIR / "icon.ico"
     images = [Image.open(pngs[s]).convert("RGBA") for s in ICO_SIZES]
-    images[-1].save(
-        render_ico,
-        format="ICO",
-        append_images=images[:-1],
-        sizes=[(s, s) for s in ICO_SIZES],
-    )
-    for image in images:
-        image.close()
+    try:
+        images[-1].save(
+            render_ico,
+            format="ICO",
+            append_images=images[:-1],
+            sizes=[(s, s) for s in ICO_SIZES],
+        )
+    finally:
+        for image in images:
+            image.close()
     print(f"Rendered icon.ico ({len(ICO_SIZES)} sizes)")
 
     render_icns = RENDER_DIR / "icon.icns"
@@ -106,12 +134,14 @@ def main() -> int:
     print("Rendered icon.icns")
 
     # Every container succeeded -- now, and only now, update the tracked
-    # artefacts main.py and packaging/quickpdfocr.spec depend on.
-    shutil.copyfile(pngs[256], RESOURCES / "icon.png")
-    shutil.copyfile(pngs[512], RESOURCES / "icon_512.png")
-    shutil.copyfile(pngs[32], RESOURCES / "favicon.png")
-    shutil.copyfile(render_ico, RESOURCES / "icon.ico")
-    shutil.copyfile(render_icns, RESOURCES / "icon.icns")
+    # artefacts main.py and packaging/quickpdfocr.spec depend on, each via
+    # _atomic_copy (see above for exactly what guarantee that does and does
+    # not provide).
+    _atomic_copy(pngs[256], RESOURCES / "icon.png")
+    _atomic_copy(pngs[512], RESOURCES / "icon_512.png")
+    _atomic_copy(pngs[32], RESOURCES / "favicon.png")
+    _atomic_copy(render_ico, RESOURCES / "icon.ico")
+    _atomic_copy(render_icns, RESOURCES / "icon.icns")
     print("Wrote icon.png, icon_512.png, favicon.png, icon.ico, icon.icns")
 
     # docs/index.html's <link rel="icon"> wants the same 32px favicon; its
@@ -122,8 +152,8 @@ def main() -> int:
     DOCS_ASSETS.mkdir(parents=True, exist_ok=True)
     docs_favicon = DOCS_ASSETS / "favicon.png"
     docs_logo = DOCS_ASSETS / "logo.png"
-    shutil.copyfile(pngs[32], docs_favicon)
-    shutil.copyfile(pngs[64], docs_logo)
+    _atomic_copy(pngs[32], docs_favicon)
+    _atomic_copy(pngs[64], docs_logo)
     print(f"Wrote {docs_favicon}, {docs_logo}")
 
     return 0

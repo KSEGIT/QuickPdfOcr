@@ -25,5 +25,6 @@ This was a real incident: an earlier branch added `docs/superpowers/` and
 `docs/design/` (agent-tooling plans/specs/design briefs, including commit
 SHAs and written narration of the repo's CI weaknesses) and they were
 published live before anyone noticed. They were relocated to `plans/` and
-`design/` to fix it — see the `fix: relocate internal docs out of the
-GitHub Pages root` commit for the full rationale. Keep it that way.
+`design/` on `feature/brand-refresh` (commit `da42f77` and its follow-ups —
+search `git log --follow plans/ design/` for the full history) to fix it.
+Keep it that way.

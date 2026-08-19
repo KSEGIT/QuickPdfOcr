@@ -303,16 +303,28 @@ def main():
     # frame above the .ico's 256px ceiling for very large icon requests.
     icon_ico = base_path / "resources" / "icon.ico"
     icon_512 = base_path / "resources" / "icon_512.png"
+    icon_png = base_path / "resources" / "icon.png"
     icon = QIcon()
+    loaded_from = []
     if icon_ico.exists():
         icon.addFile(str(icon_ico))
+        loaded_from.append(str(icon_ico))
     if icon_512.exists():
         icon.addFile(str(icon_512), QSize(512, 512))
+        loaded_from.append(str(icon_512))
+    if icon.isNull() and icon_png.exists():
+        # Last-resort fallback to the single detailed-master render, in case
+        # icon.ico/icon_512.png are ever unavailable on their own (e.g. a
+        # partial checkout) while icon.png -- also a frozen output filename
+        # -- still is. Smooth-scaled at small sizes like the pre-fix
+        # behaviour, but a smeared icon beats no icon at all.
+        icon.addFile(str(icon_png))
+        loaded_from.append(str(icon_png))
     if not icon.isNull():
         app.setWindowIcon(icon)
-        print(f"Loaded icon from: {icon_ico}")
+        print(f"Loaded icon from: {', '.join(loaded_from)}")
     else:
-        print(f"Warning: Icon not found at {icon_ico}")
+        print(f"Warning: no icon found under {base_path / 'resources'}")
     
     # Show loading screen immediately
     loading_screen = LoadingScreen()
