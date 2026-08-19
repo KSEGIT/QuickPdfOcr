@@ -50,7 +50,13 @@
             --violet: var(--bar);
             --cyan: var(--accent);
             --slate-dark: var(--text);
-            --slate-light: var(--surface);
+            /* --bg, not --surface: .feature-card/.download-card (.boxed)
+               already paint --surface, so aliasing #features to the same
+               token left every card indistinguishable from its own section
+               (both rgb(30, 41, 59)). --bg is darker than --surface, so
+               cards now read as raised panels against the section instead
+               of dissolving into it. */
+            --slate-light: var(--bg);
             --text-gray: var(--dim);
             --border-color: #64748B;
             --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
@@ -138,24 +144,34 @@
             padding: 7rem 0;
         }
 
+        /* Two flex items -- .hero-content (prose) and .ascii-art.hero-terminal
+           (status readout) -- laid out side by side. Previously the terminal
+           lived *inside* .hero-content, so this row only ever had one item;
+           with .hero-content capped at max-width: 620px, that left the
+           remaining ~46% of a 1200px container empty on the right at
+           desktop widths, dead space the deleted background photo used to
+           fill. Splitting them into siblings lets the terminal anchor the
+           right edge instead. align-items: center holds both vertically
+           centred on the row (desktop) or horizontally centred once the
+           mobile query below switches this to a column. */
         .hero .container {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 3rem;
         }
 
         .hero-content {
             max-width: 620px;
-            /* .hero .container is a flex row with .hero-content as its only
-               item; a flex item's automatic minimum width defaults to its
-               content's min-content size, not 0. white-space: pre gives the
-               hero terminal a min-content width equal to its max-content
-               width (304.66px — it has no soft-wrap point to shrink at), so
-               without this the flex item — and the page along with it — is
-               forced at least that wide no matter how narrow the viewport
+            /* .hero .container is a flex row; a flex item's automatic
+               minimum width defaults to its content's min-content size, not
+               0. "QuickPdfOcr" (below) is one unbreakable word, so without
+               this the flex item -- and the page along with it -- is forced
+               at least that word's width no matter how narrow the viewport
                gets, which is what actually caused the horizontal scroll
-               .ascii-art's own overflow-x: auto (below) does not by itself
-               prevent: that rule lets the terminal scroll *within* its own
-               box, but only once this box is allowed to become smaller than
-               its content in the first place. */
+               overflow-wrap: break-word (below) does not by itself prevent:
+               that rule only takes effect once the box is allowed to become
+               smaller than its content in the first place. */
             min-width: 0;
         }
 
@@ -181,15 +197,15 @@
             letter-spacing: -0.02em;
             text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
             /* "QuickPdfOcr" is one unbreakable word. .hero-content's
-               min-width: 0 (added for the hero terminal fix above) lets
-               its flex box shrink freely with the viewport, which also
-               removed the incidental floor that used to keep this box
-               wider than the word needed — below ~305px wide the word no
-               longer fits and, without this, overflows its own box rather
-               than reflowing, reopening the very horizontal-scroll problem
-               that fix targeted, just via a different element. This does
-               not change the headline text, only how it breaks if it ever
-               truly runs out of room. */
+               min-width: 0 (above) lets its flex box shrink below that
+               word's own min-content width, which is exactly what a narrow
+               viewport needs -- but shrinking the box does nothing for the
+               word itself unless it can also break. Below ~305px wide, this
+               is the rule that keeps the word wrapping inside its own box
+               instead of overflowing it and reopening the horizontal-scroll
+               problem min-width: 0 exists to prevent. Does not change the
+               headline text, only how it breaks if it ever truly runs out
+               of room. */
             overflow-wrap: break-word;
         }
 
@@ -257,25 +273,24 @@
                own ink here. */
             color: var(--frame);
             font-size: clamp(11px, 3vw, 15px);
-            margin: 2rem auto 0;
+            /* No margin at desktop: it is a direct flex sibling of
+               .hero-content now (see .hero .container above), vertically
+               centred and spaced from the prose by that row's own gap, not
+               by a margin of its own. The mobile query below adds a top
+               margin once the row becomes a stacked column. */
+            margin: 0;
             width: max-content;
             max-width: 100%;
         }
 
+        /* Used by the header's nav-bar prompt only -- the hero terminal
+           below was rewritten from an invented shell command into a status
+           readout (no prompt to label), so .hero-prompt no longer appears
+           there. .cursor and its blink keyframes were dropped outright: a
+           blinking cursor implies a shell waiting on input, which does not
+           fit a static progress readout, and once removed from the hero
+           markup nothing else in the page used them. */
         .hero-prompt { color: var(--dim); }
-
-        .cursor {
-            color: var(--accent);
-            animation: blink 1.1s step-end infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .cursor { animation: none; }
-        }
 
         /* Section Styles */
         section {
@@ -300,12 +315,17 @@
             pointer-events: none;
         }
 
-        .boxed::before { content: "┌"; top: -1px; left: -1px; }
-        .boxed::after  { content: "┘"; bottom: -1px; right: -1px; }
+        /* content: <string> / "" -- CSS Content Level 3 alternative text.
+           The "/ \"\"" supplies an empty accessible-name string for the
+           pseudo-element, so AT skips it entirely instead of reading the
+           glyph aloud; pseudo-elements cannot take aria-hidden directly, and
+           this is the modern equivalent. Visual rendering is unchanged. */
+        .boxed::before { content: "┌" / ""; top: -1px; left: -1px; }
+        .boxed::after  { content: "┘" / ""; bottom: -1px; right: -1px; }
 
         /* Section titles as shell commands */
         .cmd::before {
-            content: "$ ";
+            content: "$ " / "";
             color: var(--accent);
         }
 
@@ -315,8 +335,8 @@
            grey measures 1.16:1 and is invisible. Inheriting tracks whatever
            the button's label contrast already is — 5.98:1 on filled,
            and the ghost buttons' own colour elsewhere. */
-        .btn::before { content: "[ "; }
-        .btn::after  { content: " ]"; }
+        .btn::before { content: "[ " / ""; }
+        .btn::after  { content: " ]" / ""; }
 
         .section-title {
             font-size: 2.4rem;
@@ -459,7 +479,6 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(226, 232, 240, 0.25);
             margin-bottom: 1.5rem;
             color: var(--text);
         }
@@ -656,7 +675,18 @@
             }
 
             .hero .container {
+                /* .hero-content and .ascii-art.hero-terminal are side-by-side
+                   flex siblings at desktop (see .hero .container above);
+                   below 768px there is no room for two columns, so this
+                   stacks them -- prose above, terminal below, matching their
+                   source order -- and centres both along the now-horizontal
+                   cross axis to match this query's text-align: center. gap
+                   (inherited from the base rule as 3rem) still provides the
+                   space between them; narrowed here to 2rem to match this
+                   layout's original vertical rhythm. */
+                flex-direction: column;
                 justify-content: center;
+                gap: 2rem;
             }
 
             .hero h1 {
@@ -748,19 +778,22 @@
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download Latest Release</a>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr" class="btn btn-secondary" target="_blank">View on GitHub</a>
                 </div>
-                <pre class="ascii-art hero-terminal" aria-hidden="true" tabindex="-1"><span class="hero-prompt">~/Documents $</span> quickpdfocr scan report.pdf
+            </div>
+            <!-- A status readout, not a command to type: there is no `quickpdfocr`
+                 CLI (see main.py -- it only ever opens a GUI), so this shows the
+                 app's actual behaviour -- an OCR run in progress -- instead of a
+                 shell invocation that would fail with "command not found". -->
+            <pre class="ascii-art hero-terminal" aria-hidden="true" tabindex="-1">  QuickPdfOcr · report.pdf
 
-┌─ QuickPdfOcr ──────────────────────────────┐
+┌─ OCR in progress ──────────────────────────┐
 │  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
 │  <span class="beam">════════════════════════════════════════</span>  │
 │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │
-│                                            │
 │  [<span class="fill">████████████████</span>░░░░░░] 71%              │
 │  page 12/17  ·  vision.framework           │
 └────────────────────────────────────────────┘
 
-<span class="beam">&gt;</span> 4,812 words copied to clipboard<span class="cursor">_</span></pre>
-            </div>
+  4,812 words copied to clipboard</pre>
         </div>
     </section>
 

@@ -625,3 +625,113 @@ def test_ascii_icon_blocks_are_left_aligned_in_their_own_box(page):
     assert offenders == [], (
         f"icon blocks not flush with their own left edge: {offenders}"
     )
+
+
+# Visible label -> selector, for every heading/link whose accessible name
+# was corrupted by decorative pseudo-element content before the
+# content: "..." / "" alt-text fix (2026-08-19 site-fix review, finding
+# #2). .cmd::before used to prefix every one of these headings with "$ ";
+# .btn::before/::after used to wrap every one of these links in "[ " / " ]".
+HEADINGS_WITH_CMD_PREFIX = [
+    ("What It Does", "#about h2"),
+    ("Key Features", "#features h2"),
+    ("Installation / Downloads", "#download h2"),
+    ("For Developers", "#developers h2"),
+]
+BRACKETED_CTA_LINKS = [
+    ("Download Latest Release", ".hero .btn-primary"),
+    ("View on GitHub", ".hero .btn-secondary"),
+]
+
+
+def test_pseudo_element_content_does_not_leak_into_accessible_names(page):
+    """Finding #2: .cmd::before / .btn::before / .btn::after / .boxed::before
+    / .boxed::after all carry decorative glyphs via CSS content. Plain
+    `content: "..."` exposes that string to the accessibility tree as part
+    of the element's accessible name -- confirmed live via a real CDP
+    Accessibility.getFullAXTree dump, not assumed -- so a screen reader used
+    to announce "dollar What It Does" for a heading and "left bracket
+    Download Latest Release right bracket" for the primary CTA, while sighted
+    and voice-control users only ever saw/said the plain label. The fix is
+    CSS Content Level 3 alternative text (`content: "..." / ""`), which
+    keeps the visual glyph but supplies an empty accessible name for the
+    pseudo-element -- confirmed supported in the Chromium build this suite
+    runs against (see this test).
+
+    This only re-derives accessible names for headings/links, matching how
+    Chromium's own AX name computation treats them (their name is their text
+    content), rather than reimplementing the full accname algorithm.
+    """
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(INDEX.as_uri())
+    client = page.context.new_cdp_session(page)
+    tree = client.send("Accessibility.getFullAXTree")
+    ax_names = {}
+    for node in tree["nodes"]:
+        role = (node.get("role") or {}).get("value")
+        name = (node.get("name") or {}).get("value")
+        if role in ("heading", "link") and name is not None:
+            ax_names.setdefault(name, []).append(role)
+
+    bad = []
+    for label, selector in HEADINGS_WITH_CMD_PREFIX + BRACKETED_CTA_LINKS:
+        if label not in ax_names:
+            bad.append(f"{selector}: expected accessible name {label!r}, "
+                       f"not found among AX names {sorted(ax_names)}")
+    assert bad == [], "\n".join(bad)
+
+    # And the corrupted forms must be gone outright, not just coincidentally
+    # absent because something else also matched the clean name.
+    leaked = [n for n in ax_names if n.startswith("$ ") or
+              (n.startswith("[ ") and n.endswith(" ]"))]
+    assert leaked == [], f"pseudo-element content leaked into accessible names: {leaked}"
+
+
+def test_boxed_corner_glyphs_do_not_appear_as_named_ax_nodes(page):
+    """Finding #2: .boxed::before/::after (the drawn ┌/┘ corner glyphs on
+    every .feature-card and .download-card) must not surface as their own
+    named accessibility-tree nodes -- 66 of them, in the pre-fix count,
+    verified live via git stash + a real CDP dump (11 .boxed elements x 2
+    corners each x 3 AX-tree node layers Chromium reports per bit of text --
+    a heading's own name shows up on its "heading" node, a nested
+    "StaticText" node, and a nested "InlineTextBox" node, all three carrying
+    the same corrupted name). content: "..." / "" makes them decorative to
+    AT; this is the direct CDP-level proof of that, independent of the
+    heading/link name check above.
+    """
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(INDEX.as_uri())
+    client = page.context.new_cdp_session(page)
+    tree = client.send("Accessibility.getFullAXTree")
+    leaked = [
+        node for node in tree["nodes"]
+        if (node.get("name") or {}).get("value") in ("┌", "┘")
+    ]
+    assert leaked == [], f"{len(leaked)} AX nodes still carry a bare corner glyph as their name"
+
+
+def test_feature_card_background_differs_from_its_section(page):
+    """Finding #3: #features and .boxed (feature/download cards) both used
+    to resolve --slate-light to the same literal token as --surface, so
+    #features and every .feature-card computed to the identical
+    rgb(30, 41, 59) -- the cards had no figure/ground separation from their
+    own section, only the 1px border survived. .download-card was
+    unaffected (it sits on plain body, not #features), which is why this
+    only ever showed up here.
+    """
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(INDEX.as_uri())
+    colors = page.evaluate(
+        """() => {
+            const section = document.querySelector('#features');
+            const card = document.querySelector('.feature-card');
+            return {
+                section: getComputedStyle(section).backgroundColor,
+                card: getComputedStyle(card).backgroundColor,
+            };
+        }"""
+    )
+    assert colors["section"] != colors["card"], (
+        f"#features and .feature-card both compute to {colors['section']} -- "
+        "cards are indistinguishable from their own section"
+    )

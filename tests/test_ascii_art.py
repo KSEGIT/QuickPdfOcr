@@ -172,14 +172,29 @@ def test_hero_background_image_removed():
     assert "quick_pdf_hero_small" not in css
 
 
-def test_cursor_blink_respects_reduced_motion():
-    css = read_index().split("<style>", 1)[1].split("</style>", 1)[0]
-    assert "prefers-reduced-motion" in css
-    reduced = re.search(
-        r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{(.*?)\n\s{8}\}",
-        css, re.S,
+def test_hero_terminal_has_no_blinking_cursor():
+    """The hero terminal is a static status readout, not a live shell.
+
+    The hero used to open with an invented `quickpdfocr scan report.pdf`
+    command and end with a blinking "_" cursor implying a shell waiting on
+    input. Neither survives the rewrite into a truthful OCR-progress
+    readout (see test_hero_terminal_is_fixed_46_columns's sibling tests for
+    the replacement content): a static snapshot has nothing to type into.
+    .cursor and its @keyframes blink -- along with the prefers-reduced-motion
+    override that used to disable them -- were dead code once the only
+    element using them was removed from the hero markup, and were deleted
+    with it. This guards the removal stays removed rather than a cursor
+    (blinking or otherwise) silently reappearing without a11y consideration.
+    """
+    html = read_index()
+    assert 'class="cursor"' not in html, "hero markup still references .cursor"
+    css = html.split("<style>", 1)[1].split("</style>", 1)[0]
+    # Regex, not a bare substring check: explanatory comments in the CSS are
+    # free to mention ".cursor" in prose (as they do, describing why it was
+    # removed) without that counting as the selector still being declared.
+    assert not re.search(r"\.cursor\s*\{", css), (
+        ".cursor rule should have been removed as dead code"
     )
-    assert reduced, "no prefers-reduced-motion block"
-    assert "animation" in reduced.group(1), (
-        "reduced-motion block must disable the cursor animation"
+    assert "@keyframes" not in css, (
+        "no more CSS animations on the page -- @keyframes blink should be gone"
     )
