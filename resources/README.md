@@ -80,6 +80,13 @@ real glyph metrics for whatever font is installed locally, and the immediate
 `render_hero.py` step screenshots the same file through the same browser engine, so
 there is no window for the font to change out from under the layout.
 
+The dependency runs both ways: `ROWS` in `generate_hero_svg.py` and the `.hero-terminal`
+`<pre>` block in `docs/index.html` are two hand-maintained copies of the same scene
+(`tests/test_hero_svg.py::test_hero_svg_rows_match_the_live_hero_terminal` checks they
+still agree). Editing the on-page terminal — the far likelier edit, since that is the
+visible, user-facing content — also means updating `ROWS` and re-running both commands
+above, or the social preview quietly drifts from what the page actually shows.
+
 `create_icns.py` copies each pre-rendered PNG straight into the macOS iconset (never
 resizing — that would reintroduce the same smearing the two-master split exists to
 avoid) and requires the macOS `iconutil` binary to assemble `icon.icns`. It has no

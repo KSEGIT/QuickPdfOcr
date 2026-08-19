@@ -664,8 +664,16 @@ def test_pseudo_element_content_does_not_leak_into_accessible_names(page):
     """
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
+    # The Accessibility domain this enables stays live on `page` for the
+    # rest of this module-scoped fixture's tests unless detached -- cheap
+    # to leave dangling in practice (confirmed: all other tests in this
+    # file still pass regardless of ordering), but detaching is the correct
+    # match for a session created inside a single test.
     client = page.context.new_cdp_session(page)
-    tree = client.send("Accessibility.getFullAXTree")
+    try:
+        tree = client.send("Accessibility.getFullAXTree")
+    finally:
+        client.detach()
     ax_names = {}
     for node in tree["nodes"]:
         role = (node.get("role") or {}).get("value")
@@ -702,7 +710,10 @@ def test_boxed_corner_glyphs_do_not_appear_as_named_ax_nodes(page):
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
     client = page.context.new_cdp_session(page)
-    tree = client.send("Accessibility.getFullAXTree")
+    try:
+        tree = client.send("Accessibility.getFullAXTree")
+    finally:
+        client.detach()
     leaked = [
         node for node in tree["nodes"]
         if (node.get("name") or {}).get("value") in ("┌", "┘")
@@ -718,6 +729,25 @@ def test_feature_card_background_differs_from_its_section(page):
     own section, only the 1px border survived. .download-card was
     unaffected (it sits on plain body, not #features), which is why this
     only ever showed up here.
+
+    Also asserts #features differs from plain body -- self-review catch: an
+    earlier fix for the card-vs-section collision above repointed
+    --slate-light straight to --bg, which cleared this test's original
+    (narrower) assertion but made #features compute to exactly body's own
+    background instead, silently erasing the section's visual band against
+    the rest of the page (a regression in the opposite direction from the
+    one this test was written to catch).
+
+    Reads document.body directly for the "plain background" reference, not
+    a plain section like #about: getComputedStyle(el).backgroundColor on an
+    element with no *own* declared background returns the CSS-initial
+    rgba(0, 0, 0, 0), not the colour actually painted behind it via the
+    ancestor chain -- confirmed live (#about reads transparent regardless
+    of what body paints). That is exactly the naive-read bug
+    CONTRAST_HELPERS_JS's bgOf() above exists to avoid for foreground/
+    background *contrast*; sidestepped here for a plain equality check by
+    reading body itself, which does carry its own explicit `background:
+    var(--bg)` and so resolves to a real colour.
     """
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(INDEX.as_uri())
@@ -728,12 +758,17 @@ def test_feature_card_background_differs_from_its_section(page):
             return {
                 section: getComputedStyle(section).backgroundColor,
                 card: getComputedStyle(card).backgroundColor,
+                body: getComputedStyle(document.body).backgroundColor,
             };
         }"""
     )
     assert colors["section"] != colors["card"], (
         f"#features and .feature-card both compute to {colors['section']} -- "
         "cards are indistinguishable from their own section"
+    )
+    assert colors["section"] != colors["body"], (
+        f"#features and body both compute to {colors['section']} -- "
+        "#features has no visual band of its own against the rest of the page"
     )
 
 

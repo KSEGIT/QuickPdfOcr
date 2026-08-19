@@ -50,13 +50,25 @@
             --violet: var(--bar);
             --cyan: var(--accent);
             --slate-dark: var(--text);
-            /* --bg, not --surface: .feature-card/.download-card (.boxed)
+            /* Not var(--surface): .feature-card/.download-card (.boxed)
                already paint --surface, so aliasing #features to the same
                token left every card indistinguishable from its own section
-               (both rgb(30, 41, 59)). --bg is darker than --surface, so
-               cards now read as raised panels against the section instead
-               of dissolving into it. */
-            --slate-light: var(--bg);
+               (both rgb(30, 41, 59)) -- only the 1px --frame border on the
+               card survived as a cue. Not var(--bg) either, despite that
+               being darker than --surface and technically distinct from the
+               card: --bg is also body's own background (self-review catch --
+               see commit history), so that swap just moved the collision
+               from card-vs-section to section-vs-body, leaving #features
+               indistinguishable from the plain page behind it instead
+               (rgb(15, 23, 42) === rgb(15, 23, 42)) and erasing this
+               section's visual band entirely. #2A3648 is a genuine third
+               step -- lighter than both --bg (1.46:1) and --surface (1.20:1,
+               comparable to --bg's own 1.22:1 gap from --surface, so it
+               reads as "one more step" in the same visual language) --
+               chosen small enough that --dim (used by .section-subtitle
+               directly on this background) still clears 4.5:1 against it
+               (4.76:1) rather than picking purely for gap size. */
+            --slate-light: #2A3648;
             --text-gray: var(--dim);
             --border-color: #64748B;
             --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
@@ -290,11 +302,13 @@
                own ink here. */
             color: var(--frame);
             font-size: clamp(11px, 3vw, 15px);
-            /* No margin at desktop: it is a direct flex sibling of
-               .hero-content now (see .hero .container above), vertically
-               centred and spaced from the prose by that row's own gap, not
-               by a margin of its own. The mobile query below adds a top
-               margin once the row becomes a stacked column. */
+            /* No margin at any width: it is a direct flex sibling of
+               .hero-content now (see .hero .container above), spaced from
+               the prose by that row's own gap (3rem, narrowed to 2rem by
+               the mobile query below) rather than a margin of its own --
+               true whether the row stays side-by-side, wraps onto its own
+               line past ~1130px (see flex-wrap above), or is forced into a
+               column by the mobile query. */
             margin: 0;
             width: max-content;
             max-width: 100%;
@@ -336,12 +350,26 @@
            The "/ \"\"" supplies an empty accessible-name string for the
            pseudo-element, so AT skips it entirely instead of reading the
            glyph aloud; pseudo-elements cannot take aria-hidden directly, and
-           this is the modern equivalent. Visual rendering is unchanged. */
-        .boxed::before { content: "┌" / ""; top: -1px; left: -1px; }
-        .boxed::after  { content: "┘" / ""; bottom: -1px; right: -1px; }
+           this is the modern equivalent. Visual rendering is unchanged.
+
+           Each rule below declares the plain content: "..." FIRST and the
+           alt-text form second, not the alt-text form alone (self-review
+           catch): a browser that does not parse the "/ <string>" grammar
+           (shipped Firefox 128 / Safari 17.4, mid-2024) treats the whole
+           declaration as invalid and drops it -- CSS's normal handling of
+           an unrecognised value -- which would leave these pseudo-elements
+           generating nothing at all, not even the plain glyph. Declaring
+           the plain string first means an unsupporting browser keeps that
+           (its only valid content: value for this property), while a
+           supporting browser still ends up on the alt-text form, since it
+           is a second valid declaration for the same property and the
+           cascade keeps the last one. */
+        .boxed::before { content: "┌"; content: "┌" / ""; top: -1px; left: -1px; }
+        .boxed::after  { content: "┘"; content: "┘" / ""; bottom: -1px; right: -1px; }
 
         /* Section titles as shell commands */
         .cmd::before {
+            content: "$ ";
             content: "$ " / "";
             color: var(--accent);
         }
@@ -352,8 +380,8 @@
            grey measures 1.16:1 and is invisible. Inheriting tracks whatever
            the button's label contrast already is — 5.98:1 on filled,
            and the ghost buttons' own colour elsewhere. */
-        .btn::before { content: "[ " / ""; }
-        .btn::after  { content: " ]" / ""; }
+        .btn::before { content: "[ "; content: "[ " / ""; }
+        .btn::after  { content: " ]"; content: " ]" / ""; }
 
         .section-title {
             font-size: 2.4rem;
