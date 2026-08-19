@@ -19,10 +19,8 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 from create_icns import create_icns_from_pngs
+from icon_manifest import DETAILED, ICO_SIZES, RESOURCES, SIMPLE, SIZE_SOURCES
 
-RESOURCES = Path(__file__).resolve().parent
-DETAILED = RESOURCES / "icon.svg"
-SIMPLE = RESOURCES / "icon_small.svg"
 RENDER_DIR = RESOURCES / "_render"
 
 # GitHub Pages publishes from main:/docs, so resources/ (outside that root)
@@ -31,19 +29,6 @@ RENDER_DIR = RESOURCES / "_render"
 # copied straight from the same masters so they cannot drift from
 # resources/*.png. This is the single place those copies are produced.
 DOCS_ASSETS = RESOURCES.parent / "docs" / "assets"
-
-SIZE_SOURCES = {
-    16: SIMPLE,
-    32: SIMPLE,
-    48: SIMPLE,
-    64: SIMPLE,
-    128: DETAILED,
-    256: DETAILED,
-    512: DETAILED,
-    1024: DETAILED,
-}
-
-ICO_SIZES = [16, 32, 48, 64, 128, 256]
 
 _WRAPPER = """<!doctype html><html><head><meta charset="utf-8"><style>
 html, body { margin: 0; padding: 0; background: transparent; }
@@ -82,13 +67,52 @@ def main() -> int:
             print(f"Error: master not found: {master}")
             return 1
 
+    # icon.icns assembly (below) requires the macOS-only iconutil binary and
+    # raises an uncaught RuntimeError when it's absent. Checking that up
+    # front -- before any tracked artefact is touched -- means a Linux or
+    # Windows contributor following resources/README.md gets a clean error
+    # instead of six visibly-updated PNGs/.ico plus a stale icon.icns that
+    # packaging/quickpdfocr.spec then bakes into the app bundle.
+    if shutil.which("iconutil") is None:
+        print(
+            "Error: iconutil not found. It is a macOS-only tool required to "
+            "assemble icon.icns; run this pipeline on macOS. No tracked "
+            "artefact has been modified."
+        )
+        return 1
+
     print("Rendering icon sizes...")
     pngs = render_all(RENDER_DIR)
 
+    # Build icon.ico and icon.icns entirely inside the gitignored render
+    # directory first. Only after *both* containers succeed do we copy
+    # anything into a tracked location -- so a failure partway through
+    # (e.g. a corrupt iconset, a permissions error) can never leave some
+    # tracked artefacts updated and others stale. All-or-nothing.
+    render_ico = RENDER_DIR / "icon.ico"
+    images = [Image.open(pngs[s]).convert("RGBA") for s in ICO_SIZES]
+    images[-1].save(
+        render_ico,
+        format="ICO",
+        append_images=images[:-1],
+        sizes=[(s, s) for s in ICO_SIZES],
+    )
+    for image in images:
+        image.close()
+    print(f"Rendered icon.ico ({len(ICO_SIZES)} sizes)")
+
+    render_icns = RENDER_DIR / "icon.icns"
+    create_icns_from_pngs(pngs, render_icns)
+    print("Rendered icon.icns")
+
+    # Every container succeeded -- now, and only now, update the tracked
+    # artefacts main.py and packaging/quickpdfocr.spec depend on.
     shutil.copyfile(pngs[256], RESOURCES / "icon.png")
     shutil.copyfile(pngs[512], RESOURCES / "icon_512.png")
     shutil.copyfile(pngs[32], RESOURCES / "favicon.png")
-    print("Wrote icon.png, icon_512.png, favicon.png")
+    shutil.copyfile(render_ico, RESOURCES / "icon.ico")
+    shutil.copyfile(render_icns, RESOURCES / "icon.icns")
+    print("Wrote icon.png, icon_512.png, favicon.png, icon.ico, icon.icns")
 
     # docs/index.html's <link rel="icon"> wants the same 32px favicon; its
     # header ".logo img" (the <a class="logo"> wrapper's child <img>)
@@ -102,18 +126,6 @@ def main() -> int:
     shutil.copyfile(pngs[64], docs_logo)
     print(f"Wrote {docs_favicon}, {docs_logo}")
 
-    images = [Image.open(pngs[s]).convert("RGBA") for s in ICO_SIZES]
-    images[-1].save(
-        RESOURCES / "icon.ico",
-        format="ICO",
-        append_images=images[:-1],
-        sizes=[(s, s) for s in ICO_SIZES],
-    )
-    for image in images:
-        image.close()
-    print(f"Wrote icon.ico ({len(ICO_SIZES)} sizes)")
-
-    create_icns_from_pngs(pngs, RESOURCES / "icon.icns")
     return 0
 
 

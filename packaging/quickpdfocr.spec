@@ -26,12 +26,33 @@ IS_MACOS = sys.platform == "darwin"
 UNIVERSAL2 = os.environ.get("QUICKPDFOCR_UNIVERSAL2") == "1"
 TARGET_ARCH = "universal2" if (IS_MACOS and UNIVERSAL2) else None
 
+# Bundle exactly the rendered icon artefacts main.py and this spec load --
+# never the whole resources/ tree. That tree also carries the render
+# pipeline's authoring inputs and outputs: the gitignored resources/_render/
+# intermediates (1.3MB+ locally, absent from a clean CI checkout but present
+# on any machine that ran resources/render_icons.py -- shipping it makes a
+# local build diverge from a CI build), the SVG masters, the Playwright/
+# Pillow authoring scripts, requirements-assets.txt, and README.md. None of
+# that is read at runtime; only these five rendered files are (main.py loads
+# icon.ico/icon_512.png, and this spec's EXE/BUNDLE icon= below load
+# icon.ico/icon.icns directly by path). Keep this list in sync with the
+# frozen output filenames in resources/render_icons.py.
+ICON_ASSETS = [
+    "icon.png",
+    "icon_512.png",
+    "icon.ico",
+    "icon.icns",
+    "favicon.png",
+]
+
 a = Analysis(
     [str(PROJECT_ROOT / "main.py")],
     pathex=[str(PROJECT_ROOT)],
     binaries=[],
     datas=[
-        (str(PROJECT_ROOT / "resources"), "resources"),
+        (str(PROJECT_ROOT / "resources" / name), "resources")
+        for name in ICON_ASSETS
+    ] + [
         (str(PROJECT_ROOT / "LICENSE"), "."),
         (str(PROJECT_ROOT / "THIRD_PARTY_LICENSES.md"), "."),
     ],

@@ -57,12 +57,25 @@ def test_body_uses_mono_and_terminal_background():
 
 
 def test_no_hardcoded_white_backgrounds():
-    """The old light theme's hardcoded whites must all be gone."""
+    """The old light theme's hardcoded whites must all be gone.
+
+    The white-rgb alternative matches both legacy comma-separated syntax
+    (`rgba(255, 255, 255, ...)`) and CSS Color 4 space-separated syntax
+    (`rgb(255 255 255 / 0.9)`) -- the latter is what this file's own
+    `header` and `--shadow` tokens use, so a regex blind to it would miss
+    the most likely shape of a real regression. `[^;{}]*` (rather than
+    `[^;]*`) keeps each wildcard span inside the single declaration it
+    started in: `[^;]*` alone crosses `}` into the next rule when a
+    declaration is missing its trailing semicolon (valid CSS for the last
+    declaration in a block), which can misattribute an unrelated later
+    value to this property.
+    """
     html = read_index()
     css = html.split("<style>", 1)[1].split("</style>", 1)[0]
     offenders = re.findall(
-        r"(?:background|background-color)\s*:\s*[^;]*"
-        r"(?:#fff\b|#ffffff\b|rgba\(255,\s*255,\s*255|\bwhite\b)[^;]*;",
+        r"(?:background|background-color)\s*:\s*[^;{}]*"
+        r"(?:#fff\b|#ffffff\b|rgba?\(\s*255(?:\s*,\s*|\s+)255(?:\s*,\s*|\s+)255\b"
+        r"|\bwhite\b)[^;{}]*;",
         css,
         re.I,
     )
