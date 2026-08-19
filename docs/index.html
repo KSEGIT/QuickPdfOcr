@@ -153,9 +153,26 @@
            fill. Splitting them into siblings lets the terminal anchor the
            right edge instead. align-items: center holds both vertically
            centred on the row (desktop) or horizontally centred once the
-           mobile query below switches this to a column. */
+           mobile query below switches this to a column.
+
+           flex-wrap: wrap matters between 769px and ~1130px: .hero-content's
+           preferred width (620px) plus the terminal's (~415px, constant
+           above ~500px wide once its clamp() font-size hits its 15px
+           ceiling) plus this gap add up to ~1083px, more than fits a
+           sub-1130px container. Without wrap, flex's default behaviour is
+           to shrink both items to fit the row anyway -- which the terminal
+           cannot do cleanly, since its content is a fixed 46-column
+           monospace grid with no reflow point, so it clips inside its own
+           overflow-x: auto box instead of getting narrower. With wrap, the
+           terminal instead drops to its own line below the prose (still
+           left-aligned, matching the prose's own alignment at these
+           widths, which only centres in the mobile query below) at its
+           full, uncramped width -- the same stacked shape the mobile query
+           produces on purpose, arrived at here as a side effect of running
+           out of room rather than a hardcoded second breakpoint. */
         .hero .container {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
             gap: 3rem;
