@@ -735,3 +735,38 @@ def test_feature_card_background_differs_from_its_section(page):
         f"#features and .feature-card both compute to {colors['section']} -- "
         "cards are indistinguishable from their own section"
     )
+
+
+@pytest.mark.parametrize("width", [800, 900, 1000, 1024, 1100])
+def test_hero_terminal_does_not_clip_at_intermediate_widths(page, width):
+    """Finding #4 follow-up, caught during self-review, not in the original
+    brief: splitting the hero terminal out into its own flex sibling (so it
+    can anchor the container's right edge at desktop widths) introduced a
+    new problem in the 769-1130px range this suite's three standard
+    viewports (375/768/1440) never sample. .hero-content's preferred width
+    (620px) plus the terminal's (~415px, constant once its clamp()
+    font-size hits its ceiling above ~500px) plus their gap add up to
+    roughly 1083px -- more than fits a sub-1130px-ish container. Without
+    flex-wrap, flex's default response is to shrink both items to fit the
+    row, which the terminal cannot do cleanly: its content is a fixed
+    46-column monospace grid with no reflow point, so it clipped inside its
+    own overflow-x: auto box instead of getting narrower (confirmed by
+    screenshot before the fix -- the frame was visibly cut off mid-row).
+    flex-wrap: wrap on .hero .container fixes it by dropping the terminal
+    to its own line, at full width, once it no longer fits beside the
+    prose -- this asserts that directly, at every width across the affected
+    range, via scrollWidth vs clientWidth on the terminal element itself
+    (a general clip detector, not tied to the wrap mechanism specifically).
+    """
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(INDEX.as_uri())
+    metrics = page.evaluate(
+        """() => {
+            const t = document.querySelector('.hero-terminal');
+            return { scrollWidth: t.scrollWidth, clientWidth: t.clientWidth };
+        }"""
+    )
+    assert metrics["scrollWidth"] <= metrics["clientWidth"] + 1, (
+        f"hero terminal clips its own content at {width}px: "
+        f"scrollWidth={metrics['scrollWidth']} > clientWidth={metrics['clientWidth']}"
+    )
