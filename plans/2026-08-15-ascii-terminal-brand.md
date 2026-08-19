@@ -8,7 +8,7 @@
 
 **Tech Stack:** Plain HTML/CSS (no frameworks), Python 3.12, Playwright (Chromium) for SVG→PNG rendering, Pillow for `.ico` assembly, `iconutil` for `.icns`, pytest.
 
-**Spec:** `plans/specs/2026-08-15-ascii-terminal-brand-design.md`
+**Spec:** `specs/2026-08-15-ascii-terminal-brand-design.md`
 
 ## Global Constraints
 
@@ -159,7 +159,7 @@ Replace `docs/index.html:33-46` with:
 
 ```css
         :root {
-            /* Terminal palette — docs/superpowers/specs/2026-08-15-ascii-terminal-brand-design.md */
+            /* Terminal palette — specs/2026-08-15-ascii-terminal-brand-design.md */
             --bg: #0F172A;
             --surface: #1E293B;
             --frame: #818CF8;
@@ -1478,7 +1478,7 @@ Leave the logo `<img>` at `docs/index.html:598` pointing at `icon.png` — it re
 
 - [ ] **Step 2: Rewrite `docs/design/brand-refresh-prompts.md`**
 
-The file currently describes the superseded indigo-squircle direction as the source of truth. Replace its body with the ASCII/terminal brief: the shared design language (charset, palette table, monospace stack, reflow rule) copied from the Global Constraints of this plan, then three sections — App icon (two masters, size bands, deliverables), Hero (og:image only, 1920×1080), Website (terminal skin, 12 ASCII icons, live hero). Add a line at the top: `Supersedes the indigo-squircle / photographic-hero direction shipped in a642a3f.` Point the reader at `docs/superpowers/specs/2026-08-15-ascii-terminal-brand-design.md` as the full spec.
+The file currently describes the superseded indigo-squircle direction as the source of truth. Replace its body with the ASCII/terminal brief: the shared design language (charset, palette table, monospace stack, reflow rule) copied from the Global Constraints of this plan, then three sections — App icon (two masters, size bands, deliverables), Hero (og:image only, 1920×1080), Website (terminal skin, 12 ASCII icons, live hero). Add a line at the top: `Supersedes the indigo-squircle / photographic-hero direction shipped in a642a3f.` Point the reader at `specs/2026-08-15-ascii-terminal-brand-design.md` as the full spec.
 
 - [ ] **Step 3: Rewrite the `resources/README.md` pipeline section**
 

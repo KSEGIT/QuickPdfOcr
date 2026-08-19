@@ -5,7 +5,7 @@ Supersedes the indigo-squircle / photographic-hero direction shipped in a642a3f.
 This is the brief of record for the app icon, the hero, and the marketing site. For the
 full rationale — why a terminal aesthetic, the accessibility argument, the risks
 considered and accepted — see
-`plans/specs/2026-08-15-ascii-terminal-brand-design.md`. This document
+`specs/2026-08-15-ascii-terminal-brand-design.md`. This document
 describes the assets as built.
 
 All three surfaces share one design language: a dark terminal skin, monospace
