@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 **Status:** Approved, ready for planning
-**Supersedes:** `docs/design/brand-refresh-prompts.md` (the indigo-squircle / photographic-hero direction shipped in `a642a3f`)
+**Supersedes:** `design/brand-refresh-prompts.md` (the indigo-squircle / photographic-hero direction shipped in `a642a3f`)
 
 ## Problem
 

@@ -242,10 +242,11 @@ def test_no_horizontal_overflow(page, width, label):
 
 @pytest.mark.parametrize("width,label", VIEWPORTS, ids=[v[1] for v in VIEWPORTS])
 def test_capture_screenshot(page, width, label, tmp_path):
-    # Writes into pytest's tmp_path, not the tracked docs/design/screenshots/
-    # directory: those committed PNGs are review evidence, refreshed
-    # deliberately by a human, not regenerated as a side effect of running
-    # the suite (a different Chromium build or font set would otherwise
+    # Writes into pytest's tmp_path only -- nothing is committed. An earlier
+    # design/screenshots/ directory of review-evidence PNGs was deleted
+    # (stale: it depicted the pre-refresh design and nothing referenced it),
+    # and screenshots were never regenerated as a side effect of running the
+    # suite anyway (a different Chromium build or font set would otherwise
     # produce a spurious binary diff on every run).
     page.set_viewport_size({"width": width, "height": 900})
     page.goto(INDEX.as_uri())
@@ -320,7 +321,7 @@ def test_every_text_element_clears_aa_against_its_real_background(page):
         "() => {\n" + CONTRAST_HELPERS_JS + """
             const bad = [];
             for (const el of document.querySelectorAll(
-                    'h1,h2,h3,h4,p,a,li,span,button,pre,strong,em')) {
+                    'h1,h2,h3,h4,p,a,li,span,button,pre,strong,em,div,code')) {
                 if (!el.textContent.trim()) continue;
                 const own = [...el.childNodes].some(
                     n => n.nodeType === 3 && n.textContent.trim());
@@ -529,7 +530,7 @@ def test_fills_only_token_is_not_a_text_colour(page):
             };
             const target = toRgb(bar);
             const bad = [];
-            for (const el of document.querySelectorAll('h1,h2,h3,p,a,li,span')) {
+            for (const el of document.querySelectorAll('h1,h2,h3,p,a,li,span,div,code')) {
                 if (el.closest('.ascii-art')) continue;
                 if (!el.textContent.trim()) continue;
                 if (getComputedStyle(el).color === target) {

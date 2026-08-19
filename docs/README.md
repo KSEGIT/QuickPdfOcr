@@ -11,7 +11,7 @@ The website is accessible at: https://ksegit.github.io/QuickPdfOcr/
 - `index.html` - Main landing page with modern design
 - Embedded CSS for styling and responsive design
 - Dark terminal skin: monospace type, 12 hand-authored ASCII/box-drawing icons, and a live ASCII hero rendered directly in the HTML (no page-background image)
-- App icon and the social-card preview image live in `../resources/` (rendered from the SVG masters `icon.svg` / `icon_small.svg` / `hero.svg`; see `design/brand-refresh-prompts.md`)
+- App icon and the social-card preview image live in `../resources/` (rendered from the SVG masters `icon.svg` / `icon_small.svg` / `hero.svg`; see `../design/brand-refresh-prompts.md`)
 
 ## Features
 

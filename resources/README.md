@@ -16,7 +16,7 @@ The application icon represents a terminal window scanning a document with OCR:
 
 ### Icon Design
 
-The icon follows the brand design language in `docs/design/brand-refresh-prompts.md`:
+The icon follows the brand design language in `design/brand-refresh-prompts.md`:
 a terminal window on a squircle background (~22% continuous corner radius), diagonal
 indigo `#4F46E5` → violet `#7C3AED` gradient, dim/bright text rows crossed by a cyan
 `#22D3EE` scan beam, and a `> _` prompt.

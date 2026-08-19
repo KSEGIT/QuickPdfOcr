@@ -8,7 +8,7 @@
 
 **Tech Stack:** Plain HTML/CSS (no frameworks), Python 3.12, Playwright (Chromium) for SVG→PNG rendering, Pillow for `.ico` assembly, `iconutil` for `.icns`, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-08-15-ascii-terminal-brand-design.md`
+**Spec:** `plans/specs/2026-08-15-ascii-terminal-brand-design.md`
 
 ## Global Constraints
 
