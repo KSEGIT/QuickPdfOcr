@@ -118,6 +118,22 @@ def test_ico_size_list_matches_the_pipeline():
     assert icon_manifest.ICO_SIZES == ICO_SIZES
 
 
+def test_render_icons_reads_the_same_manifest_it_was_given():
+    """render_icons.py imports SIZE_SOURCES/ICO_SIZES from icon_manifest
+    rather than redefining them -- this guards against a future edit
+    accidentally shadowing those names with a local reassignment inside
+    render_icons.py, which would silently change the real render
+    pipeline's size->master mapping with nothing else here to catch it
+    (the tests above compare icon_manifest against itself/a local
+    constant, never against the render_icons module's own attributes).
+    Playwright-dependent (importing render_icons pulls it in), so this
+    runs wherever the pipeline module itself would import successfully.
+    """
+    render_icons = _load_render_icons()
+    assert render_icons.SIZE_SOURCES is icon_manifest.SIZE_SOURCES
+    assert render_icons.ICO_SIZES is icon_manifest.ICO_SIZES
+
+
 def test_icns_exists_and_is_non_trivial():
     """Needs no Pillow at all -- this is the sole guard on the artefact
     packaging/quickpdfocr.spec feeds to BUNDLE(icon=…), so it must not be
@@ -173,15 +189,28 @@ def test_missing_iconutil_leaves_tracked_artefacts_untouched(monkeypatch):
     render_icons.main() now checks shutil.which("iconutil") before rendering
     or writing anything, so this never launches a real browser: it fails at
     the up-front check and returns non-zero immediately.
+
+    This test runs against the real git-tracked resources/ and docs/assets/
+    files (main() has no test-injectable output directory), so the whole
+    body after the snapshot is wrapped in try/finally: if a future
+    regression ever reintroduces a write-before-check ordering bug, this
+    test must still fail loudly on the `before == after` assertion, but
+    without leaving the developer's working tree holding regenerated
+    tracked binaries that a red test then hands them to manually revert.
     """
     render_icons = _load_render_icons()
     tracked = [ICO, ICNS, PNG_256, PNG_512, FAVICON, DOCS_FAVICON, DOCS_LOGO]
     assert all(p.exists() for p in tracked), "fixture assumption: all tracked artefacts pre-exist"
     before = {p: p.read_bytes() for p in tracked}
 
-    monkeypatch.setattr(render_icons.shutil, "which", lambda name: None)
-    result = render_icons.main()
+    try:
+        monkeypatch.setattr(render_icons.shutil, "which", lambda name: None)
+        result = render_icons.main()
 
-    assert result != 0, "main() must report failure when iconutil is missing"
-    after = {p: p.read_bytes() for p in tracked}
-    assert before == after, "tracked icon artefacts changed despite missing iconutil"
+        assert result != 0, "main() must report failure when iconutil is missing"
+        after = {p: p.read_bytes() for p in tracked}
+        assert before == after, "tracked icon artefacts changed despite missing iconutil"
+    finally:
+        for path, original in before.items():
+            if path.read_bytes() != original:
+                path.write_bytes(original)

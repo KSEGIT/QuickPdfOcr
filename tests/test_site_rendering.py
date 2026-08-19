@@ -533,6 +533,15 @@ def test_fills_only_token_is_not_a_text_colour(page):
             for (const el of document.querySelectorAll('h1,h2,h3,p,a,li,span,div,code')) {
                 if (el.closest('.ascii-art')) continue;
                 if (!el.textContent.trim()) continue;
+                // Only elements that own a direct text node: a div/code
+                // wrapper whose visible text lives in an inner span with
+                // its own (different) colour would otherwise be scored on
+                // a colour no rendered glyph actually uses -- the same
+                // false-positive shape test_every_text_element_clears_aa...
+                // above already guards against for the same reason.
+                const own = [...el.childNodes].some(
+                    n => n.nodeType === 3 && n.textContent.trim());
+                if (!own) continue;
                 if (getComputedStyle(el).color === target) {
                     bad.push(el.tagName + ': ' + el.textContent.trim().slice(0, 30));
                 }
