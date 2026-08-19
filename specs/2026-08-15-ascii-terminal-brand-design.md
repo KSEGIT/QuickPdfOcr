@@ -27,7 +27,7 @@ retained so the pivot reads as a sharpening of the brand, not a replacement.
 - `resources/hero.svg` → `resources/quick_pdf_hero_small.jpg` — regenerated; now serves the `og:image` only
 - `resources/favicon.png` — **new**, 32px, from the small master
 - `resources/generate_icon.py` — **deleted** (already deprecated dead code)
-- `docs/design/brand-refresh-prompts.md` — rewritten as the ASCII/terminal brief of record
+- `design/brand-refresh-prompts.md` — rewritten as the ASCII/terminal brief of record
 - `resources/README.md` — updated for the two-master pipeline
 
 **Out of scope**
@@ -256,7 +256,7 @@ new `favicon.png`.
 
 ## Documentation
 
-- `docs/design/brand-refresh-prompts.md` is rewritten as the ASCII/terminal brief of
+- `design/brand-refresh-prompts.md` is rewritten as the ASCII/terminal brief of
   record. Leaving it describing the superseded direction would actively mislead.
 - `resources/README.md` is updated for the two-master pipeline and the single render
   command.
