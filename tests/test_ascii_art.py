@@ -189,10 +189,20 @@ def test_hero_terminal_has_no_blinking_cursor():
     html = read_index()
     assert 'class="cursor"' not in html, "hero markup still references .cursor"
     css = html.split("<style>", 1)[1].split("</style>", 1)[0]
-    # Regex, not a bare substring check: explanatory comments in the CSS are
-    # free to mention ".cursor" in prose (as they do, describing why it was
-    # removed) without that counting as the selector still being declared.
-    assert not re.search(r"\.cursor\s*\{", css), (
+    # Comments stripped first, not just skipped over: explanatory comments
+    # in this CSS are free to mention ".cursor" in prose (as they do,
+    # describing why it was removed) without that counting as the selector
+    # still being declared -- and without stripping, "no { or } between
+    # .cursor and the next {" is false as soon as a comment merely mentions
+    # .cursor before the *next unrelated* rule's opening brace, well past
+    # the end of that comment.
+    css_no_comments = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    # [^{}]* (not \s*) between ".cursor" and the opening brace so a
+    # reintroduced .cursor is still caught as part of a compound or
+    # comma-separated selector (".cursor, .caret {", ".cursor::after {",
+    # ".cursor:hover {") -- not just the exact bare ".cursor {" this
+    # regex used to require.
+    assert not re.search(r"\.cursor\b[^{}]*\{", css_no_comments), (
         ".cursor rule should have been removed as dead code"
     )
     assert "@keyframes" not in css, (

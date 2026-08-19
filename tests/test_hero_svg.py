@@ -62,12 +62,84 @@ def test_hero_svg_font_stack_matches_docs_index_mono():
     assert "Liberation Mono" in svg_fonts
 
 
+def test_generator_colours_match_docs_index_tokens():
+    """Same drift risk as the font-stack check above, one property over:
+    generate_hero_svg.py's INK/BEAM/FILL are hand-copied hex literals from
+    docs/index.html's --frame/--accent/--bar-ink, with nothing before this
+    cross-checking them. A future palette change in docs/index.html (this
+    task already made one, to --slate-light) would leave the og:image on
+    stale colours with every other test in this file still green.
+
+    Imports generate_hero_svg as a plain module (no Playwright call happens
+    at import time -- only inside _measure()/main()) rather than
+    re-parsing its source, the same pattern
+    tests/test_icon_outputs.py uses for render_icons.SIZE_SOURCES.
+    """
+    generate_hero_svg = pytest.importorskip(
+        "generate_hero_svg", reason="asset tooling not installed"
+    )
+    index_html = (RESOURCES.parent / "docs" / "index.html").read_text(encoding="utf-8")
+    tokens = dict(re.findall(r"(--[\w-]+):\s*(#[0-9A-Fa-f]{6})\s*;", index_html))
+    assert generate_hero_svg.INK == tokens["--frame"]
+    assert generate_hero_svg.BEAM == tokens["--accent"]
+    assert generate_hero_svg.FILL == tokens["--bar-ink"]
+
+
 def test_hero_svg_byte_size_is_lean():
     """hero.svg itself (the tspan-flow source, not the rendered JPEG) should
     stay a small, text-based file -- a regression here (e.g. accidentally
     embedding a raster image) would be a sign something went very wrong."""
     size = HERO_SVG.stat().st_size
     assert size < 50_000, f"hero.svg is {size:,} bytes -- unexpectedly large for text-only SVG"
+
+
+def test_render_hero_derives_viewport_from_svg_dimensions(tmp_path):
+    """Regression guard: render_hero.py's Playwright viewport must come from
+    hero.svg's own <svg width/height>, not a hardcoded literal.
+
+    _WRAPPER forces `svg { width: 100vw; height: 100vh }`, so the SVG is
+    stretched to fill whatever viewport Playwright opens. A viewport that
+    doesn't match the SVG's own aspect ratio silently distorts the render
+    (non-uniform x/y scaling, not a crop) with nothing to catch it -- render_hero.py
+    only validates XML well-formedness and a byte budget. This renders a
+    synthetic, deliberately non-16:9 SVG (a plain square, easy to verify by
+    pixel dimensions alone) through the real render_hero.main() and checks
+    the output PNG comes out square, not stretched to whatever aspect ratio
+    a hardcoded viewport would have forced.
+    """
+    Image = pytest.importorskip("PIL.Image", reason="Pillow is asset tooling")
+    render_hero = pytest.importorskip("render_hero", reason="asset tooling not installed")
+    pytest.importorskip(
+        "playwright.sync_api", reason="asset tooling not installed"
+    )
+
+    tmp_resources = tmp_path / "resources"
+    (tmp_resources / "_render").mkdir(parents=True)
+    square_svg = tmp_resources / "hero.svg"
+    square_svg.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">'
+        '<rect width="400" height="400" fill="#0F172A"/>'
+        '<circle cx="200" cy="200" r="150" fill="#818CF8"/>'
+        "</svg>",
+        encoding="utf-8",
+    )
+
+    original = (render_hero.RESOURCES, render_hero.SOURCE, render_hero.TARGET)
+    render_hero.RESOURCES = tmp_resources
+    render_hero.SOURCE = square_svg
+    render_hero.TARGET = tmp_resources / "quick_pdf_hero_small.jpg"
+    try:
+        exit_code = render_hero.main()
+    finally:
+        render_hero.RESOURCES, render_hero.SOURCE, render_hero.TARGET = original
+
+    assert exit_code == 0
+    with Image.open(tmp_resources / "_render" / "hero.png") as im:
+        assert im.size == (400, 400), (
+            f"square 400x400 hero.svg rendered as {im.size} -- viewport did "
+            "not track the SVG's own dimensions (a hardcoded 1920x1080 "
+            "viewport would stretch this into a 16:9 rectangle instead)"
+        )
 
 
 def test_rendered_jpeg_budget_matches_render_hero_config():
@@ -90,6 +162,33 @@ def test_hero_svg_has_no_invented_cli_command():
     source = HERO_SVG.read_text(encoding="utf-8").replace("\u00A0", " ")
     assert "quickpdfocr scan" not in source
     assert "OCR in progress" in source, "hero.svg should depict the new status-readout scene"
+
+
+def test_hero_svg_rows_match_the_live_hero_terminal():
+    """Stronger companion to the substring check above: hero.svg and
+    docs/index.html's .hero-terminal <pre> are two hand-maintained copies of
+    the same 11-line scene (a plain-string ROWS list in
+    generate_hero_svg.py vs. the live page's actual markup) -- nothing
+    before this enforced they describe the same content, so a future edit
+    to either side (page count, word count, filename, wording) could leave
+    every other test in this file green while the social preview silently
+    diverges from what the page actually shows. Compares row by row, in
+    order, both sides' tags stripped and NBSP normalized to a plain space.
+    """
+    from tests.test_ascii_art import _hero_text
+
+    live_rows = [line for line in _hero_text().split("\n") if line.strip()]
+
+    svg_source = HERO_SVG.read_text(encoding="utf-8")
+    svg_rows = [
+        re.sub(r"<[^>]+>", "", block).replace("\u00A0", " ")
+        for block in re.findall(r"<text[^>]*>(.*?)</text>", svg_source, re.S)
+    ]
+
+    assert svg_rows == live_rows, (
+        f"hero.svg's rows have drifted from docs/index.html's live hero "
+        f"terminal:\nsvg:  {svg_rows}\nlive: {live_rows}"
+    )
 
 
 def test_frame_rows_render_to_equal_widths():

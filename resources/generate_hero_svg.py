@@ -151,13 +151,15 @@ def _build_group(left_x: float, top_y: float) -> str:
     )
 
 
-def _measure(left_x: float, top_y: float) -> tuple[float, float]:
-    """Render ROWS at the given position and return (frame_width, block_height).
+def _measure(left_x: float, top_y: float) -> tuple[float, float, float]:
+    """Render ROWS at the given position and return (frame_width,
+    block_height, baseline_offset).
 
-    Both are position-independent (pure translation does not change a row's
-    own rendered width or the group's total height), so this only needs to
-    run once; main() reuses the two numbers to compute a centred position
-    rather than re-measuring after moving the text.
+    All three are position-independent (pure translation does not change a
+    row's own rendered width, the group's total height, or the gap between
+    a text element's baseline and its own glyph-box top), so this only
+    needs to run once; main() reuses the numbers to compute a centred
+    position rather than re-measuring after moving the text.
     """
     group_markup = _build_group(left_x, top_y)
     wrapper = f"""<!doctype html><html><head><meta charset="utf-8"></head>
@@ -177,19 +179,17 @@ def _measure(left_x: float, top_y: float) -> tuple[float, float]:
             # Regression check for the exact bug this rewrite fixes: every
             # framed row must render to the same pixel width on whatever
             # font actually resolved, or the box will not visually close.
-            # Measures each row's <text> element (not the boxed-frame rows
-            # by y-position, keeping this generic to the ROWS list above).
+            # Measures each row's <text> element, in the same document
+            # order _build_group() emitted them in (one per non-None ROWS
+            # entry, header first and footer last), so widths[1:-1] is
+            # exactly the framed rows without needing to re-derive which
+            # ROWS indices they came from.
             widths = page.evaluate(
                 """() => [...document.querySelectorAll('text')]
                     .map(t => t.getComputedTextLength())"""
             )
-            frame_row_indices = [i for i, r in enumerate(ROWS) if r is not None]
-            # Frame rows are every non-None row except the header (0) and
-            # footer (last) -- those are intentionally shorter.
-            framed_widths = [
-                w for idx, w in zip(frame_row_indices, widths)
-                if idx not in (frame_row_indices[0], frame_row_indices[-1])
-            ]
+            header_width, footer_width = widths[0], widths[-1]
+            framed_widths = widths[1:-1]
             spread = max(framed_widths) - min(framed_widths)
             if spread > 0.5:
                 raise SystemExit(
@@ -199,23 +199,44 @@ def _measure(left_x: float, top_y: float) -> tuple[float, float]:
                 )
             frame_width = framed_widths[0]
 
-            bbox = page.evaluate(
+            # The header/footer rows are excluded from the width check above
+            # because they're deliberately shorter than the frame -- but the
+            # backdrop card is sized from frame_width alone (see main()), so
+            # if either one ever grew past the frame's own width it would
+            # overflow the card silently. Guard that explicitly rather than
+            # relying on today's row text happening to stay short enough.
+            if header_width > frame_width or footer_width > frame_width:
+                raise SystemExit(
+                    f"Error: header ({header_width:.2f}px) or footer "
+                    f"({footer_width:.2f}px) is wider than the frame "
+                    f"({frame_width:.2f}px) -- it would overflow the "
+                    f"backdrop card, which is sized from the frame alone"
+                )
+
+            block_height, baseline_offset = page.evaluate(
                 """() => {
                     const g = document.querySelector('svg > g');
-                    return g.getBBox().height;
+                    const firstText = g.querySelector('text');
+                    const y = parseFloat(firstText.getAttribute('y'));
+                    return [g.getBBox().height, y - g.getBBox().y];
                 }"""
             )
         finally:
             browser.close()
 
-    return frame_width, bbox
+    return frame_width, block_height, baseline_offset
 
 
 def main() -> int:
     # Pass 1: measure at an arbitrary position, purely to learn how wide the
-    # frame rows and how tall the whole block render on this machine's font.
+    # frame rows, how tall the whole block, and how far a row's own baseline
+    # sits below its glyph-box top render on this machine's font -- real
+    # measurements, not an assumed ascent ratio (an earlier version of this
+    # script used FONT_SIZE * 0.8 as a guessed ascent fraction here, which
+    # measured about 5px short of the real offset on this machine's font;
+    # ironic for a script whose whole point is not hardcoding font metrics).
     try:
-        frame_width, block_height = _measure(left_x=200, top_y=340)
+        frame_width, block_height, baseline_offset = _measure(left_x=200, top_y=340)
     except SystemExit as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -229,7 +250,11 @@ def main() -> int:
     card_x = (CANVAS_W - card_w) / 2
     card_y = (CANVAS_H - card_h) / 2
     left_x = card_x + pad_x
-    top_y = card_y + pad_y + FONT_SIZE * 0.8  # baseline sits below the cap height
+    # baseline_offset is the measured gap between a row's own baseline and
+    # its glyph-box top (see _measure()); adding it to the card's padded top
+    # edge places the first row's baseline correctly, using this machine's
+    # real font metrics rather than an assumed ascent fraction.
+    top_y = card_y + pad_y + baseline_offset
 
     group_markup = _build_group(left_x, top_y)
 
