@@ -8,50 +8,25 @@
       <stop offset="0" stop-color="#312E81" stop-opacity="0.45"/>
       <stop offset="1" stop-color="#312E81" stop-opacity="0"/>
     </radialGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="6"/>
-    </filter>
   </defs>
 
   <rect width="1920" height="1080" fill="url(#bg)"/>
   <rect width="1920" height="1080" fill="url(#glowfield)"/>
 
-  <rect x="712" y="331.48" width="1037.61" height="428.04" rx="16"
+  <!-- Sharp corners (rx omitted), matching the live site's sharp cornered
+       terminal aesthetic; the previous rx="16" predated that rebrand. -->
+  <rect x="433.20" y="234.00" width="1053.61" height="612.00"
         fill="#0B1220" fill-opacity="0.72" stroke="#818CF8" stroke-opacity="0.35" stroke-width="1.5"/>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="34" xml:space="preserve">
-    <text x="760.0" y="386" fill="#818CF8">┌─</text>
-    <text x="821.41" y="386" fill="#818CF8">QuickPdfOcr</text>
-    <text x="1067.05" y="386" fill="#818CF8">──────────────────────────────┐</text>
-    <text x="760.0" y="722" fill="#818CF8">└────────────────────────────────────────────┘</text>
-    <text x="821.41" y="434" fill="#475569">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</text>
-    <text x="821.41" y="482" fill="#22D3EE" filter="url(#glow)" opacity="0.85">════════════════════════════════════════</text>
-    <text x="821.41" y="482" fill="#22D3EE">════════════════════════════════════════</text>
-    <text x="821.41" y="530" fill="#E2E8F0">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</text>
-    <text x="821.41" y="626" fill="#818CF8">[</text>
-    <text x="841.88" y="626" fill="#A78BFA">████████████████</text>
-    <text x="1169.4" y="626" fill="#475569">░░░░░░</text>
-    <text x="1292.21" y="626" fill="#818CF8">]</text>
-    <text x="1333.15" y="626" fill="#E2E8F0">71%</text>
-    <text x="821.41" y="674" fill="#94A3B8">page</text>
-    <text x="923.76" y="674" fill="#94A3B8">12/17</text>
-    <text x="1067.05" y="674" fill="#94A3B8">·</text>
-    <text x="1128.46" y="674" fill="#94A3B8">vision.framework</text>
-    <text x="760.0" y="290" fill="#94A3B8">~/Documents</text>
-    <text x="1005.64" y="290" fill="#94A3B8">$</text>
-    <text x="1046.58" y="290" fill="#E2E8F0">quickpdfocr</text>
-    <text x="1292.21" y="290" fill="#E2E8F0">scan</text>
-    <text x="1394.56" y="290" fill="#E2E8F0">report.pdf</text>
-    <text x="760.0" y="818" fill="#22D3EE" filter="url(#glow)" opacity="0.85">&gt;</text>
-    <text x="760.0" y="818" fill="#22D3EE">&gt;</text>
-    <text x="800.94" y="818" fill="#E2E8F0">4,812</text>
-    <text x="923.76" y="818" fill="#E2E8F0">words</text>
-    <text x="1046.58" y="818" fill="#E2E8F0">copied</text>
-    <text x="1189.87" y="818" fill="#E2E8F0">to</text>
-    <text x="1251.27" y="818" fill="#E2E8F0">clipboard</text>
-    <text x="1435.5" y="818" fill="#22D3EE" filter="url(#glow)" opacity="0.85">_</text>
-    <text x="1435.5" y="818" fill="#22D3EE">_</text>
-    <rect x="768.99" y="386" width="2.5" height="336" fill="#818CF8"/>
-    <rect x="1690.13" y="386" width="2.5" height="336" fill="#818CF8"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace" font-size="34" xml:space="preserve">
+    <text x="489.1953125" y="307.2"><tspan fill="#818CF8">  QuickPdfOcr · report.pdf</tspan></text>
+    <text x="489.1953125" y="403.2"><tspan fill="#818CF8">┌─ OCR in progress ──────────────────────────┐</tspan></text>
+    <text x="489.1953125" y="451.2"><tspan fill="#818CF8">│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │</tspan></text>
+    <text x="489.1953125" y="499.2"><tspan fill="#818CF8">│  </tspan><tspan fill="#22D3EE">════════════════════════════════════════</tspan><tspan fill="#818CF8">  │</tspan></text>
+    <text x="489.1953125" y="547.2"><tspan fill="#818CF8">│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │</tspan></text>
+    <text x="489.1953125" y="595.2"><tspan fill="#818CF8">│  [</tspan><tspan fill="#A78BFA">████████████████</tspan><tspan fill="#818CF8">░░░░░░] 71%              │</tspan></text>
+    <text x="489.1953125" y="643.2"><tspan fill="#818CF8">│  page 12/17  ·  vision.framework           │</tspan></text>
+    <text x="489.1953125" y="691.2"><tspan fill="#818CF8">└────────────────────────────────────────────┘</tspan></text>
+    <text x="489.1953125" y="787.2"><tspan fill="#818CF8">  4,812 words copied to clipboard</tspan></text>
   </g>
 </svg>

@@ -53,13 +53,32 @@ platform container from those renders:
 ```bash
 .venv/bin/pip install -r resources/requirements-assets.txt
 .venv/bin/playwright install chromium
-.venv/bin/python resources/render_icons.py   # icon.png, icon_512.png, favicon.png, icon.ico, icon.icns, docs/assets/*.png
-.venv/bin/python resources/render_hero.py    # quick_pdf_hero_small.jpg
+.venv/bin/python resources/render_icons.py       # icon.png, icon_512.png, favicon.png, icon.ico, icon.icns, docs/assets/*.png
+.venv/bin/python resources/generate_hero_svg.py  # hero.svg
+.venv/bin/python resources/render_hero.py        # hero.svg -> quick_pdf_hero_small.jpg (og:image)
 ```
 
 `requirements-assets.txt` (Playwright + Pillow) is asset-authoring tooling only and is
 deliberately not part of `requirements.txt` — Playwright must never enter the shipped
 application bundle.
+
+### Regenerating the Hero (og:image)
+
+`resources/hero.svg` is the source for `quick_pdf_hero_small.jpg`, the Open Graph /
+Twitter card preview `docs/index.html` links to — the hero image itself is not
+displayed on the page, which draws a live ASCII terminal instead (`.hero-terminal` in
+`docs/index.html`). `hero.svg` mirrors that same terminal scene so the social preview
+and the live page agree.
+
+`resources/generate_hero_svg.py` generates `hero.svg` from a plain-string scene
+description (see its module docstring for the font-independence rationale — its
+`<text>`/`<tspan>` layout avoids the hardcoded per-character pixel offsets a prior
+version of this file used, which broke on any font with a different advance width than
+the one it was tuned against). Edit `ROWS` in that script to change the scene, then
+re-run both commands above, back to back, on the same machine — generation measures
+real glyph metrics for whatever font is installed locally, and the immediate
+`render_hero.py` step screenshots the same file through the same browser engine, so
+there is no window for the font to change out from under the layout.
 
 `create_icns.py` copies each pre-rendered PNG straight into the macOS iconset (never
 resizing — that would reintroduce the same smearing the two-master split exists to
