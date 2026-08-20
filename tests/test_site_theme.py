@@ -75,7 +75,7 @@ def test_no_hardcoded_white_backgrounds():
     offenders = re.findall(
         r"(?:background|background-color)\s*:\s*[^;{}]*"
         r"(?:#fff\b|#ffffff\b|rgba?\(\s*255(?:\s*,\s*|\s+)255(?:\s*,\s*|\s+)255\b"
-        r"|\bwhite\b)[^;{}]*;",
+        r"|\bwhite\b)[^;{}]*(?:;|})",
         css,
         re.I,
     )

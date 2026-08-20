@@ -3,3 +3,4 @@
 # macOS there, and Playwright must never enter the shipped bundle).
 playwright>=1.49.0
 Pillow>=12.3.0
+defusedxml>=0.7.1
