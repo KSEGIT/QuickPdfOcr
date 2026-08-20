@@ -73,10 +73,30 @@ def _atomic_copy(src: Path, dst: Path) -> None:
 # resources/*.png. This is the single place those copies are produced.
 DOCS_ASSETS = RESOURCES.parent / "docs" / "assets"
 
-_WRAPPER = """<!doctype html><html><head><meta charset="utf-8"><style>
-html, body { margin: 0; padding: 0; background: transparent; }
-svg { display: block; width: 100vw; height: 100vh; }
-</style></head><body>%s</body></html>"""
+_SVG_PLACEHOLDER = "__ICON_SVG_MARKUP__"
+
+
+def _html_wrapper(extra_svg_css: str = "") -> str:
+    """Build a Playwright page-content wrapper: shared doctype/meta/html/body
+    reset, plus one _SVG_PLACEHOLDER token (filled by render_set() with the
+    master's own <svg>...</svg> markup via str.replace()) and an
+    extra_svg_css hook so per-convention rules (currently just the
+    macOS-tile transform below) don't need to duplicate this boilerplate.
+
+    Built with an f-string, and filled in later with str.replace() rather
+    than %-formatting: this file's CSS legitimately wants a literal % (e.g.
+    `width: 100%`) and master SVGs can contain arbitrary text, and neither
+    should have to be escaped against being misread as a format directive.
+    str.replace() does a literal substring swap, so there is nothing to
+    escape on either side.
+    """
+    return f"""<!doctype html><html><head><meta charset="utf-8"><style>
+html, body {{ margin: 0; padding: 0; background: transparent; }}
+svg {{ display: block; width: 100vw; height: 100vh;{extra_svg_css} }}
+</style></head><body>{_SVG_PLACEHOLDER}</body></html>"""
+
+
+_WRAPPER = _html_wrapper()
 
 # macOS-only wrapper for icon.icns: scales the master's full-bleed 1024x1024
 # render down to MACOS_TILE_SCALE and re-centers it via transform-origin,
@@ -86,11 +106,9 @@ svg { display: block; width: 100vw; height: 100vh; }
 # whole rendered SVG rather than re-authoring its markup. Uniform scaling
 # means the squircle's rx=230 corner radius scales down with it for free;
 # there is no separate radius constant to keep in sync.
-_WRAPPER_MACOS_TILE = """<!doctype html><html><head><meta charset="utf-8"><style>
-html, body { margin: 0; padding: 0; background: transparent; }
-svg { display: block; width: 100vw; height: 100vh;
-      transform: scale(%s); transform-origin: center center; }
-</style></head><body>%%s</body></html>""" % MACOS_TILE_SCALE
+_WRAPPER_MACOS_TILE = _html_wrapper(
+    f" transform: scale({MACOS_TILE_SCALE}); transform-origin: center center;"
+)
 
 
 def render_set(
@@ -112,7 +130,7 @@ def render_set(
             viewport={"width": size, "height": size},
             device_scale_factor=1,
         )
-        page.set_content(wrapper % master.read_text(encoding="utf-8"))
+        page.set_content(wrapper.replace(_SVG_PLACEHOLDER, master.read_text(encoding="utf-8")))
         target = out_dir / f"icon_{size}.png"
         page.screenshot(path=str(target), omit_background=True)
         page.close()
@@ -139,6 +157,25 @@ def main() -> int:
             "Error: iconutil not found. It is a macOS-only tool required to "
             "assemble icon.icns; run this pipeline on macOS. No tracked "
             "artefact has been modified."
+        )
+        return 1
+
+    # icon.icns needs a master for every pixel size create_icns_from_pngs
+    # will ask for (ICNS_PIXEL_SIZES, derived from ICONSET_SLOTS). Checked
+    # up front, before launching a browser or touching any tracked
+    # artefact, with a message naming the missing size(s) -- create_icns_
+    # from_pngs's own .get()-based lookup already does this for the PNGs it
+    # receives; this is the same guard one step earlier, for whether
+    # SIZE_SOURCES can even produce them. Not reachable today (every
+    # ICONSET_SLOTS size has a SIZE_SOURCES entry), but a future slot added
+    # to one table without the other would otherwise surface as a bare
+    # KeyError with no indication of which size was missing.
+    missing = [s for s in ICNS_PIXEL_SIZES if s not in SIZE_SOURCES]
+    if missing:
+        print(
+            f"Error: icon_manifest.SIZE_SOURCES has no master for icns pixel "
+            f"size(s) {missing}; icon.icns needs one for every entry in "
+            f"create_icns.ICONSET_SLOTS. No tracked artefact has been modified."
         )
         return 1
 
