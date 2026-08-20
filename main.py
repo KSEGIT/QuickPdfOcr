@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QSize
 from ui.main_window import MainWindow
 from ui.loading_screen import LoadingScreen
 
@@ -292,13 +292,39 @@ def main():
         # Running from source
         base_path = Path(__file__).parent
     
-    # Try to load the icon
-    icon_file = base_path / "resources" / "icon.png"
-    if icon_file.exists():
-        app.setWindowIcon(QIcon(str(icon_file)))
-        print(f"Loaded icon from: {icon_file}")
+    # Try to load the icon. icon.ico carries six embedded frames -- 16/32/48/64
+    # rendered from the simple master, 128/256 from the detailed one (see
+    # resources/render_icons.py). QIcon.addFile() on a multi-image .ico
+    # registers every embedded frame as its own pixmap (verified: Qt's
+    # QImageReader reports imageCount()==6 for this file), so Qt picks the
+    # frame matching each requested size instead of smooth-scaling a single
+    # 256px detailed render down to window/taskbar sizes -- which is exactly
+    # the smear the two-master split exists to avoid. icon_512.png adds a
+    # frame above the .ico's 256px ceiling for very large icon requests.
+    icon_ico = base_path / "resources" / "icon.ico"
+    icon_512 = base_path / "resources" / "icon_512.png"
+    icon_png = base_path / "resources" / "icon.png"
+    icon = QIcon()
+    loaded_from = []
+    if icon_ico.exists():
+        icon.addFile(str(icon_ico))
+        loaded_from.append(str(icon_ico))
+    if icon_512.exists():
+        icon.addFile(str(icon_512), QSize(512, 512))
+        loaded_from.append(str(icon_512))
+    if icon.isNull() and icon_png.exists():
+        # Last-resort fallback to the single detailed-master render, in case
+        # icon.ico/icon_512.png are ever unavailable on their own (e.g. a
+        # partial checkout) while icon.png -- also a frozen output filename
+        # -- still is. Smooth-scaled at small sizes like the pre-fix
+        # behaviour, but a smeared icon beats no icon at all.
+        icon.addFile(str(icon_png))
+        loaded_from.append(str(icon_png))
+    if not icon.isNull():
+        app.setWindowIcon(icon)
+        print(f"Loaded icon from: {', '.join(loaded_from)}")
     else:
-        print(f"Warning: Icon not found at {icon_file}")
+        print(f"Warning: no icon found under {base_path / 'resources'}")
     
     # Show loading screen immediately
     loading_screen = LoadingScreen()

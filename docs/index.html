@@ -22,7 +22,7 @@
     <meta name="twitter:image" content="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg">
 
     <title>QuickPdfOcr - OCR Scanned PDFs Locally</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
     <style>
         * {
             margin: 0;
@@ -31,25 +31,57 @@
         }
 
         :root {
-            --indigo: #4F46E5;
-            --indigo-hover: #4338CA;
-            --violet: #7C3AED;
-            --cyan: #22D3EE;
-            --slate-dark: #0F172A;
-            --slate-light: #F8FAFC;
-            --text-gray: #475569;
-            --bg-white: #ffffff;
-            --border-color: #E2E8F0;
-            --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08);
-            --shadow-lg: 0 12px 28px -6px rgb(15 23 42 / 0.14);
-            --radius: 14px;
+            /* Terminal palette — specs/2026-08-15-ascii-terminal-brand-design.md */
+            --bg: #0F172A;
+            --surface: #1E293B;
+            --frame:      #818CF8; /* indigo ink  — 5.98:1 on bg; draw with this        */
+            --frame-fill: #4F46E5; /* indigo fill — 2.84:1 on bg; white-on-it is 6.29:1 */
+            --bar-ink:    #A78BFA; /* violet ink  — 6.56:1 on bg; draw with this        */
+            --bar:        #7C3AED; /* violet fill — 3.13:1 on bg; white-on-it is 5.70:1 */
+            --accent: #22D3EE;
+            --text: #E2E8F0;
+            --dim: #94A3B8;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+
+            /* Legacy token names remapped onto the terminal palette, so the
+               pre-existing rules below reskin without being rewritten. */
+            --indigo: var(--frame);
+            --indigo-hover: #A5B4FC;
+            --violet: var(--bar);
+            --cyan: var(--accent);
+            --slate-dark: var(--text);
+            /* Not var(--surface): .feature-card/.download-card (.boxed)
+               already paint --surface, so aliasing #features to the same
+               token left every card indistinguishable from its own section
+               (both rgb(30, 41, 59)) -- only the 1px --frame border on the
+               card survived as a cue. Not var(--bg) either, despite that
+               being darker than --surface and technically distinct from the
+               card: --bg is also body's own background (self-review catch --
+               see commit history), so that swap just moved the collision
+               from card-vs-section to section-vs-body, leaving #features
+               indistinguishable from the plain page behind it instead
+               (rgb(15, 23, 42) === rgb(15, 23, 42)) and erasing this
+               section's visual band entirely. #2A3648 is a genuine third
+               step -- lighter than both --bg (1.46:1) and --surface (1.20:1,
+               comparable to --bg's own 1.22:1 gap from --surface, so it
+               reads as "one more step" in the same visual language) --
+               chosen small enough that --dim (used by .section-subtitle
+               directly on this background) still clears 4.5:1 against it
+               (4.76:1) rather than picking purely for gap size. */
+            --slate-light: #2A3648;
+            --text-gray: var(--dim);
+            --border-color: #64748B;
+            --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
+            --shadow-lg: 0 12px 28px -6px rgb(0 0 0 / 0.6);
+            --radius: 0;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
-            color: var(--slate-dark);
-            background: var(--bg-white);
+            font-family: var(--mono);
+            line-height: 1.7;
+            font-size: 15px;
+            color: var(--text);
+            background: var(--bg);
             -webkit-font-smoothing: antialiased;
         }
 
@@ -61,7 +93,7 @@
 
         /* Header */
         header {
-            background: rgba(255, 255, 255, 0.92);
+            background: rgb(15 23 42 / 0.92);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border-color);
@@ -91,7 +123,7 @@
         .logo img {
             width: 36px;
             height: 36px;
-            border-radius: 8px;
+            border-radius: var(--radius);
         }
 
         .header-links {
@@ -109,31 +141,67 @@
         }
 
         .header-links a:hover {
-            color: var(--indigo);
+            color: var(--accent);
         }
 
         .header-links .nav-github {
-            color: var(--indigo);
+            color: var(--accent);
             font-weight: 600;
         }
 
         /* Hero Section */
         .hero {
             position: relative;
-            background:
-                linear-gradient(105deg, rgba(15, 23, 42, 0.88) 0%, rgba(49, 46, 129, 0.78) 45%, rgba(76, 29, 149, 0.55) 100%),
-                url('https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/quick_pdf_hero_small.jpg') center/cover no-repeat,
-                linear-gradient(135deg, #312E81 0%, #4C1D95 100%);
-            color: white;
+            color: var(--text);
             padding: 7rem 0;
         }
 
+        /* Two flex items -- .hero-content (prose) and .ascii-art.hero-terminal
+           (status readout) -- laid out side by side. Previously the terminal
+           lived *inside* .hero-content, so this row only ever had one item;
+           with .hero-content capped at max-width: 620px, that left the
+           remaining ~46% of a 1200px container empty on the right at
+           desktop widths, dead space the deleted background photo used to
+           fill. Splitting them into siblings lets the terminal anchor the
+           right edge instead. align-items: center holds both vertically
+           centred on the row (desktop) or horizontally centred once the
+           mobile query below switches this to a column.
+
+           flex-wrap: wrap matters between 769px and ~1130px: .hero-content's
+           preferred width (620px) plus the terminal's (~415px, constant
+           above ~500px wide once its clamp() font-size hits its 15px
+           ceiling) plus this gap add up to ~1083px, more than fits a
+           sub-1130px container. Without wrap, flex's default behaviour is
+           to shrink both items to fit the row anyway -- which the terminal
+           cannot do cleanly, since its content is a fixed 46-column
+           monospace grid with no reflow point, so it clips inside its own
+           overflow-x: auto box instead of getting narrower. With wrap, the
+           terminal instead drops to its own line below the prose (still
+           left-aligned, matching the prose's own alignment at these
+           widths, which only centres in the mobile query below) at its
+           full, uncramped width -- the same stacked shape the mobile query
+           produces on purpose, arrived at here as a side effect of running
+           out of room rather than a hardcoded second breakpoint. */
         .hero .container {
             display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 3rem;
         }
 
         .hero-content {
             max-width: 620px;
+            /* .hero .container is a flex row; a flex item's automatic
+               minimum width defaults to its content's min-content size, not
+               0. "QuickPdfOcr" (below) is one unbreakable word, so without
+               this the flex item -- and the page along with it -- is forced
+               at least that word's width no matter how narrow the viewport
+               gets, which is what actually caused the horizontal scroll
+               overflow-wrap: break-word (below) does not by itself prevent:
+               that rule only takes effect once the box is allowed to become
+               smaller than its content in the first place. */
+            min-width: 0;
         }
 
         .hero .badge {
@@ -145,7 +213,7 @@
             color: var(--cyan);
             border: 1px solid rgba(34, 211, 238, 0.4);
             background: rgba(34, 211, 238, 0.1);
-            border-radius: 999px;
+            border-radius: var(--radius);
             padding: 0.3rem 0.9rem;
             margin-bottom: 1.25rem;
         }
@@ -157,20 +225,31 @@
             line-height: 1.1;
             letter-spacing: -0.02em;
             text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+            /* "QuickPdfOcr" is one unbreakable word. .hero-content's
+               min-width: 0 (above) lets its flex box shrink below that
+               word's own min-content width, which is exactly what a narrow
+               viewport needs -- but shrinking the box does nothing for the
+               word itself unless it can also break. Below ~305px wide, this
+               is the rule that keeps the word wrapping inside its own box
+               instead of overflowing it and reopening the horizontal-scroll
+               problem min-width: 0 exists to prevent. Does not change the
+               headline text, only how it breaks if it ever truly runs out
+               of room. */
+            overflow-wrap: break-word;
         }
 
         .hero .tagline {
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            color: rgba(255, 255, 255, 0.95);
+            color: rgba(226, 232, 240, 0.95);
             line-height: 1.35;
         }
 
         .hero .description {
             font-size: 1.125rem;
             margin-bottom: 2.5rem;
-            color: rgba(255, 255, 255, 0.82);
+            color: rgba(226, 232, 240, 0.82);
             line-height: 1.7;
         }
 
@@ -183,7 +262,7 @@
         .btn {
             display: inline-block;
             padding: 0.875rem 2rem;
-            border-radius: 10px;
+            border-radius: var(--radius);
             font-weight: 600;
             text-decoration: none;
             transition: transform 0.2s, box-shadow 0.2s, background 0.2s, border-color 0.2s;
@@ -191,8 +270,8 @@
         }
 
         .btn-primary {
-            background: var(--bg-white);
-            color: var(--indigo);
+            background: var(--surface);
+            color: var(--accent);
             box-shadow: var(--shadow-lg);
         }
 
@@ -202,20 +281,107 @@
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.12);
-            color: white;
-            border: 1.5px solid rgba(255, 255, 255, 0.65);
+            background: rgba(226, 232, 240, 0.12);
+            color: var(--text);
+            border: 1.5px solid rgba(226, 232, 240, 0.65);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.22);
-            border-color: white;
+            background: rgba(226, 232, 240, 0.22);
+            border-color: var(--text);
         }
+
+        /* Compound selector, not bare .hero-terminal: .ascii-art (below)
+           also declares color and margin at equal specificity, and being
+           later in source it would otherwise win the cascade and silently
+           drop both of this rule's own values back to inherited text
+           colour and a flush margin. */
+        .ascii-art.hero-terminal {
+            /* .ascii-art is color:inherit so the per-card .icon-* classes can
+               tint each icon; the hero has no such wrapper, so it states its
+               own ink here. */
+            color: var(--frame);
+            font-size: clamp(11px, 3vw, 15px);
+            /* No margin at any width: it is a direct flex sibling of
+               .hero-content now (see .hero .container above), spaced from
+               the prose by that row's own gap (3rem, narrowed to 2rem by
+               the mobile query below) rather than a margin of its own --
+               true whether the row stays side-by-side, wraps onto its own
+               line past ~1130px (see flex-wrap above), or is forced into a
+               column by the mobile query. */
+            margin: 0;
+            width: max-content;
+            max-width: 100%;
+        }
+
+        /* Used by the header's nav-bar prompt only -- the hero terminal
+           below was rewritten from an invented shell command into a status
+           readout (no prompt to label), so .hero-prompt no longer appears
+           there. .cursor and its blink keyframes were dropped outright: a
+           blinking cursor implies a shell waiting on input, which does not
+           fit a static progress readout, and once removed from the hero
+           markup nothing else in the page used them. */
+        .hero-prompt { color: var(--dim); }
 
         /* Section Styles */
         section {
             padding: 4.5rem 0;
         }
+
+        /* Reflow-safe faked box-drawing: CSS borders + corner glyphs.
+           True character frames are reserved for fixed-size .ascii-art blocks. */
+        .boxed {
+            position: relative;
+            border: 1px solid var(--frame);
+            background: var(--surface);
+            padding: 1.5rem;
+        }
+
+        .boxed::before,
+        .boxed::after {
+            position: absolute;
+            color: var(--frame);
+            font-family: var(--mono);
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        /* content: <string> / "" -- CSS Content Level 3 alternative text.
+           The "/ \"\"" supplies an empty accessible-name string for the
+           pseudo-element, so AT skips it entirely instead of reading the
+           glyph aloud; pseudo-elements cannot take aria-hidden directly, and
+           this is the modern equivalent. Visual rendering is unchanged.
+
+           Each rule below declares the plain content: "..." FIRST and the
+           alt-text form second, not the alt-text form alone (self-review
+           catch): a browser that does not parse the "/ <string>" grammar
+           (shipped Firefox 128 / Safari 17.4, mid-2024) treats the whole
+           declaration as invalid and drops it -- CSS's normal handling of
+           an unrecognised value -- which would leave these pseudo-elements
+           generating nothing at all, not even the plain glyph. Declaring
+           the plain string first means an unsupporting browser keeps that
+           (its only valid content: value for this property), while a
+           supporting browser still ends up on the alt-text form, since it
+           is a second valid declaration for the same property and the
+           cascade keeps the last one. */
+        .boxed::before { content: "┌"; content: "┌" / ""; top: -1px; left: -1px; }
+        .boxed::after  { content: "┘"; content: "┘" / ""; bottom: -1px; right: -1px; }
+
+        /* Section titles as shell commands */
+        .cmd::before {
+            content: "$ ";
+            content: "$ " / "";
+            color: var(--accent);
+        }
+
+        /* Buttons as bracketed terminal affordances.
+           The brackets inherit the button's own colour rather than taking
+           --dim: on a filled .btn-primary (background --frame #818CF8) dim
+           grey measures 1.16:1 and is invisible. Inheriting tracks whatever
+           the button's label contrast already is — 5.98:1 on filled,
+           and the ghost buttons' own colour elsewhere. */
+        .btn::before { content: "[ "; content: "[ " / ""; }
+        .btn::after  { content: " ]"; content: " ]" / ""; }
 
         .section-title {
             font-size: 2.4rem;
@@ -239,6 +405,46 @@
             background: var(--slate-light);
         }
 
+        /* Shared character-grid ASCII blocks (icons + hero) */
+        .ascii-art {
+            font-family: var(--mono);
+            line-height: 1.15;
+            white-space: pre;
+            margin: 0;
+            color: inherit;
+            -webkit-font-smoothing: none;
+            /* The mobile/tablet media query below sets text-align: center on
+               .hero, which inherits into these <pre> blocks; white-space: pre
+               makes every newline its own line box, so each frame row
+               shorter than the widest one would center independently and
+               drift out from under the frame instead of staying flush left
+               with it. A specified value on the element itself always wins
+               over an inherited one, so this holds regardless of .hero's
+               alignment. */
+            text-align: left;
+            /* clamp()'s 11px floor stops shrinking before the fixed
+               46-column hero frame (304.66px) fits inside very narrow
+               viewports (~<305px); white-space: pre has no wrap to fall
+               back on, so without this the content overflows the block
+               and drags the whole page into horizontal scroll. overflow-x
+               lets the block itself scroll instead — auto, never hidden,
+               so the content stays reachable rather than being clipped. */
+            overflow-x: auto;
+        }
+
+        .ascii-art .beam { color: var(--accent); }
+        .ascii-art .fill { color: var(--bar-ink); }
+
+        .ascii-icon {
+            font-size: 15px;
+            letter-spacing: 0;
+            display: inline-block;
+        }
+
+        .icon-indigo { color: var(--frame); }
+        .icon-violet { color: var(--bar-ink); }
+        .icon-cyan   { color: var(--accent); }
+
         /* Features Grid */
         .features-grid {
             display: grid;
@@ -247,11 +453,12 @@
             margin-top: 3rem;
         }
 
+        /* border and background come from .boxed (applied alongside this
+           class in the markup) so the card ends with one border and one
+           background instead of two competing declarations. */
         .feature-card {
-            background: var(--bg-white);
             padding: 1.75rem;
             border-radius: var(--radius);
-            border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
@@ -259,27 +466,15 @@
         .feature-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-lg);
-            border-color: rgba(79, 70, 229, 0.35);
+            border-color: var(--accent);
         }
 
         .feature-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 52px;
-            height: 52px;
-            border-radius: 12px;
             margin-bottom: 1.1rem;
         }
-
-        .feature-icon svg {
-            width: 28px;
-            height: 28px;
-        }
-
-        .icon-indigo { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
-        .icon-violet { background: rgba(124, 58, 237, 0.1); color: var(--violet); }
-        .icon-cyan   { background: rgba(34, 211, 238, 0.12); color: #0891B2; }
 
         .feature-card h3 {
             font-size: 1.2rem;
@@ -296,8 +491,8 @@
 
         /* Privacy Section */
         .privacy-section {
-            background: linear-gradient(135deg, var(--indigo) 0%, var(--violet) 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--frame-fill) 0%, var(--violet) 100%);
+            color: var(--text);
             padding: 4.5rem 0;
             text-align: center;
         }
@@ -314,25 +509,23 @@
             max-width: 800px;
             margin: 0 auto;
             line-height: 1.7;
-            color: rgba(255, 255, 255, 0.92);
+            /* Opaque slate-100, not --text at reduced alpha: the gradient
+               behind this paragraph sweeps from --frame-fill to --bar, and
+               the translucent --text this used to be (0.92 alpha) composited
+               to only 4.14:1 against the violet stop — under the 4.5:1 AA
+               floor. #F1F5F9 at full alpha clears both stops (5.74:1 /
+               5.20:1); the violet stop is the binding one and governs the
+               choice over a merely-opaque --text (4.62:1 — technically
+               passing, but with far less margin). */
+            color: #F1F5F9;
         }
 
         .privacy-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 72px;
-            height: 72px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.25);
             margin-bottom: 1.5rem;
-            color: white;
-        }
-
-        .privacy-icon svg {
-            width: 36px;
-            height: 36px;
+            color: var(--text);
         }
 
         /* Download Section */
@@ -348,9 +541,10 @@
             margin-top: 2rem;
         }
 
+        /* border and background come from .boxed (applied alongside this
+           class in the markup) so the card ends with one border and one
+           background instead of two competing declarations. */
         .download-card {
-            background: var(--bg-white);
-            border: 1px solid var(--border-color);
             border-radius: var(--radius);
             padding: 2.25rem 2rem;
             width: 280px;
@@ -360,7 +554,7 @@
 
         .download-card:hover {
             transform: translateY(-4px);
-            border-color: var(--indigo);
+            border-color: var(--accent);
             box-shadow: var(--shadow-lg);
         }
 
@@ -368,15 +562,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 60px;
-            height: 60px;
-            border-radius: 14px;
             margin-bottom: 1.25rem;
-        }
-
-        .download-card .platform-icon svg {
-            width: 32px;
-            height: 32px;
         }
 
         .download-card h3 {
@@ -393,7 +579,7 @@
 
         .download-card .btn-primary {
             background: var(--indigo);
-            color: white;
+            color: var(--bg);
             box-shadow: var(--shadow-md);
         }
 
@@ -405,8 +591,8 @@
 
         /* Developer Section */
         .developer-section {
-            background: var(--slate-dark);
-            color: white;
+            background: var(--surface);
+            color: var(--text);
             padding: 4.5rem 0;
         }
 
@@ -419,7 +605,7 @@
         }
 
         .developer-section .section-subtitle {
-            color: rgba(255, 255, 255, 0.75);
+            color: rgba(226, 232, 240, 0.75);
         }
 
         .tech-stack {
@@ -431,12 +617,12 @@
         }
 
         .tech-item {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(226, 232, 240, 0.08);
             padding: 0.6rem 1.25rem;
-            border-radius: 999px;
+            border-radius: var(--radius);
             font-weight: 600;
             font-size: 0.92rem;
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(226, 232, 240, 0.18);
             transition: border-color 0.2s, background 0.2s;
         }
 
@@ -447,11 +633,11 @@
 
         .code-example {
             background: rgba(0, 0, 0, 0.35);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(226, 232, 240, 0.1);
             padding: 1.5rem;
-            border-radius: 12px;
+            border-radius: var(--radius);
             margin-top: 2.5rem;
-            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-family: var(--mono);
             font-size: 0.92rem;
             text-align: left;
             overflow-x: auto;
@@ -467,7 +653,7 @@
 
         .developer-section .btn-primary {
             background: var(--indigo);
-            color: white;
+            color: var(--bg);
         }
 
         .developer-section .btn-primary:hover {
@@ -480,11 +666,11 @@
 
         /* Footer */
         footer {
-            background: var(--slate-dark);
-            color: rgba(255, 255, 255, 0.75);
+            background: var(--surface);
+            color: rgba(226, 232, 240, 0.75);
             padding: 3rem 0 1.5rem;
             text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(226, 232, 240, 0.08);
         }
 
         footer .footer-content {
@@ -515,14 +701,14 @@
         }
 
         .footer-links a {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(226, 232, 240, 0.8);
             font-weight: 500;
         }
 
         .copyright {
             margin-top: 2rem;
             padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(226, 232, 240, 0.1);
             font-size: 0.875rem;
         }
 
@@ -534,7 +720,18 @@
             }
 
             .hero .container {
+                /* .hero-content and .ascii-art.hero-terminal are side-by-side
+                   flex siblings at desktop (see .hero .container above);
+                   below 768px there is no room for two columns, so this
+                   stacks them -- prose above, terminal below, matching their
+                   source order -- and centres both along the now-horizontal
+                   cross axis to match this query's text-align: center. gap
+                   (inherited from the base rule as 3rem) still provides the
+                   space between them; narrowed here to 2rem to match this
+                   layout's original vertical rhythm. */
+                flex-direction: column;
                 justify-content: center;
+                gap: 2rem;
             }
 
             .hero h1 {
@@ -575,6 +772,8 @@
 
             .header-links {
                 gap: 1.25rem;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .download-card {
@@ -595,10 +794,11 @@
         <div class="container">
             <div class="header-content">
                 <a href="#" class="logo">
-                    <img src="https://raw.githubusercontent.com/KSEGIT/QuickPdfOcr/main/resources/icon.png" alt="QuickPdfOcr Logo">
+                    <img src="assets/logo.png" alt="QuickPdfOcr Logo">
                     <span>QuickPdfOcr</span>
                 </a>
                 <nav class="header-links">
+                    <span class="hero-prompt" aria-hidden="true">~/quickpdfocr $</span>
                     <a href="#features">Features</a>
                     <a href="#download">Download</a>
                     <a href="#developers">Developers</a>
@@ -624,13 +824,28 @@
                     <a href="https://github.com/KSEGIT/QuickPdfOcr" class="btn btn-secondary" target="_blank">View on GitHub</a>
                 </div>
             </div>
+            <!-- A status readout, not a command to type: there is no `quickpdfocr`
+                 CLI (see main.py -- it only ever opens a GUI), so this shows the
+                 app's actual behaviour -- an OCR run in progress -- instead of a
+                 shell invocation that would fail with "command not found". -->
+            <pre class="ascii-art hero-terminal" aria-hidden="true" tabindex="-1">  QuickPdfOcr · report.pdf
+
+┌─ OCR in progress ──────────────────────────┐
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  <span class="beam">════════════════════════════════════════</span>  │
+│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │
+│  [<span class="fill">████████████████</span>░░░░░░] 71%              │
+│  page 12/17  ·  vision.framework           │
+└────────────────────────────────────────────┘
+
+  4,812 words copied to clipboard</pre>
         </div>
     </section>
 
     <!-- What It Does Section -->
     <section id="about">
         <div class="container">
-            <h2 class="section-title">What It Does</h2>
+            <h2 class="section-title cmd">What It Does</h2>
             <p class="section-subtitle">
                 QuickPdfOcr is a lightweight PDF OCR application that helps you extract text from image-based
                 or scanned PDFs using Apple Vision on macOS and Tesseract on Windows/Linux. It's designed to be
@@ -642,92 +857,92 @@
     <!-- Key Features Section -->
     <section id="features">
         <div class="container">
-            <h2 class="section-title">Key Features</h2>
+            <h2 class="section-title cmd">Key Features</h2>
             <div class="features-grid">
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
-                            <path d="M14 3v5h5"/>
-                            <path d="M12 11v6"/>
-                            <path d="M9.5 14.5 12 17l2.5-2.5"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true"> ┌─────┐
+ │ ░░░ │
+ └──┬──┘
+    ▼
+┌ ─ ─ ─ ┐</pre>
                     </div>
                     <h3>Drag &amp; Drop</h3>
                     <p>Simply drag and drop PDF files directly into the application window for instant processing.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│ ▶ a.pdf │
+│   b.pdf │
+│   c.pdf │
+└─────────┘</pre>
                     </div>
                     <h3>File Picker</h3>
                     <p>Browse and select PDFs using the traditional file picker if you prefer.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="10.5" cy="10.5" r="6.5"/>
-                            <path d="m21 21-5.7-5.7"/>
-                            <path d="M8 9.5h5"/>
-                            <path d="M8 12h5"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│ ░░░░░░░ │
+│<span class="beam">═════════</span>│
+│ ▓▓▓▓▓▓▓ │
+└─────────┘</pre>
                     </div>
                     <h3>Native OCR Engines</h3>
                     <p>Apple's Vision framework (built into macOS) and industry-standard Tesseract on Windows/Linux extract text accurately from scanned pages.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M4 14a8 8 0 1 1 16 0"/>
-                            <path d="M12 14l3.5-3.5"/>
-                            <path d="M4 18h16"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│ scan... │
+│ <span class="fill">████</span>░░░ │
+│   57%   │
+└─────────┘</pre>
                     </div>
                     <h3>Progress &amp; Status Updates</h3>
                     <p>Real-time feedback shows processing status while OCR is running.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/>
-                            <path d="M8 6H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1"/>
-                            <path d="M9 12h6"/>
-                            <path d="M9 16h4"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true"> ┌──────┐
+┌┴─────┐│
+│ ░░░░ ├┘
+│ ░░░░ │
+└──────┘</pre>
                     </div>
                     <h3>One-Click Copy to Clipboard</h3>
                     <p>Instantly copy extracted text to your clipboard on macOS, Linux, and Windows.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M21 12a9 9 0 1 1-2.6-6.4"/>
-                            <path d="M21 3v6h-6"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─────────┐
+│  ! err  │
+│ ──────▶ │
+│ [retry] │
+└─────────┘</pre>
                     </div>
                     <h3>Error Recovery</h3>
                     <p>Retry or start over options available if something fails during processing.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="16" rx="2"/>
-                            <path d="M3 9h18"/>
-                            <path d="M9 9v11"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌─┬───────┐
+│●│ ░░░░░ │
+│░│ ░░░░░ │
+│░│ ░░░░░ │
+└─┴───────┘</pre>
                     </div>
                     <h3>Modern UI</h3>
                     <p>Clean, user-friendly interface with clear visual feedback throughout the process.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card boxed">
                     <div class="feature-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9z"/>
-                            <path d="M3.5 7.5 12 12l8.5-4.5"/>
-                            <path d="M12 12v9"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">  ┌─────┐
+ ┌┴────┐│
+ │ ▓▓▓ ││
+ │ ▓▓▓ ├┘
+ └─────┘</pre>
                     </div>
                     <h3>Fully Standalone</h3>
                     <p>Pre-built executables bundle Python and PDF rendering (pypdfium2 — no Poppler, ever) on every platform. On macOS, OCR uses the Vision framework built into the OS, so there's nothing else to install. Windows/Linux need Tesseract installed separately.</p>
@@ -740,10 +955,11 @@
     <section class="privacy-section">
         <div class="container">
             <div class="privacy-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 3 4.5 6v5c0 4.6 3.2 8.3 7.5 10 4.3-1.7 7.5-5.4 7.5-10V6z"/>
-                    <path d="m9 11.5 2.2 2.2L15.5 9.5"/>
-                </svg>
+                <pre class="ascii-art ascii-icon" aria-hidden="true">  ┌───┐
+ ┌┴───┴┐
+ │ ███ │
+ │ █▀█ │
+ └─────┘</pre>
             </div>
             <h2>Offline &amp; Privacy-Friendly</h2>
             <p>
@@ -756,44 +972,43 @@
     <!-- Download Section -->
     <section id="download" class="download-section">
         <div class="container">
-            <h2 class="section-title">Installation / Downloads</h2>
+            <h2 class="section-title cmd">Installation / Downloads</h2>
             <p class="section-subtitle">
                 <strong>Recommended:</strong> Download the pre-built executable for your OS from GitHub Releases.
                 The app is intended to be "download and run." No installation required!
             </p>
             <div class="download-options">
-                <div class="download-card">
+                <div class="download-card boxed">
                     <div class="platform-icon icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="16" rx="2"/>
-                            <path d="M3 9h18"/>
-                            <path d="M6 6.5h.01"/>
-                            <path d="M9 6.5h.01"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌───┬───┐
+│░░░│░░░│
+├───┼───┤
+│░░░│░░░│
+└───┴───┘</pre>
                     </div>
                     <h3>Windows</h3>
                     <p>Standalone .exe (Tesseract required, installed separately)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
-                <div class="download-card">
+                <div class="download-card boxed">
                     <div class="platform-icon icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="4" y="4" width="16" height="11" rx="2"/>
-                            <path d="M2 19h20"/>
-                            <path d="M9.5 19h5"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌───────┐
+│ ░░░░░ │
+│ ░░░░░ │
+└───────┘
+ ▀▀▀▀▀▀▀</pre>
                     </div>
                     <h3>macOS</h3>
                     <p>universal2 .app bundle (Apple Silicon &amp; Intel in one download, macOS 13+)</p>
                     <a href="https://github.com/KSEGIT/QuickPdfOcr/releases/latest" class="btn btn-primary">Download</a>
                 </div>
-                <div class="download-card">
+                <div class="download-card boxed">
                     <div class="platform-icon icon-cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="16" rx="2"/>
-                            <path d="m7 9 3 3-3 3"/>
-                            <path d="M13 15h4"/>
-                        </svg>
+                        <pre class="ascii-art ascii-icon" aria-hidden="true">┌───────┐
+│ <span class="beam">&gt; _</span>   │
+│ ░░░░  │
+│ ░░    │
+└───────┘</pre>
                     </div>
                     <h3>Linux</h3>
                     <p>Standalone executable (Tesseract required, installed separately)</p>
@@ -811,7 +1026,7 @@
     <!-- Developer Section -->
     <section id="developers" class="developer-section">
         <div class="container">
-            <h2>For Developers</h2>
+            <h2 class="cmd">For Developers</h2>
             <p class="section-subtitle">
                 Run from source (Python) or build your own standalone binary. The project uses PySide6,
                 pypdfium2 for PDF rendering on every platform, Apple's Vision framework for OCR on macOS,
