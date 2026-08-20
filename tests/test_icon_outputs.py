@@ -65,10 +65,47 @@ def _ico_frame(size):
         return im.convert("RGBA").copy()
 
 
+def _icns_frame(size, scale=1):
+    """Extract one raw raster from the committed icon.icns.
+
+    Goes through IcnsImageFile.icns.getimage((size, size, scale)) --
+    Pillow's own internal ICNS reader -- rather than the public
+    `im.size = (size, size); im.load()` pattern _ico_frame uses above.
+    That pattern is ambiguous for this file: icon.icns carries both a
+    512pt@1x (512px raw, "ic09") and a 512pt@2x (1024px raw, "ic10") entry,
+    and Pillow's IcnsImageFile.size setter accepts the *first* entry whose
+    scale evenly divides the requested value -- which is ic10, not ic09,
+    because Pillow's SIZES dict happens to list the @2x entries first.
+    Concretely: `im.size = (512, 512); im.load()` silently returns the
+    1024x1024 raster, not the 512x512 one. Addressing the (size, size,
+    scale) key directly sidesteps that ambiguity. This needs no macOS
+    tooling (iconutil) at all -- Pillow's ICNS decoder is pure Python --
+    so it runs on whatever CI job has Pillow installed, same as the rest
+    of this module's Pillow-gated tests.
+    """
+    Image = _pil_image()
+    with Image.open(ICNS) as im:
+        return im.icns.getimage((size, size, scale)).convert("RGBA").copy()
+
+
 def _abs_diff(a, b):
     """Sum of absolute channel differences. Uses tobytes() rather than
     getdata(), which Pillow deprecates and removes in 14."""
     return sum(abs(x - y) for x, y in zip(a.tobytes(), b.tobytes()))
+
+
+def _content_bbox_pct_width(image):
+    """Opaque-content bounding-box width as a percentage of tile width.
+
+    Used to measure how much margin a rendered icon leaves around its
+    squircle -- see icon_manifest.MACOS_TILE_SCALE for why icon.icns wants
+    80-81% here while icon.ico wants ~100% (full-bleed).
+    """
+    alpha = image.split()[-1]
+    bbox = alpha.getbbox()
+    assert bbox is not None, "image is fully transparent"
+    left, _top, right, _bottom = bbox
+    return 100.0 * (right - left) / image.width
 
 
 def test_small_sizes_come_from_the_simple_master():
@@ -142,6 +179,44 @@ def test_icns_exists_and_is_non_trivial():
     assert ICNS.stat().st_size > 50_000, "icon.icns looks truncated"
 
 
+def test_icns_512_slot_sits_inside_the_macos_tile_margin():
+    """icon.icns's squircle must be inset from the tile edge, like every
+    neighbouring macOS app's Dock icon -- not edge-to-edge the way both SVG
+    masters draw it. Measured across 15 installed apps at their 512px slot
+    (Claude, Discord, balenaEtcher, qbittorrent, CodexBar, Scroll Reverser,
+    ...), content bounding-box width ranged 80.4-85.2% of tile width
+    (median 81.2%); 824/1024 = 80.5% matches Apple's own icon template and
+    the tightest of those apps -- see icon_manifest.MACOS_TILE_SCALE.
+
+    80-81% is tight enough to catch a future re-render that silently drops
+    the macOS-tile wrapper and reverts to full-bleed (which would measure
+    100%, same as icon.ico below), loose enough to tolerate Chromium
+    rasterizer rounding.
+    """
+    frame = _icns_frame(512, 1)
+    pct = _content_bbox_pct_width(frame)
+    assert 80.0 <= pct <= 81.0, (
+        f"icon.icns 512px slot content spans {pct:.2f}% of tile width, "
+        f"expected 80-81% (824/1024) -- the macOS tile margin looks lost"
+    )
+
+
+def test_ico_256_frame_is_still_full_bleed():
+    """Mirror image of the .icns test above: icon.ico (and by the same
+    pipeline, icon.png/icon_512.png/favicon.png/docs/assets/*) must stay
+    full-bleed, edge to edge -- the Windows/web convention a previous fix
+    on this project specifically restored. This is the guard against the
+    macOS-only tile margin leaking into the wrong container.
+    """
+    frame = _ico_frame(256)
+    pct = _content_bbox_pct_width(frame)
+    assert pct == pytest.approx(100.0, abs=0.5), (
+        f"icon.ico 256px frame content spans {pct:.2f}% of tile width, "
+        f"expected ~100% (full-bleed) -- has the .icns tile margin leaked "
+        f"into icon.ico?"
+    )
+
+
 def test_16px_is_not_a_downscale_of_the_detailed_art():
     """The whole point of two masters: the 16px slot must be distinct art.
 
@@ -176,6 +251,39 @@ def test_same_master_sizes_are_similar_control():
         f"16px and 32px frames differ by {diff:,}; they share a master and "
         f"should be close — the threshold in the sibling test is not meaningful"
     )
+
+
+def test_icns_sizes_still_span_both_masters():
+    """The two-master split above is only proven for icon.ico. icon.icns now
+    goes through a second, macOS-only render pass (render_icons.py's
+    render_set() with the _WRAPPER_MACOS_TILE margin) that the .ico pixel-diff
+    tests above never exercise, so it needs its own guard.
+
+    A pixel-diff test in the same shape as test_16px_is_not_a_downscale_of_
+    the_detailed_art was tried here first and rejected on measured evidence:
+    the macOS tile margin is sub-pixel at icon.icns's small-master sizes
+    (16px: margin = 16 * (1-824/1024)/2 ≈ 1.56px; 32px ≈ 3.1px; 64px ≈
+    6.25px), and Chromium's rounding of that sub-pixel margin turned out to
+    add more pixel-diff noise than the two-master signal itself: same-master
+    control pairs measured 22,402 (16px vs 32px) and 371,358 (64px vs 32px
+    upscaled), both close to or above the cross-master 16-vs-256 diff of
+    43,066 -- nowhere near the clean 3,025-vs-33,560 separation the .ico
+    version of this test relies on. A threshold test on that signal would be
+    flaky. This asserts the actual guarantee instead: the size->master
+    manifest that both the full-bleed and macOS-tile render passes read from
+    is the same one, and it still names a size from each master.
+    """
+    render_icons = _load_render_icons()
+    icns_masters = {icon_manifest.SIZE_SOURCES[s] for s in render_icons.ICNS_PIXEL_SIZES}
+    assert icon_manifest.SIMPLE in icns_masters, (
+        "no icon.icns slot is sourced from icon_small.svg any more"
+    )
+    assert icon_manifest.DETAILED in icns_masters, (
+        "no icon.icns slot is sourced from icon.svg any more"
+    )
+    # And pin the two sizes the module docstring above cites as evidence.
+    assert icon_manifest.SIZE_SOURCES[16] is icon_manifest.SIMPLE
+    assert icon_manifest.SIZE_SOURCES[256] is icon_manifest.DETAILED
 
 
 def test_missing_iconutil_leaves_tracked_artefacts_untouched(monkeypatch):
