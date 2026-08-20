@@ -530,7 +530,7 @@ def test_fills_only_token_is_not_a_text_colour(page):
             };
             const target = toRgb(bar);
             const bad = [];
-            for (const el of document.querySelectorAll('h1,h2,h3,p,a,li,span,div,code')) {
+            for (const el of document.querySelectorAll('h1,h2,h3,h4,p,a,li,span,button,pre,strong,em,div,code')) {
                 if (el.closest('.ascii-art')) continue;
                 if (!el.textContent.trim()) continue;
                 // Only elements that own a direct text node: a div/code

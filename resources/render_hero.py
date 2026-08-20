@@ -8,7 +8,7 @@ preview referenced by docs/index.html:16 and :22.
 Usage:  python3 resources/render_hero.py
 """
 
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from pathlib import Path
 
 from PIL import Image

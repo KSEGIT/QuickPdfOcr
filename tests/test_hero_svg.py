@@ -190,6 +190,29 @@ def test_hero_svg_rows_match_the_live_hero_terminal():
         f"terminal:\nsvg:  {svg_rows}\nlive: {live_rows}"
     )
 
+    # Direct source-of-truth assertion: the committed hero.svg must match the
+    # generator's ROWS data structure, not just the live page. Flattens the
+    # nonblank ROWS entries (each is a list of (text, color) tuples) into
+    # plain text strings and compares them with the svg_rows already extracted
+    # above, so a future edit to generate_hero_svg.ROWS that doesn't get
+    # regenerated into hero.svg fails here instead of silently drifting.
+    generate_hero_svg = pytest.importorskip(
+        "generate_hero_svg", reason="asset tooling not installed"
+    )
+    source_rows = [
+        "".join(text for text, _color in row)
+        for row in generate_hero_svg.ROWS
+        if row is not None
+    ]
+    # svg_rows already has NBSP normalized to plain space, so normalize
+    # source_rows the same way for comparison
+    source_rows_normalized = [row.replace("\u00A0", " ") for row in source_rows]
+    assert svg_rows == source_rows_normalized, (
+        f"hero.svg has drifted from generate_hero_svg.ROWS:\n"
+        f"svg:    {svg_rows}\n"
+        f"source: {source_rows_normalized}"
+    )
+
 
 def test_frame_rows_render_to_equal_widths():
     """The actual regression test for finding #6: every framed row (title
