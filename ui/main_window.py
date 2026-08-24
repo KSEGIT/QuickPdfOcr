@@ -1,6 +1,6 @@
 """
 Main Window UI for QuickPdfOcr
-Features: drag-and-drop file upload, OCR processing with progress feedback, 
+Features: drag-and-drop file upload, OCR processing with progress feedback,
 text display with copy functionality
 """
 
@@ -9,104 +9,243 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QFileDialog, QMessageBox, QComboBox
 )
-from PySide6.QtCore import Qt, Signal, QThread, QTimer
-from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from PySide6.QtCore import Qt, Signal, QThread, QTimer, QSize
+from PySide6.QtGui import QColor, QDragEnterEvent, QDropEvent, QPalette
 
 from components.ocr_worker import OCRWorker
 from components.ocr import describe_language, get_engine
+from ui.icons import load_icon
+from ui.theme import (
+    ACCENT, BG, DIM, ERR, FRAME, FRAME_HOVER, FRAME_PRESSED, OK, SURFACE, TEXT, WARN,
+)
+
+# Logical pixel size icons are rendered at for buttons -- see ui/icons.py.
+_ICON_SIZE = 18
+
+# Qt's default (unstyled) scrollbar renders in the native light appearance
+# regardless of the rest of the widget's QSS -- left alone, it shows up as
+# a plain white/grey bar against text_area's dark panel the moment content
+# overflows. Shared by text_area and the language combo's popup view, the
+# two scrollable widgets in this window.
+_SCROLLBAR_QSS = f"""
+    QScrollBar:vertical {{
+        background: {SURFACE};
+        width: 12px;
+        margin: 0px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: {FRAME};
+        border-radius: 5px;
+        min-height: 24px;
+    }}
+    QScrollBar::handle:vertical:hover {{
+        background: {FRAME_HOVER};
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0px;
+        border: none;
+    }}
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+        background: none;
+    }}
+"""
+
+
+def _drop_zone_style(border_color: str, text_color: str) -> str:
+    """QSS for DropZoneLabel's four states: idle, drag-hover, warning, and
+    accepted all share the same geometry (dashed border, big centered
+    padding) and only differ in which colour carries the state, so this is
+    the one place that geometry is written out."""
+    return f"""
+        QLabel {{
+            border: 3px dashed {border_color};
+            border-radius: 10px;
+            padding: 40px;
+            background-color: {SURFACE};
+            font-size: 16px;
+            color: {text_color};
+        }}
+    """
+
+
+def _status_style(text_color: str, accent_color: str) -> str:
+    """QSS for progress_label's four semantic states (active/success/
+    warning/error): a --surface card whose left border carries the state's
+    accent colour.
+
+    `text_color` is `accent_color` itself for the active/success states --
+    ACCENT and OK both clear the 4.5:1 text floor against --surface (see
+    tests/test_ui_theme.py). The warning and error states both pass TEXT
+    instead: WARN *could* be used as text here too (6.81:1 on --surface),
+    but the one caller that reaches the warning state (open_file()'s
+    "already running" branch) keeps the message body in TEXT for visual
+    consistency with the error state, using WARN only for the left-border
+    accent. ERR has no such choice -- it only clears the 3:1 non-text floor
+    against --surface (3.89:1), not the 4.5:1 text floor, so TEXT is not
+    optional there the same way it is for warning -- the same lesson
+    docs/index.html's --bar/--bar-ink split encodes for the site.
+    """
+    return f"""
+        QLabel {{
+            color: {text_color};
+            font-size: 14px;
+            padding: 10px;
+            background-color: {SURFACE};
+            border-left: 4px solid {accent_color};
+            border-radius: 5px;
+        }}
+    """
+
+
+def _button_style(font_size: int = 14) -> str:
+    """QSS shared by every QPushButton in this window.
+
+    background=FRAME/color=BG (5.98:1) is the same "dark ink on light-indigo
+    fill" formula docs/index.html's filled .btn-primary variants settled on
+    -- white-on-FRAME measures 2.98:1 there and fails, which is why this
+    reuses that finding instead of re-deriving it. FRAME_HOVER is that same
+    page's --indigo-hover, reused verbatim for the hover fill (8.96:1).
+    FRAME_PRESSED is this file's own addition (the site has no :active state
+    to reuse) for a "pushed in" cue on click -- 4.89:1, see ui/theme.py.
+    """
+    return f"""
+        QPushButton {{
+            background-color: {FRAME};
+            color: {BG};
+            border: none;
+            border-radius: 5px;
+            font-size: {font_size}px;
+            font-weight: bold;
+            padding: 4px 12px;
+        }}
+        QPushButton:hover {{
+            background-color: {FRAME_HOVER};
+        }}
+        QPushButton:pressed {{
+            background-color: {FRAME_PRESSED};
+        }}
+        QPushButton:disabled {{
+            background-color: {SURFACE};
+            color: {DIM};
+        }}
+    """
 
 
 class DropZoneLabel(QLabel):
     """Custom label that accepts drag-and-drop file operations"""
-    
+
     file_dropped = Signal(str)
-    
-    _DEFAULT_TEXT = "📄 Drop PDF file here"
+
+    _DEFAULT_TEXT = "Drop PDF file here"
+
+    _IDLE_STYLE = _drop_zone_style(FRAME, DIM)
+    _DRAG_HOVER_STYLE = _drop_zone_style(ACCENT, ACCENT)
+    _WARNING_STYLE = _drop_zone_style(WARN, WARN)
+    _ACCEPTED_STYLE = _drop_zone_style(OK, OK)
 
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.setAcceptDrops(True)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Name of the currently-loaded file, or None. Tracked here (not just
+        # read off MainWindow.current_file) so _reset_text() -- fired by the
+        # warning timer below, entirely on its own schedule -- can tell
+        # whether a file is still loaded when it fires. See its docstring
+        # for the bug this exists to fix.
+        self._accepted_file_name: str | None = None
+
         # Timer to auto-clear the drop-zone warning after a delay
         self._warning_timer = QTimer(self)
         self._warning_timer.setSingleShot(True)
         self._warning_timer.timeout.connect(self._reset_text)
 
-        self.setStyleSheet("""
-            QLabel {
-                border: 3px dashed #aaa;
-                border-radius: 10px;
-                padding: 40px;
-                background-color: #f5f5f5;
-                font-size: 16px;
-                color: #666;
-            }
-            QLabel:hover {
-                border-color: #2196F3;
-                background-color: #e3f2fd;
-                color: #1976D2;
-            }
-        """)
-    
+        self.setStyleSheet(self._IDLE_STYLE)
+
     def dragEnterEvent(self, event: QDragEnterEvent):
         """Accept drag events with files"""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            self.setStyleSheet("""
-                QLabel {
-                    border: 3px dashed #2196F3;
-                    border-radius: 10px;
-                    padding: 40px;
-                    background-color: #e3f2fd;
-                    font-size: 16px;
-                    color: #1976D2;
-                }
-            """)
-    
+            self.setStyleSheet(self._DRAG_HOVER_STYLE)
+
     def dragLeaveEvent(self, event):
         """Reset style when drag leaves"""
-        self.setStyleSheet("""
-            QLabel {
-                border: 3px dashed #aaa;
-                border-radius: 10px;
-                padding: 40px;
-                background-color: #f5f5f5;
-                font-size: 16px;
-                color: #666;
-            }
-            QLabel:hover {
-                border-color: #2196F3;
-                background-color: #e3f2fd;
-                color: #1976D2;
-            }
-        """)
-    
+        self.setStyleSheet(self._IDLE_STYLE)
+
     def dropEvent(self, event: QDropEvent):
         """Handle dropped files"""
         files = [url.toLocalFile() for url in event.mimeData().urls()]
+        event.acceptProposedAction()
+        # Clear the drag-hover decoration *before* deciding the outcome
+        # below, not after: the warning/accepted styles those branches set
+        # must be the last stylesheet applied, or this unconditional
+        # dragLeaveEvent() call -- previously last -- immediately overwrote
+        # them with the idle style within the same call, so the warning
+        # colour never actually appeared (only its text did).
+        self.dragLeaveEvent(event)
         if not files:
             self._show_drop_warning()
         elif files[0].lower().endswith('.pdf'):
             self.file_dropped.emit(files[0])
         else:
             self._show_drop_warning()
-        event.acceptProposedAction()
-        self.dragLeaveEvent(event)
 
     def _show_drop_warning(self):
         """Show a temporary warning when a non-PDF (or empty) drop occurs."""
-        self.setText("⚠️ Please drop a PDF file")
+        self.setText("Please drop a PDF file")
+        self.setStyleSheet(self._WARNING_STYLE)
         self._warning_timer.start(3000)
 
     def _reset_text(self):
-        """Restore the default drop-zone label text."""
+        """Restore the drop zone once the warning timer fires.
+
+        Regression fix: this used to unconditionally reset to the empty
+        idle state ("Drop PDF file here"), including while a file was
+        already loaded -- e.g. drop a valid PDF, then drop a .txt on top of
+        it 2 seconds later: 3 seconds after *that*, this fired and blanked
+        the zone back to "Drop PDF file here" even though current_file,
+        file_label, and the still-enabled Start OCR button all still
+        referred to the original PDF. The zone told the user nothing was
+        loaded while Start OCR would have silently run on the old file.
+        Restoring the accepted display (when set_accepted() has been
+        called since the last reset_to_idle()) instead of always going to
+        idle fixes that without DropZoneLabel needing to know anything
+        about OCR state -- only whether *it* was last told a file was
+        accepted.
+        """
+        if self._accepted_file_name is not None:
+            self.setText(self._accepted_file_name)
+            self.setStyleSheet(self._ACCEPTED_STYLE)
+        else:
+            self.setText(self._DEFAULT_TEXT)
+            self.setStyleSheet(self._IDLE_STYLE)
+
+    def set_accepted(self, file_name: str):
+        """Show `file_name` as the currently-loaded file.
+
+        Cancels any pending warning-reset timer, so a warning from a
+        rejected drop that happened *before* this file was accepted cannot
+        later fire and overwrite this display -- and records the name so a
+        *later* warning (e.g. a stray invalid drop after this file is
+        already loaded) restores this display instead of blanking it; see
+        _reset_text().
+        """
+        self._warning_timer.stop()
+        self._accepted_file_name = file_name
+        self.setText(file_name)
+        self.setStyleSheet(self._ACCEPTED_STYLE)
+
+    def reset_to_idle(self):
+        """Explicitly clear back to the empty idle state (Start Over)."""
+        self._warning_timer.stop()
+        self._accepted_file_name = None
         self.setText(self._DEFAULT_TEXT)
+        self.setStyleSheet(self._IDLE_STYLE)
 
 
 class MainWindow(QMainWindow):
     """Main application window"""
-    
+
     def __init__(self):
         super().__init__()
         self.current_file = None
@@ -119,42 +258,36 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("QuickPdfOcr")
         self.setMinimumSize(600, 500)
-        
+
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """Setup the user interface"""
         # Central widget and main layout
         central_widget = QWidget()
+        central_widget.setStyleSheet(f"background-color: {BG};")
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
-        
+
         # Drop zone label
         self.drop_zone = DropZoneLabel(DropZoneLabel._DEFAULT_TEXT)
         self.drop_zone.file_dropped.connect(self._on_file_dropped)
         layout.addWidget(self.drop_zone)
-        
-        # Open file button
-        self.open_btn = QPushButton("📁 Open PDF File")
+
+        # Open file button. disabled_color=DIM: this button is disabled
+        # during an OCR run (_set_controls_enabled(False)); without an
+        # explicit disabled-mode pixmap, Qt auto-generates one via its
+        # style's default grey-out algorithm -- measured at #6C6C6C, only
+        # 2.79:1 on SURFACE (below even the 3:1 non-text floor). DIM
+        # matches the disabled *text* colour in _button_style() below, so
+        # icon and label dim together at a colour that actually clears it.
+        self.open_btn = QPushButton("Open PDF File")
+        self.open_btn.setIcon(load_icon("folder-open.svg", BG, _ICON_SIZE, disabled_color=DIM))
+        self.open_btn.setIconSize(QSize(_ICON_SIZE, _ICON_SIZE))
         self.open_btn.setMinimumHeight(40)
-        self.open_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #1976D2;
-            }
-            QPushButton:pressed {
-                background-color: #0D47A1;
-            }
-        """)
+        self.open_btn.setStyleSheet(_button_style(14))
         self.open_btn.clicked.connect(self._open_file_dialog)
         layout.addWidget(self.open_btn)
 
@@ -163,11 +296,27 @@ class MainWindow(QMainWindow):
         language_layout.setSpacing(10)
 
         language_caption = QLabel("Language:")
-        language_caption.setStyleSheet("color: #333;")
+        language_caption.setStyleSheet(f"color: {DIM};")
         language_layout.addWidget(language_caption)
 
         self.language_combo = QComboBox()
         self.language_combo.setMinimumHeight(30)
+        self.language_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {SURFACE};
+                color: {TEXT};
+                border: 1px solid {FRAME};
+                border-radius: 5px;
+                padding: 4px 8px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {SURFACE};
+                color: {TEXT};
+                selection-background-color: {FRAME};
+                selection-color: {BG};
+            }}
+            {_SCROLLBAR_QSS}
+        """)
         self._populate_languages()
         language_layout.addWidget(self.language_combo, 1)
 
@@ -175,141 +324,104 @@ class MainWindow(QMainWindow):
 
         # File name label (hidden initially)
         self.file_label = QLabel("")
-        self.file_label.setStyleSheet("color: #333; font-weight: bold;")
+        self.file_label.setStyleSheet(f"color: {TEXT}; font-weight: bold;")
         self.file_label.hide()
         layout.addWidget(self.file_label)
-        
-        # Start OCR button (hidden initially)
-        self.start_ocr_btn = QPushButton("🚀 Start OCR")
+
+        # Start OCR button (hidden initially). disabled_color=DIM: see the
+        # matching comment on open_btn above -- this is the other button
+        # _set_controls_enabled(False) disables during an OCR run.
+        self.start_ocr_btn = QPushButton("Start OCR")
+        self.start_ocr_btn.setIcon(load_icon("scan-text.svg", BG, _ICON_SIZE, disabled_color=DIM))
+        self.start_ocr_btn.setIconSize(QSize(_ICON_SIZE, _ICON_SIZE))
         self.start_ocr_btn.setMinimumHeight(40)
-        self.start_ocr_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #2E7D32;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-                color: #666666;
-            }
-        """)
+        self.start_ocr_btn.setStyleSheet(_button_style(14))
         self.start_ocr_btn.clicked.connect(self._start_ocr)
         self.start_ocr_btn.hide()
         layout.addWidget(self.start_ocr_btn)
-        
+
         # Progress/feedback label (hidden initially)
-        self.progress_label = QLabel("⏳ Processing...")
+        self.progress_label = QLabel("Processing...")
         self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.progress_label.setStyleSheet("""
-            QLabel {
-                color: #1976D2;
-                font-size: 14px;
-                padding: 10px;
-                background-color: #e3f2fd;
-                border-radius: 5px;
-            }
-        """)
+        self.progress_label.setStyleSheet(_status_style(ACCENT, ACCENT))
         self.progress_label.hide()
         layout.addWidget(self.progress_label)
-        
+
         # Text area for results (hidden initially)
         self.text_area = QTextEdit()
         self.text_area.setReadOnly(True)
         self.text_area.setPlaceholderText("Extracted text will appear here...")
-        self.text_area.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #ccc;
+        # Deliberately no `color:` in this QSS block -- see the QPalette
+        # block below for why. background/border/padding/font are fine as
+        # QSS since none of them have this problem.
+        self.text_area.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {SURFACE};
+                border: 1px solid {FRAME};
                 border-radius: 5px;
                 padding: 10px;
                 font-family: monospace;
                 font-size: 12px;
-            }
+            }}
+            {_SCROLLBAR_QSS}
         """)
+        # Both the real text colour and the placeholder colour are set via
+        # QPalette, not QSS's `color:` property, and in that order (palette
+        # after stylesheet). QSS has no property for placeholder-text
+        # colour, so with no explicit override Qt derives it from the `color:`
+        # declaration at 50% alpha composited over the background -- verified
+        # by rendering off-screen and sampling the painted glyphs: that
+        # composite measures ~4.1:1 against SURFACE, below the 4.5:1 text
+        # floor, and the placeholder is the only text visible in this panel
+        # before an OCR run. Setting PlaceholderText via QPalette *while a
+        # `color:` QSS rule is still present* was tried first and verified
+        # NOT to work -- Qt's stylesheet engine re-derives PlaceholderText
+        # from that rule on every polish, silently discarding the palette
+        # value regardless of which was set first. Omitting `color:` from
+        # the QSS avoids that engine entirely, so the explicit Text and
+        # PlaceholderText roles below are what actually gets painted for both
+        # real content and placeholder.
+        text_area_palette = self.text_area.palette()
+        text_area_palette.setColor(QPalette.ColorRole.Text, QColor(TEXT))
+        text_area_palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(DIM))
+        self.text_area.setPalette(text_area_palette)
         self.text_area.hide()
         layout.addWidget(self.text_area, 1)  # Stretch factor of 1
-        
+
         # Button container for copy and retry buttons
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
-        
+
         # Copy button (hidden initially)
-        self.copy_btn = QPushButton("📋 Copy to Clipboard")
+        self.copy_btn = QPushButton("Copy to Clipboard")
+        self.copy_btn.setIcon(load_icon("clipboard.svg", BG, _ICON_SIZE))
+        self.copy_btn.setIconSize(QSize(_ICON_SIZE, _ICON_SIZE))
         self.copy_btn.setMinimumHeight(35)
-        self.copy_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FF9800;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #F57C00;
-            }
-            QPushButton:pressed {
-                background-color: #E65100;
-            }
-        """)
+        self.copy_btn.setStyleSheet(_button_style(13))
         self.copy_btn.clicked.connect(self._copy_to_clipboard)
         self.copy_btn.hide()
         button_layout.addWidget(self.copy_btn)
-        
+
         # Try again button (hidden initially)
-        self.retry_btn = QPushButton("🔄 Try Again")
+        self.retry_btn = QPushButton("Try Again")
+        self.retry_btn.setIcon(load_icon("rotate-ccw.svg", BG, _ICON_SIZE))
+        self.retry_btn.setIconSize(QSize(_ICON_SIZE, _ICON_SIZE))
         self.retry_btn.setMinimumHeight(35)
-        self.retry_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f44336;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #d32f2f;
-            }
-            QPushButton:pressed {
-                background-color: #b71c1c;
-            }
-        """)
+        self.retry_btn.setStyleSheet(_button_style(13))
         self.retry_btn.clicked.connect(self._retry_ocr)
         self.retry_btn.hide()
         button_layout.addWidget(self.retry_btn)
-        
+
         # Start over button (hidden initially)
-        self.start_over_btn = QPushButton("🏠 Start Over")
+        self.start_over_btn = QPushButton("Start Over")
+        self.start_over_btn.setIcon(load_icon("house.svg", BG, _ICON_SIZE))
+        self.start_over_btn.setIconSize(QSize(_ICON_SIZE, _ICON_SIZE))
         self.start_over_btn.setMinimumHeight(35)
-        self.start_over_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #9E9E9E;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #757575;
-            }
-            QPushButton:pressed {
-                background-color: #616161;
-            }
-        """)
+        self.start_over_btn.setStyleSheet(_button_style(13))
         self.start_over_btn.clicked.connect(self._start_over)
         self.start_over_btn.hide()
         button_layout.addWidget(self.start_over_btn)
-        
+
         layout.addLayout(button_layout)
 
     def _populate_languages(self):
@@ -349,10 +461,10 @@ class MainWindow(QMainWindow):
             "",
             "PDF Files (*.pdf)"
         )
-        
+
         if file_path:
             self._on_file_dropped(file_path)
-    
+
     def _is_ocr_running(self) -> bool:
         """Whether an OCR run is currently in progress.
 
@@ -386,35 +498,27 @@ class MainWindow(QMainWindow):
         if self._is_ocr_running():
             file_name = Path(file_path).name
             self.progress_label.setText(
-                f"⚠️ Ignored \"{file_name}\": an OCR run is already in "
+                f"Ignored \"{file_name}\": an OCR run is already in "
                 "progress. Please wait for it to finish."
             )
-            self.progress_label.setStyleSheet("""
-                QLabel {
-                    color: #C62828;
-                    font-size: 14px;
-                    padding: 10px;
-                    background-color: #FFCDD2;
-                    border-radius: 5px;
-                }
-            """)
+            self.progress_label.setStyleSheet(_status_style(TEXT, WARN))
             self.progress_label.show()
             return
 
         self.current_file = file_path
         file_name = Path(file_path).name
 
-        # Cancel any pending warning-reset timer so it cannot overwrite the
-        # filename we are about to display.  This is the single code path for
-        # both drag-drop and file-dialog selection.
-        self.drop_zone._warning_timer.stop()
-
-        # Update UI
-        self.drop_zone.setText(f"✅ {file_name}")
+        # Update UI. set_accepted() also cancels any pending warning-reset
+        # timer (so it cannot overwrite the filename about to be shown) and
+        # records file_name so a *later* stray warning restores this
+        # display instead of blanking it -- see DropZoneLabel._reset_text().
+        # This is the single code path for both drag-drop and file-dialog
+        # selection.
+        self.drop_zone.set_accepted(file_name)
         self.file_label.setText(f"Selected: {file_name}")
         self.file_label.show()
         self.start_ocr_btn.show()
-        
+
         # Hide previous results
         self.text_area.hide()
         self.text_area.clear()
@@ -460,17 +564,9 @@ class MainWindow(QMainWindow):
                     # here so the window isn't left permanently unusable.
                     self._set_controls_enabled(True)
                     self.progress_label.setText(
-                        "❌ The previous OCR run could not be stopped. Please try again."
+                        "The previous OCR run could not be stopped. Please try again."
                     )
-                    self.progress_label.setStyleSheet("""
-                        QLabel {
-                            color: #C62828;
-                            font-size: 14px;
-                            padding: 10px;
-                            background-color: #FFCDD2;
-                            border-radius: 5px;
-                        }
-                    """)
+                    self.progress_label.setStyleSheet(_status_style(TEXT, ERR))
                     self.progress_label.show()
                     return
 
@@ -478,16 +574,8 @@ class MainWindow(QMainWindow):
         self._set_controls_enabled(False)
 
         # Show progress
-        self.progress_label.setText("⏳ Converting PDF to images...")
-        self.progress_label.setStyleSheet("""
-            QLabel {
-                color: #1976D2;
-                font-size: 14px;
-                padding: 10px;
-                background-color: #e3f2fd;
-                border-radius: 5px;
-            }
-        """)
+        self.progress_label.setText("Converting PDF to images...")
+        self.progress_label.setStyleSheet(_status_style(ACCENT, ACCENT))
         self.progress_label.show()
 
         # Create worker thread
@@ -542,24 +630,16 @@ class MainWindow(QMainWindow):
 
         # Start processing
         self.ocr_thread.start()
-    
+
     def _on_progress(self, message: str):
         """Update progress message"""
-        self.progress_label.setText(f"⏳ {message}")
-    
+        self.progress_label.setText(message)
+
     def _on_ocr_success(self, text: str):
         """Handle successful OCR completion"""
-        self.progress_label.setText("✅ OCR completed successfully!")
-        self.progress_label.setStyleSheet("""
-            QLabel {
-                color: #2E7D32;
-                font-size: 14px;
-                padding: 10px;
-                background-color: #C8E6C9;
-                border-radius: 5px;
-            }
-        """)
-        
+        self.progress_label.setText("OCR completed successfully!")
+        self.progress_label.setStyleSheet(_status_style(OK, OK))
+
         # Show results
         self.text_area.setPlainText(text)
         self.text_area.show()
@@ -581,17 +661,9 @@ class MainWindow(QMainWindow):
 
     def _on_ocr_error(self, error_msg: str):
         """Handle OCR error"""
-        self.progress_label.setText(f"❌ Error: {error_msg}")
-        self.progress_label.setStyleSheet("""
-            QLabel {
-                color: #C62828;
-                font-size: 14px;
-                padding: 10px;
-                background-color: #FFCDD2;
-                border-radius: 5px;
-            }
-        """)
-        
+        self.progress_label.setText(f"Error: {error_msg}")
+        self.progress_label.setStyleSheet(_status_style(TEXT, ERR))
+
         # Show retry buttons
         self.retry_btn.show()
         self.start_over_btn.show()
@@ -606,11 +678,11 @@ class MainWindow(QMainWindow):
     def _copy_to_clipboard(self):
         """Copy text to clipboard (works on macOS, Linux, Windows)"""
         from PySide6.QtGui import QGuiApplication
-        
+
         text = self.text_area.toPlainText()
         clipboard = QGuiApplication.clipboard()
         clipboard.setText(text)
-        
+
         # Show confirmation
         QMessageBox.information(
             self,
@@ -618,14 +690,14 @@ class MainWindow(QMainWindow):
             "Text copied to clipboard!",
             QMessageBox.StandardButton.Ok
         )
-    
+
     def _retry_ocr(self):
         """Retry OCR on the same file"""
         self.retry_btn.hide()
         self.start_over_btn.hide()
         self.progress_label.hide()
         self._start_ocr()
-    
+
     def _start_over(self):
         """Reset to initial state"""
         self.current_file = None
@@ -645,9 +717,9 @@ class MainWindow(QMainWindow):
             self.ocr_thread = None
 
         # Reset drop zone
-        self.drop_zone.setText(DropZoneLabel._DEFAULT_TEXT)
+        self.drop_zone.reset_to_idle()
         self.drop_zone.setAcceptDrops(True)
-        
+
         # Hide all optional elements
         self.file_label.hide()
         self.start_ocr_btn.hide()
@@ -657,6 +729,6 @@ class MainWindow(QMainWindow):
         self.copy_btn.hide()
         self.retry_btn.hide()
         self.start_over_btn.hide()
-        
+
         # Re-enable controls
         self._set_controls_enabled(True)
