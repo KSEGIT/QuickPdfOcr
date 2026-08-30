@@ -101,8 +101,28 @@ def _icns_frame(size: int, scale: int = 1) -> PILImage:
 
 def _abs_diff(a: PILImage, b: PILImage) -> int:
     """Sum of absolute channel differences. Uses tobytes() rather than
-    getdata(), which Pillow deprecates and removes in 14."""
-    return sum(abs(x - y) for x, y in zip(a.tobytes(), b.tobytes()))
+    getdata(), which Pillow deprecates and removes in 14.
+
+    Rejects mismatched rasters up front instead of letting zip() truncate
+    to the shorter one. Both callers resize to a common size first, so this
+    cannot fire today -- but if a future one forgot, the failure mode is a
+    false *pass* on the test that matters most.
+    test_16px_is_not_a_downscale_of_the_detailed_art asserts diff > 10_000
+    and calls itself "the only guard against a silent regression to
+    single-master rendering"; measured, an unresized 16-vs-256 comparison
+    truncates to the first 1KB of 256KB and returns 72,033, comfortably
+    clearing that threshold while comparing 0.4% of the image. (The sibling
+    < 10_000 control fails loudly instead, at 25,882 for 16-vs-32 -- the
+    two thresholds point in opposite directions, so truncation can break
+    either way.) Guards whose broken state looks like success are the ones
+    worth hardening. Mode is checked alongside size because tobytes()
+    length depends on both.
+    """
+    if (a.size, a.mode) != (b.size, b.mode):
+        raise ValueError(
+            f"cannot diff mismatched rasters: {a.size} {a.mode} vs {b.size} {b.mode}"
+        )
+    return sum(abs(x - y) for x, y in zip(a.tobytes(), b.tobytes(), strict=True))
 
 
 def _content_bbox_pct_width(image: PILImage) -> float:
@@ -248,6 +268,20 @@ def test_16px_is_not_a_downscale_of_the_detailed_art():
         f"16px frame is indistinguishable from a downscale of the 256px frame "
         f"(diff={diff:,}) — the two-master split has regressed"
     )
+
+
+def test_abs_diff_rejects_mismatched_rasters():
+    """The truncation guard in _abs_diff must actually fire.
+
+    Without it, zip() stops at the 16px operand and sums over 1KB of a
+    256KB comparison. Measured, that returns 72,033 -- which satisfies
+    test_16px_is_not_a_downscale_of_the_detailed_art's `diff > 10_000`, so
+    the two-master split would read as intact on the strength of 0.4% of
+    the image.
+    """
+    _pil_image()
+    with pytest.raises(ValueError, match="mismatched rasters"):
+        _abs_diff(_ico_frame(16), _ico_frame(256))
 
 
 def test_same_master_sizes_are_similar_control():
