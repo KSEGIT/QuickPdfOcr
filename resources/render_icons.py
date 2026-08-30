@@ -27,7 +27,7 @@ import shutil
 from pathlib import Path
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Browser, sync_playwright
 
 from create_icns import ICONSET_SLOTS, create_icns_from_pngs
 from icon_manifest import (
@@ -112,7 +112,7 @@ _WRAPPER_MACOS_TILE = _html_wrapper(
 
 
 def render_set(
-    browser, sizes_masters: dict[int, Path], wrapper: str, out_dir: Path
+    browser: Browser, sizes_masters: dict[int, Path], wrapper: str, out_dir: Path
 ) -> dict[int, Path]:
     """Render each size in sizes_masters from its designated master, through
     the given HTML wrapper, into out_dir. Returns {size: png_path}.

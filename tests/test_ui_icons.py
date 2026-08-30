@@ -11,7 +11,8 @@ missing file's FileNotFoundError and degrades to a null QIcon rather than
 crashing, see test_load_icon_degrades_gracefully_for_a_missing_file below).
 """
 import re
-from pathlib import Path
+import sys
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -91,9 +92,10 @@ def test_every_referenced_icon_exists(name):
 
 
 def test_load_icon_degrades_gracefully_for_a_missing_file(qapp, capsys):
-    """A missing icon asset (e.g. a packaging step that has not been taught
-    to bundle resources/icons/ yet -- see the desktop-ui report) must not
-    crash window construction. ui.icons.load_icon() catches
+    """A missing icon asset -- a partial checkout, a corrupted install, or
+    a future packaging change that drops the directory past the guard in
+    test_spec_bundles_every_referenced_icon below -- must not crash window
+    construction. ui.icons.load_icon() catches
     FileNotFoundError and returns a null QIcon with a stderr warning,
     mirroring main.py's own app-icon loading convention, rather than
     propagating and aborting MainWindow.__init__() partway through."""
@@ -169,3 +171,108 @@ def test_vendored_icons_still_use_current_color():
             f"{svg_path.name} no longer uses stroke=\"currentColor\"; "
             "ui/icons.py's tinting will silently stop working for it"
         )
+
+
+# --- Packaging: the icons have to survive the freeze -------------------------
+#
+# test_every_referenced_icon_exists above proves the SVGs are in the source
+# tree. That says nothing about the frozen app: PyInstaller ships only what
+# packaging/quickpdfocr.spec lists in `datas`, and that spec deliberately
+# enumerates individual rendered artefacts instead of sweeping the whole
+# resources/ tree (see its ICON_ASSETS comment). resources/icons/ was not on
+# that list, so every button in a built .app fell through load_icon()'s
+# missing-file path to a null QIcon -- the exact scenario
+# test_load_icon_degrades_gracefully_for_a_missing_file's docstring names as
+# hypothetical ("a packaging step that has not been taught to bundle
+# resources/icons/ yet"). These two tests close it, and keep it closed.
+
+SPEC = Path(__file__).resolve().parent.parent / "packaging" / "quickpdfocr.spec"
+
+
+class _SpecStub:
+    """Stand-in for the PyInstaller build classes the spec calls.
+
+    The spec is a plain Python module that PyInstaller execs with Analysis/
+    PYZ/EXE/COLLECT/BUNDLE and SPECPATH injected as globals. Supplying
+    those as no-op stubs lets the test run the spec's *real* datas
+    expression -- list comprehension, ICON_ASSETS, platform branches and
+    all -- rather than string-matching its source, so a refactor that keeps
+    the behaviour keeps the test green and one that drops an asset does not.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.pure = self.scripts = self.binaries = self.datas = []
+
+
+def _spec_datas():
+    """The (source, destination) pairs packaging/quickpdfocr.spec passes to
+    Analysis(datas=...) on this platform."""
+    captured = {}
+
+    def _analysis(*args, **kwargs):
+        captured["datas"] = kwargs["datas"]
+        return _SpecStub()
+
+    namespace = {
+        "SPECPATH": str(SPEC.parent),
+        "Analysis": _analysis,
+        "PYZ": _SpecStub,
+        "EXE": _SpecStub,
+        "COLLECT": _SpecStub,
+        "BUNDLE": _SpecStub,
+    }
+    exec(compile(SPEC.read_text(encoding="utf-8"), str(SPEC), "exec"), namespace)
+    return captured["datas"]
+
+
+def _bundled_runtime_paths() -> set[str]:
+    """Every file the frozen bundle will contain, as a path relative to the
+    bundle root (sys._MEIPASS) -- directory entries expanded against the
+    real tree, exactly as PyInstaller copies them."""
+    paths = set()
+    for src, dest in _spec_datas():
+        src, dest = Path(src), PurePosixPath(dest)
+        if src.is_dir():
+            paths.update(
+                str(dest / child.relative_to(src).as_posix())
+                for child in src.rglob("*")
+                if child.is_file()
+            )
+        else:
+            paths.add(str(dest / src.name))
+    return paths
+
+
+@pytest.mark.parametrize("name", sorted(_referenced_icon_names()))
+def test_spec_bundles_every_referenced_icon(name):
+    """Each icon load_icon() asks for must land at resources/icons/<name>
+    inside the bundle -- the path ui.icons._bundle_root() resolves against
+    once sys.frozen is set."""
+    assert f"resources/icons/{name}" in _bundled_runtime_paths(), (
+        f"packaging/quickpdfocr.spec does not bundle resources/icons/{name}; "
+        "the frozen app would show that button with a null QIcon"
+    )
+
+
+def test_bundle_root_follows_meipass_when_frozen(monkeypatch, tmp_path):
+    """Frozen, the icons live under sys._MEIPASS, not next to this source
+    file. Resolving them relative to __file__ happens to land in the right
+    place for a plain onedir layout, but not through a macOS .app, whose
+    Contents/MacOS <-> Contents/Frameworks symlinks Path.resolve() follows
+    off the bundle root. main.py's own app-icon loading already reads
+    sys._MEIPASS for this reason; ui.icons now matches it."""
+    from ui import icons as icons_mod
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+
+    assert icons_mod._bundle_root() == tmp_path
+
+
+def test_bundle_root_is_the_source_tree_when_not_frozen():
+    """The unfrozen branch still resolves to the repo root, so a dev run
+    reads resources/icons/ straight out of the checkout."""
+    from ui import icons as icons_mod
+
+    assert not getattr(sys, "frozen", False), "fixture assumption: tests are not frozen"
+    assert icons_mod._bundle_root() == Path(__file__).resolve().parent.parent
