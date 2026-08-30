@@ -269,3 +269,6 @@ tesseract-installer.exe
 
 # Icon render pipeline intermediates
 resources/_render/
+
+# version sentinel
+.version-sentinel/
