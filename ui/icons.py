@@ -23,7 +23,27 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
-ICONS_DIR = Path(__file__).resolve().parent.parent / "resources" / "icons"
+def _bundle_root() -> Path:
+    """The directory resources/ sits under, frozen or not.
+
+    Frozen, PyInstaller extracts datas relative to sys._MEIPASS, so that is
+    the root -- the same branch main.py already uses to find icon.ico. From
+    source it is the repo root, two levels up from this file.
+
+    Deriving it from __file__ unconditionally would *usually* work for a
+    onedir build (PyInstaller reports a __file__ under the bundle root for
+    frozen modules), but not reliably through a macOS .app: its
+    Contents/MacOS and Contents/Frameworks are symlinked into each other,
+    and Path.resolve() follows those, so parent.parent can land outside the
+    tree the datas were extracted to. sys._MEIPASS is the value PyInstaller
+    itself guarantees.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent.parent
+
+
+ICONS_DIR = _bundle_root() / "resources" / "icons"
 
 # Icons are rasterized at 2x the requested logical size and tagged via
 # QPixmap.setDevicePixelRatio(), so they stay crisp on Retina/HiDPI displays
@@ -93,8 +113,9 @@ def load_icon(name: str, color: str, size: int = 20, *, disabled_color: str | No
     whole window's construction. tests/test_ui_icons.py is the real guard
     against a typo'd `name` ever reaching here -- this is the last-resort
     fallback for an icon asset missing or corrupted at runtime for some
-    other reason, e.g. a packaging step that has not been taught to bundle
-    resources/icons/ yet.
+    other reason. (packaging/quickpdfocr.spec does bundle resources/icons/,
+    and tests/test_ui_icons.py asserts it keeps doing so, so a frozen build
+    reaching this path means something else went wrong.)
 
     `disabled_color`, if given, registers a second pixmap for QIcon::Disabled
     mode. Without it, Qt auto-generates a disabled-state pixmap via its

@@ -64,6 +64,9 @@ class _FakeMimeData:
     def urls(self):
         return self._urls
 
+    def hasUrls(self):
+        return bool(self._urls)
+
 
 class _FakeDropEvent:
     """Stand-in for QDropEvent: dropEvent() only calls mimeData() and
@@ -107,6 +110,38 @@ def test_drop_zone_valid_pdf_emits_and_leaves_idle_style(qapp):
     zone.dropEvent(_FakeDropEvent([_FakeUrl("/tmp/sample.pdf")]))
 
     assert received == ["/tmp/sample.pdf"]
+    assert zone.styleSheet() == DropZoneLabel._IDLE_STYLE
+
+
+def test_drag_leave_restores_the_accepted_display_rather_than_idle(qapp):
+    """Regression test: dragLeaveEvent() used to apply _IDLE_STYLE
+    unconditionally, without touching the text. A drag that entered and
+    left again while a file was already loaded therefore left the accepted
+    *filename* rendered in the idle style -- the same "zone display
+    disagrees with the loaded file" inconsistency _reset_text() was
+    introduced to fix, reached via the drag-leave path instead of the
+    warning timer. dragLeaveEvent() now delegates to that same helper."""
+    zone = DropZoneLabel(DropZoneLabel._DEFAULT_TEXT)
+    zone.set_accepted("report.pdf")
+
+    zone.dragEnterEvent(_FakeDropEvent([_FakeUrl("/tmp/other.txt")]))
+    assert zone.styleSheet() == DropZoneLabel._DRAG_HOVER_STYLE
+
+    zone.dragLeaveEvent(_FakeDropEvent([_FakeUrl("/tmp/other.txt")]))
+
+    assert zone.text() == "report.pdf"
+    assert zone.styleSheet() == DropZoneLabel._ACCEPTED_STYLE
+
+
+def test_drag_leave_stays_idle_when_no_file_was_ever_accepted(qapp):
+    """The other half of the branch: with nothing loaded, drag-leave must
+    still land on the idle text and style, exactly as before."""
+    zone = DropZoneLabel(DropZoneLabel._DEFAULT_TEXT)
+
+    zone.dragEnterEvent(_FakeDropEvent([_FakeUrl("/tmp/other.txt")]))
+    zone.dragLeaveEvent(_FakeDropEvent([_FakeUrl("/tmp/other.txt")]))
+
+    assert zone.text() == DropZoneLabel._DEFAULT_TEXT
     assert zone.styleSheet() == DropZoneLabel._IDLE_STYLE
 
 

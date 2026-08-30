@@ -1,6 +1,17 @@
 """Guards on the rendered icon artefacts and the size->master mapping."""
+from __future__ import annotations
+
 import sys
 from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    # Pillow is optional here (see _pil_image below), so the name is
+    # imported for annotations only. `from __future__ import annotations`
+    # keeps every annotation a string, so this never executes at runtime
+    # and the module still imports on a machine without Pillow.
+    from PIL.Image import Image as PILImage
 
 import pytest
 
@@ -36,7 +47,7 @@ DOCS_LOGO = DOCS_ASSETS / "logo.png"
 ICO_SIZES = [16, 32, 48, 64, 128, 256]
 
 
-def _pil_image():
+def _pil_image() -> ModuleType:
     """Pillow only where a test genuinely needs it to open/compare images.
 
     requirements.txt ships Pillow on sys_platform != 'darwin', so this skips
@@ -48,7 +59,7 @@ def _pil_image():
     return pytest.importorskip("PIL.Image", reason="Pillow is asset tooling")
 
 
-def _load_render_icons():
+def _load_render_icons() -> ModuleType:
     """Import the pipeline module, or skip. Playwright-dependent, so this is
     called only by the tests that genuinely need the rendering pipeline
     itself (as opposed to the size->master mapping, which lives in the
@@ -56,7 +67,7 @@ def _load_render_icons():
     return pytest.importorskip("render_icons", reason="asset tooling not installed")
 
 
-def _ico_frame(size):
+def _ico_frame(size: int) -> PILImage:
     """Extract one frame from the committed multi-size icon.ico."""
     Image = _pil_image()
     with Image.open(ICO) as im:
@@ -65,7 +76,7 @@ def _ico_frame(size):
         return im.convert("RGBA").copy()
 
 
-def _icns_frame(size, scale=1):
+def _icns_frame(size: int, scale: int = 1) -> PILImage:
     """Extract one raw raster from the committed icon.icns.
 
     Goes through IcnsImageFile.icns.getimage((size, size, scale)) --
@@ -88,13 +99,13 @@ def _icns_frame(size, scale=1):
         return im.icns.getimage((size, size, scale)).convert("RGBA").copy()
 
 
-def _abs_diff(a, b):
+def _abs_diff(a: PILImage, b: PILImage) -> int:
     """Sum of absolute channel differences. Uses tobytes() rather than
     getdata(), which Pillow deprecates and removes in 14."""
     return sum(abs(x - y) for x, y in zip(a.tobytes(), b.tobytes()))
 
 
-def _content_bbox_pct_width(image):
+def _content_bbox_pct_width(image: PILImage) -> float:
     """Opaque-content bounding-box width as a percentage of tile width.
 
     Used to measure how much margin a rendered icon leaves around its

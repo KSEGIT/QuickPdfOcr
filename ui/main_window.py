@@ -169,8 +169,22 @@ class DropZoneLabel(QLabel):
             self.setStyleSheet(self._DRAG_HOVER_STYLE)
 
     def dragLeaveEvent(self, event):
-        """Reset style when drag leaves"""
-        self.setStyleSheet(self._IDLE_STYLE)
+        """Clear the drag-hover decoration and restore the previous state.
+
+        Delegates to _reset_text() rather than applying _IDLE_STYLE
+        unconditionally: this handler never touched the *text*, so on a
+        zone with a file already loaded, a drag that entered and left again
+        without dropping used to strand the accepted filename under the
+        idle styling. That is the same "zone display disagrees with the
+        loaded file" inconsistency _reset_text() exists to fix, just
+        reached through the drag-leave path instead of the warning timer.
+
+        dropEvent() below calls this before it branches, and both branches
+        still overwrite whatever this restores -- the valid-PDF path via
+        open_file()/set_accepted(), the invalid path via
+        _show_drop_warning() -- so the post-drop state is unchanged.
+        """
+        self._reset_text()
 
     def dropEvent(self, event: QDropEvent):
         """Handle dropped files"""
