@@ -16,10 +16,25 @@ planning documents live in `plans/` (implementation plans and their specs)
 and `design/` (design briefs) at the repo root — both outside the Pages
 root, so they stay private to the repository.
 
-Before adding a new file under `docs/`, confirm it is something the
-marketing site is meant to serve (`docs/index.html`, `docs/assets/`,
-`docs/README.md` documenting the site itself). If it is not, it belongs
-somewhere else in the repo.
+Before adding a new file under `docs/`, confirm it is meant to be public.
+Two kinds of file belong there:
+
+1. The marketing site itself — `docs/index.html`, `docs/assets/`, and
+   `docs/README.md` documenting the site.
+2. **Public user documentation** — the guides the README links out to
+   (`docs/installation.md`, `docs/usage.md`, `docs/troubleshooting.md`,
+   `docs/building.md`). These are an extract of the README, which is
+   already the most public file in the repo, so publishing them leaks
+   nothing.
+
+Note what `.nojekyll` does to those `.md` files: Pages serves them
+**unrendered**, as `content-type: text/markdown` (verified — `curl -I
+https://ksegit.github.io/QuickPdfOcr/README.md`). They read correctly on
+github.com, which is where the README's links point, and the raw copies on
+the Pages domain are harmless clutter. Do not add markdown under `docs/`
+expecting it to render as a web page.
+
+Anything that is neither of those two kinds belongs somewhere else.
 
 This was a real incident: an earlier branch added `docs/superpowers/` and
 `docs/design/` (agent-tooling plans/specs/design briefs, including commit
