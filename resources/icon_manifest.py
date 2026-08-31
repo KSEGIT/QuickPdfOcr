@@ -30,3 +30,23 @@ SIZE_SOURCES = {
 }
 
 ICO_SIZES = [16, 32, 48, 64, 128, 256]
+
+# macOS Dock icons sit inside a margin -- every neighbouring app's icon does
+# (Claude, Discord, balenaEtcher, qbittorrent, CodexBar, Scroll Reverser all
+# measured), matching Apple's official icon template. Measured across 15
+# installed apps at their 512px slot, content bounding box as a percentage
+# of tile width ranged 80.4-85.2% (median 81.2%). 824/1024 = 80.5% matches
+# Apple's template and the tightest-fitting real icons, so that is the
+# target.
+#
+# This scale applies only to icon.icns renders (via a CSS transform in
+# render_icons.py's macOS-specific wrapper) -- icon.ico and the web
+# favicons stay full-bleed at 1024/1024, which a previous fix specifically
+# restored for them. Both masters (icon.svg, icon_small.svg) draw the
+# squircle full-bleed at rx=230 on a 1024 canvas; scaling the whole render
+# by MACOS_TILE_SCALE rather than re-authoring the masters scales the
+# corner radius (and everything else) proportionally for free -- 230 *
+# 824/1024 = 185.08 -- with no separate rx constant to keep in sync.
+MACOS_TILE_SIZE = 824
+MACOS_TILE_CANVAS = 1024
+MACOS_TILE_SCALE = MACOS_TILE_SIZE / MACOS_TILE_CANVAS  # 0.8046875
