@@ -5,6 +5,11 @@ Turn scanned PDFs into searchable, copyable text on your own computer. No upload
 [![Latest release](https://img.shields.io/github/v/release/KSEGIT/QuickPdfOcr)](https://github.com/KSEGIT/QuickPdfOcr/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+<p align="center">
+  <img src="docs/assets/screenshot.png" width="460"
+       alt="QuickPdfOcr on macOS after processing a scanned PDF: the file name shown in the drop zone, a green &quot;OCR completed successfully&quot; banner, and the recognised text of the document in a scrollable panel above Copy to Clipboard and Start Over buttons.">
+</p>
+
 ## Download
 
 | Platform | Download | Also needed |
