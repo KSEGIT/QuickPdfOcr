@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.8.0](https://github.com/KSEGIT/QuickPdfOcr/compare/v1.7.1...v1.8.0) (2026-09-04)
+
+
+### Features
+
+* add terminal chrome to nav, section titles and buttons ([cda987c](https://github.com/KSEGIT/QuickPdfOcr/commit/cda987ca2cb89a9a3d11b4506eb05a1434a89312))
+* align the desktop UI with the terminal brand ([09d0b00](https://github.com/KSEGIT/QuickPdfOcr/commit/09d0b00245a9db68c71621e7cd1147945cd75b70))
+* align the desktop UI with the terminal brand, and fix Dock icon proportions ([08fd46d](https://github.com/KSEGIT/QuickPdfOcr/commit/08fd46d337886c026eaa19218b006558f26468ac))
+* pivot brand to a terminal/ASCII aesthetic ([ac57424](https://github.com/KSEGIT/QuickPdfOcr/commit/ac57424582116992dc0529c5bdd655c51ffb1b07))
+* re-author icon masters as terminal window plus small-size mark ([de07ef1](https://github.com/KSEGIT/QuickPdfOcr/commit/de07ef1ee5fb95960dfaf656d94e91ccbe6f58eb))
+* regenerate hero image as terminal scene for og:image ([4803a9f](https://github.com/KSEGIT/QuickPdfOcr/commit/4803a9fe6053defa30e88ed309be54a02a248b61))
+* remap site palette to the terminal skin ([7cbe906](https://github.com/KSEGIT/QuickPdfOcr/commit/7cbe906bc659e15065b70f9a11451120ff8178cc))
+* render icons from two masters so small sizes stay legible ([cba1dd1](https://github.com/KSEGIT/QuickPdfOcr/commit/cba1dd154b43beca93220d85cac8063cc522fecc))
+* replace hero image with live ASCII terminal ([10a1492](https://github.com/KSEGIT/QuickPdfOcr/commit/10a149209e0a38db159a2b58b74c07071f88b8c4))
+* replace inline SVG icons with ASCII character-grid art ([6a23691](https://github.com/KSEGIT/QuickPdfOcr/commit/6a2369191ab39ca74111170bbf499b03d8168681))
+
+
+### Bug Fixes
+
+* address 7 post-review defects on brand refresh (a11y, overflow, hover guard, favicon) ([cac5559](https://github.com/KSEGIT/QuickPdfOcr/commit/cac55595112f272374059a663c7afb60b2f2a748))
+* address 8 max-effort review findings on the icon pipeline and docs layout ([da42f77](https://github.com/KSEGIT/QuickPdfOcr/commit/da42f7794fb0d0866e894473052494cf08d6d4e1))
+* address code-review findings on the site-fix commits ([37c7366](https://github.com/KSEGIT/QuickPdfOcr/commit/37c7366de71933c01d9a00cc7105ebc86c693968))
+* address CodeRabbit findings on brand-refresh icon pipeline and site radii ([903d2f5](https://github.com/KSEGIT/QuickPdfOcr/commit/903d2f5c8d9c22edb9a1cb25f1adc0086611f9f0))
+* address self-review findings on the icon pipeline fix commit ([285e912](https://github.com/KSEGIT/QuickPdfOcr/commit/285e912d502b24aed60e4aeb92bfd6de81ab11d4))
+* address self-review findings on the post-review fix commit ([0e80080](https://github.com/KSEGIT/QuickPdfOcr/commit/0e800801b272327dc058bac0d07122bde1e12756))
+* address six site-level review findings on brand-refresh ([c0c5177](https://github.com/KSEGIT/QuickPdfOcr/commit/c0c5177e63f6390d96ee570e3941393e265808ed))
+* address whole-branch review findings on terminal brand refresh ([321dfcb](https://github.com/KSEGIT/QuickPdfOcr/commit/321dfcb784e46d08333d2e0dbbe7395aa6fe6982))
+* apply CodeRabbit auto-fixes ([3b517c0](https://github.com/KSEGIT/QuickPdfOcr/commit/3b517c0ee5b3aa6b69ef6706422de64a66681172))
+* apply corrected terminal palette and retarget fills-only guard to --bar ([f1de195](https://github.com/KSEGIT/QuickPdfOcr/commit/f1de1959ce2f8af90da4854a026ec7bdda9def9b))
+* bundle the Lucide SVGs and restore drop-zone state on drag-leave ([dcac2c6](https://github.com/KSEGIT/QuickPdfOcr/commit/dcac2c6e5dfefdedd5daff4dfca1e8ddfa7be14b))
+* close self-review gaps in the icon/hero fix commit ([7d6c6a9](https://github.com/KSEGIT/QuickPdfOcr/commit/7d6c6a98c17fea05bccb1c27a9c08378b66fbcd2))
+* draw hero box edges as continuous rects, not per-row glyphs ([d7bd460](https://github.com/KSEGIT/QuickPdfOcr/commit/d7bd4605b9cb6be1a4d5083a769ba5b446b98a48))
+* guard Playwright import and assert exact icon-colour token mapping ([0c9bd10](https://github.com/KSEGIT/QuickPdfOcr/commit/0c9bd10b31d8fe62a5f480a8098b258b8b74f658))
+* inset the macOS Dock icon's squircle to match neighbouring apps ([922bd18](https://github.com/KSEGIT/QuickPdfOcr/commit/922bd1883ef183f8cf32dd3f3cc046cb4e7afbec))
+* install Qt system libraries in the browser-tests job ([2272c2c](https://github.com/KSEGIT/QuickPdfOcr/commit/2272c2cbd441d73f56b0ecc7060e1b33407c085a))
+* invert filled buttons to dark ink and lift --border-color off --surface ([d12f217](https://github.com/KSEGIT/QuickPdfOcr/commit/d12f217fbb186acbadf018ee44ad9db352ffbc40))
+* let per-card icon colour classes reach the ASCII art ([2c18704](https://github.com/KSEGIT/QuickPdfOcr/commit/2c18704d925cb07d409240abe092a5add49f6cfe))
+* make the two-master split test runnable in CI ([a023ba3](https://github.com/KSEGIT/QuickPdfOcr/commit/a023ba3882453516db3aec66ee1a850739b3e635))
+* prevent hero terminal clipping between 769px and ~1130px ([b63991d](https://github.com/KSEGIT/QuickPdfOcr/commit/b63991dd0dba8c3fb15b26226cf055444144bcf2))
+* purge --frame text-colour violations and close alias hole in guard test ([0573157](https://github.com/KSEGIT/QuickPdfOcr/commit/05731570edb1495815ff69913ee2b5b5bdffcaea))
+* reject mismatched rasters in _abs_diff instead of truncating ([590657e](https://github.com/KSEGIT/QuickPdfOcr/commit/590657e713dec47b2d24c7f52a6f286d58226c7f))
+* split ink/fill tokens per hue, finish Step 6 sweep, guard the gradient ([70e3fa0](https://github.com/KSEGIT/QuickPdfOcr/commit/70e3fa0fdf57ce32ca0d5813716edfe0b977eada))
+* wait for the hover transition to settle before reading border colour ([819bc8e](https://github.com/KSEGIT/QuickPdfOcr/commit/819bc8e15cb50407343f50e50c3a03553ba5db6e))
+
 ## [1.7.1](https://github.com/KSEGIT/QuickPdfOcr/compare/v1.6.0...v1.7.1) (2026-08-09)
 
 Re-release of 1.7.0 with working release automation. The v1.6.0/v1.7.0
