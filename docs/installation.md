@@ -81,9 +81,8 @@ inside the app on all three platforms, so there is no Poppler to install.
 
 The second part differs by platform. macOS has a text recognizer built into the
 operating system (Apple's Vision framework), so the app just uses it. Windows
-and Linux have no equivalent, so they use Tesseract — and Tesseract is licensed
-and distributed in a way that means you install it yourself rather than getting
-it inside the download.
+and Linux have no equivalent, so they use Tesseract. Windows and Linux release
+artifacts do not bundle Tesseract, so you must install it separately.
 
 ## Running from source instead
 

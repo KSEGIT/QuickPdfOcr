@@ -42,7 +42,7 @@ There is no Poppler step on any platform. PDF rendering is inside the
 
 ## Project layout
 
-```
+```text
 QuickPdfOcr/
 ├── main.py                          # Entry point: argv + macOS FileOpen handling
 ├── build.py                         # Build entry point (drives PyInstaller)
@@ -76,7 +76,7 @@ QuickPdfOcr/
 | [Pillow](https://python-pillow.org/) | Image handling (Windows and Linux only) |
 | [PyInstaller](https://pyinstaller.org/) | Packaging into a standalone app |
 
-Exact versions live in [`requirements.txt`](../requirements.txt).
+Requirements and minimum versions live in [`requirements.txt`](../requirements.txt).
 
 ## How releases are built
 
