@@ -5,6 +5,8 @@ recognition uses Apple's Vision framework on macOS (built into the OS) and
 Tesseract OCR on Windows and Linux. PDF rendering uses the bundled
 `pypdfium2` library on every platform — there is no Poppler anywhere.
 
+![QuickPdfOcr demo — drop a PDF, run OCR, copy the text](docs/assets/quickpdfocr-demo.gif)
+
 ## 🚀 Quick Start for End Users
 
 **Download and run!**
