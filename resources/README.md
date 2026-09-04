@@ -31,6 +31,18 @@ smeared the terminal detail into an unrecognizable blur:
   would just be noise.
 - **favicon.png** - 32×32, rendered from `icon_small.svg`.
 
+Both masters draw the squircle full-bleed, edge to edge on their 1024 canvas.
+`icon.ico`, `icon.png`, `icon_512.png`, `favicon.png`, and `docs/assets/*` render that
+way unchanged — full-bleed is the Windows/web convention. `icon.icns` is the one
+exception: macOS Dock icons sit inside a margin (every neighbouring app's icon does),
+so `render_icons.py` renders `icon.icns` a **second time**, through a macOS-only HTML
+wrapper that scales the whole render down to 824/1024 (80.5%) and centers it — see
+`icon_manifest.MACOS_TILE_SCALE` for the measurements behind that number. Both
+masters are untouched by this; only the wrapper used for the `.icns` render pass
+differs, so if `icon.icns` at 512px doesn't look inset relative to `icon_512.png` at
+the same pixel size, that pass has regressed (`tests/test_icon_outputs.py` guards
+both this margin and the full-bleed outputs staying full-bleed).
+
 ### `docs/assets/`
 
 GitHub Pages publishes from `main:/docs`, so `resources/` sits outside the published
