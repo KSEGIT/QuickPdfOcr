@@ -1,305 +1,77 @@
-# QuickPdfOcr
-
-A simple and intuitive PDF OCR application built with PySide6 (Qt6). Text
-recognition uses Apple's Vision framework on macOS (built into the OS) and
-Tesseract OCR on Windows and Linux. PDF rendering uses the bundled
-`pypdfium2` library on every platform — there is no Poppler anywhere.
-
-## 🚀 Quick Start for End Users
-
-**Download and run!**
-
-The pre-built executables include:
-- ✅ Python interpreter
-- ✅ All Python packages
-- ✅ PDF rendering (bundled `pypdfium2` — no Poppler, on any platform)
-- ✅ **macOS: OCR via the Vision framework built into the OS — nothing else to install**
-- ⚠️ **Windows/Linux: Tesseract OCR is *not* bundled** — install it separately, see [Prerequisites](#prerequisites)
-
-See [Installation](#installation) below for download links. The macOS build
-is ad-hoc signed but not notarized, so the first launch needs one extra
-step — see the [macOS installation instructions](#macos).
-
-## Features
-
-- 📄 **Drag & Drop Interface** - Simply drag PDF files into the window
-- 📁 **File Browser** - Or use the file picker to select PDFs
-- 🔍 **OCR Processing** - Extract text from scanned PDFs (Apple Vision on macOS, Tesseract on Windows/Linux)
-- 📊 **Progress Feedback** - Real-time status updates during processing
-- 📋 **Copy to Clipboard** - One-click copy functionality (macOS/Linux/Windows)
-- 🔄 **Error Recovery** - Retry or start over options on failure
-- 🎨 **Modern UI** - Clean, user-friendly interface with visual feedback
-- 📦 **No Poppler, ever** - PDF rendering is bundled on every platform; macOS needs nothing else installed
+# QuickPdfOcr — free offline PDF OCR for Mac, Windows, and Linux
 
-## Prerequisites
-
-### For Pre-built Binaries
-
-**macOS:** Nothing required. PDF rendering is bundled and OCR uses the
-Vision framework built into the OS.
+Turn scanned PDFs into searchable, copyable text on your own computer. No upload, no cloud, no account.
 
-**Windows/Linux:** Install Tesseract OCR (see below) — it is the one thing
-the pre-built executables do not bundle.
+[![Latest release](https://img.shields.io/github/v/release/KSEGIT/QuickPdfOcr)](https://github.com/KSEGIT/QuickPdfOcr/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-### For Running from Source
+<p align="center">
+  <img src="docs/assets/screenshot.png" width="460"
+       alt="QuickPdfOcr on macOS after processing a scanned PDF: the file name shown in the drop zone, a green &quot;OCR completed successfully&quot; banner, and the recognised text of the document in a scrollable panel above Copy to Clipboard and Start Over buttons.">
+</p>
 
-**macOS:**
-Nothing to install. PDF rendering ships inside the `pypdfium2` wheel and OCR
-uses the Vision framework built into macOS 13+.
+## Download
 
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get install tesseract-ocr
-```
-
-**Windows:**
-- Install Tesseract OCR:
-  - **Recommended:** Using winget: `winget install --id UB-Mannheim.TesseractOCR`
-  - Or download from [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki)
-- *Optional:* For WSL users, you can also install via: `wsl sudo apt-get install tesseract-ocr`
+| Platform | Download | Also needed |
+| --- | --- | --- |
+| macOS 13 or later | [QuickPdfOcr-macOS-universal2.zip](https://github.com/KSEGIT/QuickPdfOcr/releases/latest) | Nothing |
+| Windows 10/11 | [QuickPdfOcr-Windows-x64.zip](https://github.com/KSEGIT/QuickPdfOcr/releases/latest) | [Tesseract OCR](docs/installation.md#windows) |
+| Linux (x86_64) | [QuickPdfOcr-Linux-x86_64.tar.gz](https://github.com/KSEGIT/QuickPdfOcr/releases/latest) | [Tesseract OCR](docs/installation.md#linux) |
 
-## Installation
+On macOS the first launch needs one extra click, because the app isn't
+notarized yet. See [Installation](docs/installation.md#macos).
 
-### macOS
+## What it does
 
-1. Download `QuickPdfOcr-macOS-universal2.zip` from the
-   [latest release](../../releases/latest).
-2. Unzip it and drag `QuickPdfOcr.app` to your Applications folder.
-3. **First launch only:** macOS will refuse to open the app because it is not
-   notarized. Go to **System Settings → Privacy & Security**, scroll to the
-   message about QuickPdfOcr, and click **Open Anyway**. Subsequent launches
-   work normally.
+You have a scanned PDF. The text inside it is really a picture, so you can't
+select it, search it, or copy it. QuickPdfOcr reads that picture and hands you
+the text back.
 
-There is nothing else to install. No Homebrew, no Poppler, no Tesseract —
-PDF rendering is built into the app and text recognition uses macOS's own
-Vision framework.
+Everything runs on your machine. Your documents are never uploaded anywhere.
 
-**Requires macOS 13 (Ventura) or later.**
+- **Drag and drop** — drop a PDF on the window, or pick one with the file browser.
+- **Watch it work** — a progress bar tells you which page it's on.
+- **Copy the result** — one click puts the text on your clipboard.
+- **Open from Finder** — on macOS, right-click a PDF and choose QuickPdfOcr.
 
-Once installed you can also:
-- Drag a PDF onto the app's Dock icon
-- Right-click a PDF → **Open With → QuickPdfOcr**
-- Right-click a PDF → **Services → OCR with QuickPdfOcr**, once the item
-  appears — macOS registers Services menu entries the first time the app
-  runs, so launch QuickPdfOcr at least once before checking Finder's
-  Services submenu (a Finder restart or a short wait may also be needed)
+On macOS, text recognition uses Apple's Vision framework, which is already part
+of the operating system — so there is nothing extra to install. On Windows and
+Linux it uses [Tesseract](https://github.com/tesseract-ocr/tesseract), which you
+install once.
 
-### Windows
+## How to use it
 
-1. Download `QuickPdfOcr-Windows-x64.zip` from the
-   [latest release](https://github.com/KSEGIT/QuickPdfOcr/releases).
-2. Extract the ZIP — this produces a `QuickPdfOcr` folder containing
-   `QuickPdfOcr.exe` alongside an `_internal` folder it needs; keep them
-   together.
-3. Install Tesseract OCR — it is not bundled (see [Prerequisites](#prerequisites)).
-4. Run `QuickPdfOcr.exe` from inside the extracted folder.
+1. Drag a PDF onto the window, or click **Open PDF File**.
+2. Click **Start OCR**.
+3. Click **Copy to Clipboard** when it finishes.
 
-### Linux
-
-1. Download `QuickPdfOcr-Linux-x86_64.tar.gz` from the
-   [latest release](https://github.com/KSEGIT/QuickPdfOcr/releases).
-2. Extract it: `tar -xzf QuickPdfOcr-Linux-x86_64.tar.gz`. This produces a
-   `QuickPdfOcr` folder containing the `QuickPdfOcr` executable alongside an
-   `_internal` folder it needs; keep them together.
-3. Install Tesseract OCR — it is not bundled (see [Prerequisites](#prerequisites)).
-4. Make it executable and run it from inside the extracted folder:
-   `chmod +x QuickPdfOcr/QuickPdfOcr && ./QuickPdfOcr/QuickPdfOcr`.
-
-### Run from Source
-
-1. Clone the repository:
-```bash
-git clone https://github.com/KSEGIT/QuickPdfOcr.git
-cd QuickPdfOcr
-```
-
-2. Install Python dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Install system dependencies (see [Prerequisites](#prerequisites))
-
-### Build Your Own Binary
-
-1. Clone and install dependencies (see above)
-
-2. Build the executable:
-```bash
-python build.py
-```
-
-3. On macOS, ad-hoc sign the bundle — required before it will launch, even
-   for local testing:
-```bash
-python packaging/verify_universal.py
-```
-
-4. Find your executable in the `dist/` folder
-
-## Usage
-
-### GUI Application
-
-Run the graphical interface:
-```bash
-python main.py
-```
-
-**Workflow:**
-1. Drag and drop a PDF file or click "Open PDF File"
-2. Click "Start OCR" to begin text extraction
-3. Wait for processing (progress updates shown)
-4. Copy extracted text or start over with a new file
-
-### Command Line (Legacy)
-
-You can also use the OCR processor directly from command line:
-```bash
-python components/pdf_ocr.py document.pdf output.txt
-```
-
-**Options:**
-- `--dpi <value>` - Set DPI for conversion (default: auto-detect)
-- `--lang <code>` - Set language for OCR (default: the engine's own default)
-
-Language codes are engine-specific: Tesseract (Windows/Linux) uses ISO 639-2
-codes like `eng`/`fra`; Vision (macOS) uses BCP-47 codes like `en-US`/`fr-FR`.
-
-**Examples:**
-```bash
-# Auto-detect DPI
-python components/pdf_ocr.py document.pdf
-
-# Manual DPI and output file
-python components/pdf_ocr.py document.pdf output.txt --dpi 400
-
-# French language (Windows/Linux, Tesseract)
-python components/pdf_ocr.py document.pdf --lang fra
-
-# French language (macOS, Vision)
-python components/pdf_ocr.py document.pdf --lang fr-FR
-```
-
-**Common Tesseract language codes:**
-- `eng` - English
-- `fra` - French
-- `deu` - German
-- `spa` - Spanish
-- `chi_sim` - Chinese Simplified
-- `jpn` - Japanese
-
-## Project Structure
-
-```
-QuickPdfOcr/
-├── main.py                     # Entry point: argv + macOS FileOpen handling
-├── build.py                    # Build entry point (drives PyInstaller)
-├── components/
-│   ├── __init__.py
-│   ├── pdf_ocr.py             # OCR orchestration (PdfOcrProcessor)
-│   ├── ocr_worker.py          # Background worker for the GUI
-│   ├── page_image.py          # Rendered-page pixel buffer
-│   ├── rendering/             # PDF rendering backend (pypdfium2)
-│   └── ocr/                   # OCR backends (Apple Vision / Tesseract)
-├── ui/
-│   ├── __init__.py
-│   ├── main_window.py         # Main application window
-│   └── loading_screen.py      # Startup loading screen
-├── packaging/
-│   ├── quickpdfocr.spec       # PyInstaller spec (incl. macOS Info.plist)
-│   ├── prepare_universal_deps.py  # Fattens pypdfium2's dylib for universal2
-│   └── verify_universal.py    # Architecture census + ad-hoc signing
-├── tests/                      # pytest suite
-└── requirements.txt             # Python dependencies
-```
-
-## Technologies Used
-
-- **PySide6** - Qt6 framework for Python (GUI)
-- **Apple Vision** - OCR engine on macOS, built into the OS
-- **Tesseract OCR** - OCR engine on Windows and Linux
-- **pypdfium2** - PDF rendering, bundled on every platform (no Poppler)
-- **Pillow** - Image processing (Windows/Linux only)
-
-## Requirements
-
-### System Requirements
-- **macOS:** None. OCR uses the Vision framework built into macOS 13+.
-- **Windows/Linux:** **Tesseract OCR** must be installed on your system — it
-  is not bundled, even in the pre-built binaries.
-
-### Python Dependencies (for source installation)
-See `requirements.txt` for Python package versions:
-- PySide6>=6.6.0
-- pypdfium2>=5.12.0 (PDF rendering, all platforms)
-- pyobjc-framework-Vision>=12.0, pyobjc-framework-Quartz>=12.0 (macOS only)
-- pytesseract>=0.3.10, Pillow>=10.0.0 (Windows/Linux only)
-- pyinstaller>=6.0.0 (for building binaries)
-- pytest>=8.0.0 (for running the test suite)
-
-## License
-
-This project is open source and available under the MIT License.
-
-See the [LICENSE](LICENSE) file for details.
-
-For third-party component licenses (PDFium/pypdfium2, Tesseract, PySide6/Qt,
-and others), see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
-
-## Building & Releases
-
-### Local Build
-
-Build for your current platform:
-```bash
-pip install -r requirements.txt
-python build.py
-```
-
-The executable will be in the `dist/` folder. On macOS, sign it before
-launching it — even for local testing — with `python packaging/verify_universal.py`.
-
-There is no Poppler step: PDF rendering ships inside the `pypdfium2` wheel
-and needs no system binary on any platform.
-
-### Automated Builds (GitHub Actions)
-
-The project includes GitHub Actions workflows that build executables for
-Windows, Linux, and macOS. All three run the test suite before building.
-PyInstaller now produces a directory (onedir) bundle on every platform, so
-each workflow archives that directory as a single asset: `QuickPdfOcr-Windows-x64.zip`,
-`QuickPdfOcr-Linux-x86_64.tar.gz`, and `QuickPdfOcr-macOS-universal2.zip`.
-The macOS workflow additionally builds a universal2 (Apple Silicon + Intel)
-app, runs a self-test OCR pass against the built bundle, and ad-hoc signs
-the result.
-
-To create a release, run the "Create Release" workflow from the Actions tab
-with the version you want to tag. Artifacts will be available in the
-resulting GitHub release.
+That's the whole app. For language settings, scan quality, and the command
+line, see [Usage](docs/usage.md).
+
+## Documentation
+
+- [Installation](docs/installation.md) — per-platform setup, including Tesseract
+- [Usage](docs/usage.md) — languages, image quality, command-line options
+- [Troubleshooting](docs/troubleshooting.md) — when something doesn't work
+- [Building from source](docs/building.md) — run the code, build your own binary
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Pull requests are welcome. To run QuickPdfOcr from source:
 
-## Troubleshooting
+```bash
+git clone https://github.com/KSEGIT/QuickPdfOcr.git
+cd QuickPdfOcr
+pip install -r requirements.txt
+python main.py
+```
 
-**Issue: "Tesseract not found"** (Windows/Linux only — macOS uses Vision, not Tesseract)
-- Make sure Tesseract is installed and in your system PATH
-- Linux: `sudo apt-get install tesseract-ocr`
-- Windows: `winget install --id UB-Mannheim.TesseractOCR` or download the [UB Mannheim Tesseract installer](https://github.com/UB-Mannheim/tesseract/wiki)
+Full build instructions, the project layout, and how releases are made are in
+[Building from source](docs/building.md).
 
-**Issue: "Failed to open/render PDF"**
-- PDF rendering is bundled (`pypdfium2`) on every platform, so there is no
-  separate Poppler install to check.
-- This usually means the PDF itself is corrupted, password-protected, or not
-  actually a PDF despite its extension.
+## License
 
-**Issue: Poor OCR quality**
-- Try increasing DPI (e.g., `--dpi 400`)
-- Ensure the PDF has good scan quality
-- The system auto-detects optimal DPI based on page size
+MIT — see [LICENSE](LICENSE).
 
-## Author
-
-Created by [KSEGIT](https://github.com/KSEGIT)
+Third-party components (PDFium, Tesseract, Qt, and others) keep their own
+licenses; see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
