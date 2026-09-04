@@ -74,6 +74,23 @@ platform container from those renders:
 deliberately not part of `requirements.txt` — Playwright must never enter the shipped
 application bundle.
 
+### Regenerating the Demo GIF
+
+`resources/render_demo_gif.py` renders `docs/assets/quickpdfocr-demo.gif` — the
+animated ASCII demo loop embedded in the README and the site's `#demo` section.
+It draws one HTML page per frame (Playwright, fixed monospace grid, brand
+charset and palette) and assembles the GIF with ffmpeg's two-pass palette:
+
+```bash
+.venv/bin/python resources/render_demo_gif.py   # docs/assets/quickpdfocr-demo.gif
+```
+
+ffmpeg is a system dependency (not in `requirements-assets.txt`): install it
+with `brew install ffmpeg`. Output contract: 1200×675, 12 fps, ~9 s infinite
+loop; the script errors above 5 MB and warns above the 2 MB target. Frames
+stage in the gitignored `resources/_render/demo/`; the tracked GIF is replaced
+atomically only after assembly succeeds.
+
 ### Regenerating the Hero (og:image)
 
 `resources/hero.svg` is the source for `quick_pdf_hero_small.jpg`, the Open Graph /
