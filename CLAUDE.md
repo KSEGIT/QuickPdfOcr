@@ -23,9 +23,8 @@ Two kinds of file belong there:
    `docs/README.md` documenting the site.
 2. **Public user documentation** — the guides the README links out to
    (`docs/installation.md`, `docs/usage.md`, `docs/troubleshooting.md`,
-   `docs/building.md`). These are an extract of the README, which is
-   already the most public file in the repo, so publishing them leaks
-   nothing.
+   `docs/building.md`). Each guide contains public content and must be
+   reviewed as public content before publication.
 
 Note what `.nojekyll` does to those `.md` files: Pages serves them
 **unrendered**, as `content-type: text/markdown` (verified — `curl -I
