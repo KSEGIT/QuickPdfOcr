@@ -26,7 +26,7 @@ def test_demo_gif_dimensions_frames_and_loop():
     Image = _pil_image()
     with Image.open(GIF) as gif:
         assert gif.size == (1200, 675)
-        assert gif.n_frames > 1
+        assert gif.n_frames == 108
         assert gif.info.get("loop") == 0, "demo GIF must loop forever"
 
 
