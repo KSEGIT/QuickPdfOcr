@@ -2,8 +2,12 @@
 
 Turn scanned PDFs into searchable, copyable text on your own computer. No upload, no cloud, no account.
 
+![QuickPdfOcr demo — drop a PDF, run OCR, copy the text](docs/assets/quickpdfocr-demo.gif)
+
+## 🚀 Quick Start for End Users
 [![Latest release](https://img.shields.io/github/v/release/KSEGIT/QuickPdfOcr)](https://github.com/KSEGIT/QuickPdfOcr/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 
 <p align="center">
   <img src="docs/assets/screenshot.png" width="460"

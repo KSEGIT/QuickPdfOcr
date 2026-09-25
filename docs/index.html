@@ -405,6 +405,16 @@
             background: var(--slate-light);
         }
 
+        /* Promo GIF: its own #0F172A canvas already matches --bg, so it
+           blends into the page without a frame of its own. */
+        .demo-gif {
+            display: block;
+            width: 100%;
+            max-width: 960px;
+            height: auto;
+            margin: 0 auto;
+        }
+
         /* Shared character-grid ASCII blocks (icons + hero) */
         .ascii-art {
             font-family: var(--mono);
@@ -799,6 +809,7 @@
                 </a>
                 <nav class="header-links">
                     <span class="hero-prompt" aria-hidden="true">~/quickpdfocr $</span>
+                    <a href="#demo">Demo</a>
                     <a href="#features">Features</a>
                     <a href="#download">Download</a>
                     <a href="#developers">Developers</a>
@@ -839,6 +850,19 @@
 └────────────────────────────────────────────┘
 
   4,812 words copied to clipboard</pre>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section id="demo">
+        <div class="container">
+            <h2 class="section-title cmd">See It in Action</h2>
+            <p class="section-subtitle">
+                Drop a PDF, click Start OCR, copy the text. The whole flow, one loop.
+            </p>
+            <img class="demo-gif" src="assets/quickpdfocr-demo.gif"
+                 alt="Animated demo: a PDF is dropped into the QuickPdfOcr window, OCR runs with a scan beam and progress bar, and the extracted text is copied to the clipboard."
+                 width="1200" height="675">
         </div>
     </section>
 
