@@ -37,6 +37,19 @@ Windows and Linux users must install Tesseract and tessdata (language data files
 
 ---
 
+## Lucide (icon set)
+
+- **License:** ISC
+- **Used for:** the button and status icons in the desktop UI (`resources/icons/*.svg`)
+- **Copyright:** Lucide Contributors
+- Website: https://lucide.dev
+- Source: https://github.com/lucide-icons/lucide
+- License: https://github.com/lucide-icons/lucide/blob/main/LICENSE
+
+Lucide is a fork of Feather (MIT licensed, https://github.com/feathericons/feather). Lucide's own `LICENSE` file carries both the ISC notice for Lucide's own contributions and the original Feather MIT notice.
+
+---
+
 ## Python Dependencies
 
 ### PySide6 (Qt for Python)

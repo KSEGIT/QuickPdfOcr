@@ -49,6 +49,16 @@ ICON_ASSETS = [
     "favicon.png",
 ]
 
+# The vendored Lucide SVGs ui/icons.py tints and rasterizes for the button
+# icons. Unlike ICON_ASSETS above these are read at runtime on every window
+# construction, so leaving them out is not cosmetic: load_icon() falls
+# through to its missing-file path and every button gets a null QIcon. This
+# is a whole directory rather than a filename list because ui/icons.py
+# addresses them by name at each call site -- there is no single manifest to
+# keep in sync, and tests/test_ui_icons.py asserts every name the code
+# actually loads resolves inside the bundle.
+ICONS_SRC = PROJECT_ROOT / "resources" / "icons"
+
 a = Analysis(
     [str(PROJECT_ROOT / "main.py")],
     pathex=[str(PROJECT_ROOT)],
@@ -57,6 +67,7 @@ a = Analysis(
         (str(PROJECT_ROOT / "resources" / name), "resources")
         for name in ICON_ASSETS
     ] + [
+        (str(ICONS_SRC), "resources/icons"),
         (str(PROJECT_ROOT / "LICENSE"), "."),
         (str(PROJECT_ROOT / "THIRD_PARTY_LICENSES.md"), "."),
     ],

@@ -5,6 +5,16 @@ The detailed master (icon.svg) feeds 128px and above; the simplified
 master (icon_small.svg) feeds 64px and below, so Dock, taskbar and
 favicon sizes stay legible instead of becoming a smear of the large art.
 
+Both masters draw their squircle full-bleed, edge to edge on a 1024
+canvas -- correct for icon.ico and the web favicons, which convention
+renders full-bleed. macOS Dock icons are the exception: every neighbouring
+app's icon sits inside a margin (see icon_manifest.MACOS_TILE_SCALE for the
+measurements), so icon.icns is rendered a second time through a
+macOS-specific HTML wrapper that scales the whole master down and centers
+it, leaving a transparent margin. Same two masters drive both conventions;
+only the wrapper differs, so the two renders cannot drift apart the way
+forked SVG files could.
+
 Requires resources/requirements-assets.txt (Playwright + Pillow) and
 `playwright install chromium`. This is asset tooling, not a runtime
 dependency of the app.
@@ -17,12 +27,25 @@ import shutil
 from pathlib import Path
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Browser, sync_playwright
 
-from create_icns import create_icns_from_pngs
-from icon_manifest import DETAILED, ICO_SIZES, RESOURCES, SIMPLE, SIZE_SOURCES
+from create_icns import ICONSET_SLOTS, create_icns_from_pngs
+from icon_manifest import (
+    DETAILED,
+    ICO_SIZES,
+    MACOS_TILE_SCALE,
+    RESOURCES,
+    SIMPLE,
+    SIZE_SOURCES,
+)
 
 RENDER_DIR = RESOURCES / "_render"
+ICNS_RENDER_DIR = RENDER_DIR / "icns_tile"
+
+# The exact set of pixel sizes icon.icns needs, derived from
+# ICONSET_SLOTS (size * scale for each slot) rather than hand-copied, so it
+# cannot drift out of sync with what create_icns_from_pngs actually reads.
+ICNS_PIXEL_SIZES = sorted({size * scale for size, scale, _ in ICONSET_SLOTS})
 
 
 def _atomic_copy(src: Path, dst: Path) -> None:
@@ -50,33 +73,69 @@ def _atomic_copy(src: Path, dst: Path) -> None:
 # resources/*.png. This is the single place those copies are produced.
 DOCS_ASSETS = RESOURCES.parent / "docs" / "assets"
 
-_WRAPPER = """<!doctype html><html><head><meta charset="utf-8"><style>
-html, body { margin: 0; padding: 0; background: transparent; }
-svg { display: block; width: 100vw; height: 100vh; }
-</style></head><body>%s</body></html>"""
+_SVG_PLACEHOLDER = "__ICON_SVG_MARKUP__"
 
 
-def render_all(out_dir: Path) -> dict[int, Path]:
-    """Render each size from its designated master. Returns {size: png_path}."""
+def _html_wrapper(extra_svg_css: str = "") -> str:
+    """Build a Playwright page-content wrapper: shared doctype/meta/html/body
+    reset, plus one _SVG_PLACEHOLDER token (filled by render_set() with the
+    master's own <svg>...</svg> markup via str.replace()) and an
+    extra_svg_css hook so per-convention rules (currently just the
+    macOS-tile transform below) don't need to duplicate this boilerplate.
+
+    Built with an f-string, and filled in later with str.replace() rather
+    than %-formatting: this file's CSS legitimately wants a literal % (e.g.
+    `width: 100%`) and master SVGs can contain arbitrary text, and neither
+    should have to be escaped against being misread as a format directive.
+    str.replace() does a literal substring swap, so there is nothing to
+    escape on either side.
+    """
+    return f"""<!doctype html><html><head><meta charset="utf-8"><style>
+html, body {{ margin: 0; padding: 0; background: transparent; }}
+svg {{ display: block; width: 100vw; height: 100vh;{extra_svg_css} }}
+</style></head><body>{_SVG_PLACEHOLDER}</body></html>"""
+
+
+_WRAPPER = _html_wrapper()
+
+# macOS-only wrapper for icon.icns: scales the master's full-bleed 1024x1024
+# render down to MACOS_TILE_SCALE and re-centers it via transform-origin,
+# leaving an equal transparent margin on all four sides -- the CSS
+# equivalent of wrapping the master's content in
+# <g transform="translate(100,100) scale(0.8046875)">, but applied to the
+# whole rendered SVG rather than re-authoring its markup. Uniform scaling
+# means the squircle's rx=230 corner radius scales down with it for free;
+# there is no separate radius constant to keep in sync.
+_WRAPPER_MACOS_TILE = _html_wrapper(
+    f" transform: scale({MACOS_TILE_SCALE}); transform-origin: center center;"
+)
+
+
+def render_set(
+    browser: Browser, sizes_masters: dict[int, Path], wrapper: str, out_dir: Path
+) -> dict[int, Path]:
+    """Render each size in sizes_masters from its designated master, through
+    the given HTML wrapper, into out_dir. Returns {size: png_path}.
+
+    wrapper selects the rendering convention: _WRAPPER for full-bleed icons
+    (favicon, .ico, docs/assets, icon.png), _WRAPPER_MACOS_TILE for
+    icon.icns. Takes an already-launched browser so the two calls in main()
+    share one Chromium process instead of paying launch overhead twice.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     rendered: dict[int, Path] = {}
 
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
-        try:
-            for size, master in sorted(SIZE_SOURCES.items()):
-                page = browser.new_page(
-                    viewport={"width": size, "height": size},
-                    device_scale_factor=1,
-                )
-                page.set_content(_WRAPPER % master.read_text(encoding="utf-8"))
-                target = out_dir / f"icon_{size}.png"
-                page.screenshot(path=str(target), omit_background=True)
-                page.close()
-                rendered[size] = target
-                print(f"  rendered {size:>4}px from {master.name}")
-        finally:
-            browser.close()
+    for size, master in sorted(sizes_masters.items()):
+        page = browser.new_page(
+            viewport={"width": size, "height": size},
+            device_scale_factor=1,
+        )
+        page.set_content(wrapper.replace(_SVG_PLACEHOLDER, master.read_text(encoding="utf-8")))
+        target = out_dir / f"icon_{size}.png"
+        page.screenshot(path=str(target), omit_background=True)
+        page.close()
+        rendered[size] = target
+        print(f"  rendered {size:>4}px from {master.name}")
 
     return rendered
 
@@ -101,8 +160,41 @@ def main() -> int:
         )
         return 1
 
-    print("Rendering icon sizes...")
-    pngs = render_all(RENDER_DIR)
+    # icon.icns needs a master for every pixel size create_icns_from_pngs
+    # will ask for (ICNS_PIXEL_SIZES, derived from ICONSET_SLOTS). Checked
+    # up front, before launching a browser or touching any tracked
+    # artefact, with a message naming the missing size(s) -- create_icns_
+    # from_pngs's own .get()-based lookup already does this for the PNGs it
+    # receives; this is the same guard one step earlier, for whether
+    # SIZE_SOURCES can even produce them. Not reachable today (every
+    # ICONSET_SLOTS size has a SIZE_SOURCES entry), but a future slot added
+    # to one table without the other would otherwise surface as a bare
+    # KeyError with no indication of which size was missing.
+    missing = [s for s in ICNS_PIXEL_SIZES if s not in SIZE_SOURCES]
+    if missing:
+        print(
+            f"Error: icon_manifest.SIZE_SOURCES has no master for icns pixel "
+            f"size(s) {missing}; icon.icns needs one for every entry in "
+            f"create_icns.ICONSET_SLOTS. No tracked artefact has been modified."
+        )
+        return 1
+
+    print("Rendering icon sizes (full-bleed)...")
+    icns_sizes_masters = {s: SIZE_SOURCES[s] for s in ICNS_PIXEL_SIZES}
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            pngs = render_set(browser, SIZE_SOURCES, _WRAPPER, RENDER_DIR)
+
+            # icon.icns is rendered a second time, at the same pixel sizes
+            # but through the macOS-tile wrapper (see module docstring):
+            # same two masters, margin applied only for this container.
+            print("Rendering icon.icns sizes (macOS tile margin)...")
+            icns_pngs = render_set(
+                browser, icns_sizes_masters, _WRAPPER_MACOS_TILE, ICNS_RENDER_DIR
+            )
+        finally:
+            browser.close()
 
     # Build icon.ico and icon.icns entirely inside the gitignored render
     # directory first. Only after *both* containers succeed do we start
@@ -130,7 +222,7 @@ def main() -> int:
     print(f"Rendered icon.ico ({len(ICO_SIZES)} sizes)")
 
     render_icns = RENDER_DIR / "icon.icns"
-    create_icns_from_pngs(pngs, render_icns)
+    create_icns_from_pngs(icns_pngs, render_icns)
     print("Rendered icon.icns")
 
     # Every container succeeded -- now, and only now, update the tracked
