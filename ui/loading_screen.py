@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QPainter, QPen, QColor, QGuiApplication
 
+from ui.theme import ACCENT, BG, DIM, FRAME
+
 
 class SpinnerWidget(QWidget):
     """Animated spinner widget"""
@@ -41,7 +43,7 @@ class SpinnerWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
         # Draw spinning arc
-        pen = QPen(QColor("#2196F3"), 4, Qt.PenStyle.SolidLine)
+        pen = QPen(QColor(ACCENT), 4, Qt.PenStyle.SolidLine)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         
@@ -62,6 +64,20 @@ class LoadingScreen(QWidget):
             Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # A bare QWidget does not paint its own stylesheet background/border
+        # by default -- only style-aware widgets like QLabel/QPushButton do
+        # that automatically. Without this attribute the card's
+        # background-color/border/border-radius (set in _setup_ui(), below)
+        # silently never renders at all. Verified with a plain (non-toplevel,
+        # non-translucent) QWidget carrying the same stylesheet -- see
+        # tests/test_loading_screen.py's test_card_background_actually_paints,
+        # which renders exactly that clone off-screen rather than this
+        # class's own frameless+translucent instance: QT_QPA_PLATFORM=offscreen
+        # cannot capture a translucent top-level window's own background via
+        # grab() *at all*, with or without this attribute (confirmed by
+        # direct A/B comparison while building this fix), so this class
+        # itself is not the thing any automated test here can render-verify.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         
         # Setup animations
         self.setWindowOpacity(0)
@@ -89,38 +105,46 @@ class LoadingScreen(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setContentsMargins(30, 30, 30, 30)
         
-        # Background styling
-        self.setStyleSheet("""
-            QWidget {
-                background-color: white;
+        # Background styling. Scoped to this widget's own object name
+        # (rather than a bare "QWidget" type selector) so the rule matches
+        # only the card itself, not every QLabel/QWidget descendant added
+        # below -- a bare type selector would otherwise draw this same
+        # border+radius around each child individually, since Qt matches
+        # style rules against the whole subtree, not just the widget
+        # setStyleSheet() was called on.
+        self.setObjectName("loadingCard")
+        self.setStyleSheet(f"""
+            QWidget#loadingCard {{
+                background-color: {BG};
+                border: 1px solid {FRAME};
                 border-radius: 15px;
-            }
+            }}
         """)
-        
+
         # App name/title
         title_label = QLabel("QuickPdfOcr")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("""
-            QLabel {
-                color: #2196F3;
+        title_label.setStyleSheet(f"""
+            QLabel {{
+                color: {ACCENT};
                 font-size: 32px;
                 font-weight: bold;
                 background: transparent;
                 padding: 10px;
-            }
+            }}
         """)
         layout.addWidget(title_label)
-        
+
         # Subtitle
         subtitle_label = QLabel("Starting application...")
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_label.setStyleSheet("""
-            QLabel {
-                color: #666;
+        subtitle_label.setStyleSheet(f"""
+            QLabel {{
+                color: {DIM};
                 font-size: 14px;
                 background: transparent;
                 padding: 5px;
-            }
+            }}
         """)
         layout.addWidget(subtitle_label)
         
@@ -142,14 +166,14 @@ class LoadingScreen(QWidget):
         # Progress message label
         self.progress_label = QLabel("Initializing...")
         self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.progress_label.setStyleSheet("""
-            QLabel {
-                color: #888;
+        self.progress_label.setStyleSheet(f"""
+            QLabel {{
+                color: {DIM};
                 font-size: 13px;
                 background: transparent;
                 padding: 10px;
                 min-height: 20px;
-            }
+            }}
         """)
         self.progress_label.setWordWrap(True)
         layout.addWidget(self.progress_label)
