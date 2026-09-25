@@ -202,7 +202,7 @@ It's not a service you host; it's the alternative for documents you'd never send
 to a hosted OCR API: contracts, medical records, bank statements. If your threat
 model is "the file must not leave this machine," that's the whole design.
 
-It's production-ready: pre-built installers for all three platforms, an automated
+It's production-ready: pre-built archives for all three platforms, an automated
 test suite that runs before every release build, and full docs in the README
 including troubleshooting and build-from-source. On macOS 13+ the .app is the
 complete install. Windows/Linux need Tesseract installed separately — the one
@@ -290,7 +290,7 @@ Ordered checklist. One channel at a time; fix what each channel surfaces before 
 
 | Asset | Path | Size / dims | Use |
 |---|---|---|---|
-| Promo GIF | `docs/assets/quickpdfocr-demo.gif` | 1200×675, ~9s loop, ≤2MB | X posts, PH gallery (re-render at 1270×760), README later |
+| Promo GIF | `docs/assets/quickpdfocr-demo.gif` | 1200×675, ~9s loop, ≤2MB | X posts, PH gallery (re-render at 1270×760), README |
 | og:image | `resources/quick_pdf_hero_small.jpg` | 1920×1080, 94KB | Link previews (already wired into the site) |
 | App icon, large master | `resources/icon.svg` → `resources/icon_512.png` | 512×512, 112KB | PH thumbnail source (export at 240×240), press/avatar |
 | App icon, runtime | `resources/icon.png` | 256×256, 35KB | In-app icon; site logo is `docs/assets/logo.png` (64×64) |
